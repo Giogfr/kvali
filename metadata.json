@@ -1,0 +1,6 @@
+{
+  "name": "Kvali — Navigation for Georgia",
+  "description": "Open-source navigation prototype for Georgia, built with MapLibre and OpenStreetMap data.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
