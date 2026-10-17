@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Download,
   Pause,
@@ -8,11 +8,20 @@ import {
   WifiOff,
   RefreshCw,
   Info,
+  CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
-import { ToggleSwitch, DemoChip } from '../components/common/Controls';
+import { ToggleSwitch } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
+import { OfflineRegion } from '../types';
+import {
+  MAP_STYLES,
+  clearTileCache,
+  formatBytes,
+  getStorageEstimate,
+  prefetchRegion,
+} from '../lib/offline';
 
 export const OfflineMapsScreen: React.FC = () => {
   const {
@@ -21,19 +30,125 @@ export const OfflineMapsScreen: React.FC = () => {
     theme,
     navigateTo,
     offlineRegions,
-    updateRegionStatus,
+    patchRegion,
     airplaneOfflineMode,
     setAirplaneOfflineMode,
   } = useApp();
 
   const { showToast } = useToast();
 
-  const totalUsedMb = offlineRegions
-    .filter((r) => r.status === 'downloaded' || r.status === 'update_available')
-    .reduce((sum, r) => sum + r.sizeMb, 0);
+  const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
+  const [storageSupported, setStorageSupported] = useState(true);
+  const controllersRef = useRef<Record<string, AbortController>>({});
 
-  const totalCapacityMb = 32000; // 32 GB simulated device space
-  const usedPercent = Math.min(100, (totalUsedMb / totalCapacityMb) * 100);
+  const refreshStorage = useCallback(async () => {
+    const est = await getStorageEstimate();
+    if (est) {
+      setStorage(est);
+      setStorageSupported(true);
+    } else {
+      setStorageSupported(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshStorage();
+  }, [refreshStorage]);
+
+  const startDownload = useCallback(
+    async (region: OfflineRegion) => {
+      const controller = new AbortController();
+      controllersRef.current = { ...controllersRef.current, [region.id]: controller };
+      patchRegion(region.id, { status: 'downloading' });
+
+      let lastPct = -1;
+      try {
+        const result = await prefetchRegion({
+          bbox: region.bbox,
+          styleUrl: theme === 'dark' ? MAP_STYLES.dark : MAP_STYLES.light,
+          onProgress: ({ done, total, bytes }) => {
+            const pct = total ? Math.round((done / total) * 100) : 0;
+            if (pct !== lastPct) {
+              lastPct = pct;
+              patchRegion(region.id, { downloadProgress: pct, bytes });
+            }
+          },
+          signal: controller.signal,
+        });
+
+        patchRegion(region.id, {
+          status: 'downloaded',
+          downloadProgress: 100,
+          bytes: result.bytes,
+          lastUpdated: new Date().toISOString().slice(0, 10),
+        });
+        showToast(t('downloadComplete'), 'success');
+        refreshStorage();
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+        patchRegion(region.id, { status: 'not_downloaded', downloadProgress: 0 });
+        showToast(t('downloadFailed'), 'warn');
+      } finally {
+        const next = { ...controllersRef.current };
+        delete next[region.id];
+        controllersRef.current = next;
+      }
+    },
+    [patchRegion, refreshStorage, showToast, t, theme]
+  );
+
+  const stopController = (id: string) => {
+    controllersRef.current[id]?.abort();
+    const next = { ...controllersRef.current };
+    delete next[id];
+    controllersRef.current = next;
+  };
+
+  const handlePause = (id: string) => {
+    stopController(id);
+    patchRegion(id, { status: 'paused' });
+  };
+
+  const handleCancel = (id: string) => {
+    stopController(id);
+    patchRegion(id, { status: 'not_downloaded', downloadProgress: 0 });
+    showToast(t('downloadCancelled'), 'info');
+  };
+
+  const handleRemove = (region: OfflineRegion) => {
+    stopController(region.id);
+    patchRegion(region.id, {
+      status: 'not_downloaded',
+      downloadProgress: 0,
+      bytes: undefined,
+      lastUpdated: '',
+    });
+    showToast(t('downloadCancelled'), 'info');
+  };
+
+  const handleClearCache = async () => {
+    controllerEntries().forEach(([, controller]) => controller.abort());
+    controllersRef.current = {};
+    await clearTileCache();
+    offlineRegions.forEach((region) =>
+      patchRegion(region.id, {
+        status: 'not_downloaded',
+        downloadProgress: 0,
+        bytes: undefined,
+        lastUpdated: '',
+      })
+    );
+    showToast(t('cacheCleared'), 'info');
+    refreshStorage();
+  };
+
+  const controllerEntries = () => Object.entries(controllersRef.current);
+
+  const usageBytes = storage?.usage ?? 0;
+  const quotaBytes = storage?.quota ?? 0;
+  const usedPercent = quotaBytes ? Math.min(100, (usageBytes / quotaBytes) * 100) : 0;
+
+  const downloadedBytes = offlineRegions.reduce((sum, r) => sum + (r.bytes ?? 0), 0);
 
   return (
     <div
@@ -44,34 +159,43 @@ export const OfflineMapsScreen: React.FC = () => {
       <HeaderBar title={t('offlineMapsTitle')} onBack={() => navigateTo('map')} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Simulated Storage Usage Bar */}
+        {/* Storage usage */}
         <div className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/60">
           <div className="flex items-center justify-between text-[12px] mb-2">
             <div className="flex items-center gap-2">
               <HardDrive size={15} className="text-[#2F6FEB]" />
-              <span className="font-semibold text-neutral-200">
-                {t('storageUsage')}
-              </span>
+              <span className="font-semibold text-neutral-200">{t('storageUsage')}</span>
             </div>
             <span className="font-mono text-neutral-400">
-              {totalUsedMb} MB / 32 GB (Simulated)
+              {storageSupported
+                ? `${formatBytes(usageBytes)} / ${formatBytes(quotaBytes)}`
+                : '—'}
             </span>
           </div>
 
           <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
             <div
               className="h-full bg-[#2F6FEB] rounded-full transition-all duration-300"
-              style={{ width: `${Math.max(2, usedPercent)}%` }}
+              style={{ width: `${storageSupported ? Math.max(2, usedPercent) : 0}%` }}
             />
           </div>
 
           <div className="flex justify-between text-[10px] text-neutral-500 mt-1.5 font-mono">
-            <span>Kvali offline data: {totalUsedMb} MB</span>
-            <span>Free: ~{(32 - totalUsedMb / 1024).toFixed(1)} GB</span>
+            <span>Kvali offline: {formatBytes(downloadedBytes)}</span>
+            <button
+              onClick={handleClearCache}
+              className="underline hover:text-neutral-300 transition-colors"
+            >
+              {t('clearCache')}
+            </button>
           </div>
+
+          {!storageSupported && (
+            <p className="text-[10px] text-neutral-500 mt-1.5">{t('storageUnavailable')}</p>
+          )}
         </div>
 
-        {/* Simulated Offline / Airplane Mode Switch */}
+        {/* Offline / fallback render toggle */}
         <div className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/40 flex items-center justify-between">
           <div className="flex items-center gap-3 pr-2">
             <div
@@ -98,7 +222,7 @@ export const OfflineMapsScreen: React.FC = () => {
             onChange={(checked) => {
               setAirplaneOfflineMode(checked);
               showToast(
-                checked ? 'Simulated Offline Mode Active' : 'Online Map Mode Restored',
+                checked ? 'Offline rendering forced' : 'Online map rendering restored',
                 checked ? 'warn' : 'info'
               );
             }}
@@ -106,13 +230,12 @@ export const OfflineMapsScreen: React.FC = () => {
           />
         </div>
 
-        {/* Regions List */}
+        {/* Regions */}
         <div>
           <div className="flex items-center justify-between mb-2 px-1">
             <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
-              Available Regions (Georgia)
+              {t('regionsTitle')}
             </span>
-            <DemoChip label={t('demoData')} />
           </div>
 
           <div className="space-y-2">
@@ -120,7 +243,6 @@ export const OfflineMapsScreen: React.FC = () => {
               const isDownloaded = region.status === 'downloaded';
               const isDownloading = region.status === 'downloading';
               const isPaused = region.status === 'paused';
-              const hasUpdate = region.status === 'update_available';
 
               return (
                 <div
@@ -128,50 +250,59 @@ export const OfflineMapsScreen: React.FC = () => {
                   className="p-3 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:border-neutral-700 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[13px] font-semibold text-neutral-100 block">
+                    <div className="min-w-0 pr-2">
+                      <span className="text-[13px] font-semibold text-neutral-100 block truncate">
                         {language === 'ka' ? region.nameKa : region.name}
                       </span>
                       <div className="flex items-center gap-2 text-[11px] text-neutral-400 mt-0.5">
-                        <span className="tabular-nums font-mono">{region.sizeMb} MB</span>
+                        <span className="tabular-nums font-mono">
+                          {region.bytes
+                            ? formatBytes(region.bytes)
+                            : `~${region.sizeMb} MB ${t('estimate')}`}
+                        </span>
                         <span>·</span>
                         <span
                           className={`capitalize font-medium ${
                             isDownloaded
                               ? 'text-emerald-400'
-                              : hasUpdate
-                              ? 'text-[#C9973F]'
                               : isDownloading
                               ? 'text-[#2F6FEB]'
+                              : isPaused
+                              ? 'text-[#C9973F]'
                               : 'text-neutral-500'
                           }`}
                         >
                           {isDownloaded
-                            ? t('downloaded') + ' — simulated'
-                            : hasUpdate
-                            ? t('updateAvailable')
+                            ? t('downloaded')
                             : isDownloading
                             ? `${t('downloading')} ${region.downloadProgress}%`
                             : isPaused
-                            ? 'Paused'
-                            : 'Not downloaded'}
+                            ? `${t('pause')} · ${region.downloadProgress}%`
+                            : t('notDownloaded')}
                         </span>
+                        {isDownloaded && region.lastUpdated && (
+                          <>
+                            <span>·</span>
+                            <span className="text-neutral-500">
+                              {t('downloadedOn')} {region.lastUpdated}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    {/* Action buttons */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       {isDownloading ? (
                         <>
                           <button
-                            onClick={() => updateRegionStatus(region.id, 'pause')}
+                            onClick={() => handlePause(region.id)}
                             className="p-2 rounded-lg bg-neutral-800 text-neutral-300 hover:text-white"
                             title={t('pause')}
                           >
                             <Pause size={14} />
                           </button>
                           <button
-                            onClick={() => updateRegionStatus(region.id, 'cancel')}
+                            onClick={() => handleCancel(region.id)}
                             className="p-2 rounded-lg bg-neutral-800 text-neutral-400 hover:text-red-400"
                             title="Cancel"
                           >
@@ -181,14 +312,14 @@ export const OfflineMapsScreen: React.FC = () => {
                       ) : isPaused ? (
                         <>
                           <button
-                            onClick={() => updateRegionStatus(region.id, 'resume')}
+                            onClick={() => startDownload(region)}
                             className="p-2 rounded-lg bg-[#2F6FEB] text-white"
                             title={t('resume')}
                           >
                             <Play size={14} />
                           </button>
                           <button
-                            onClick={() => updateRegionStatus(region.id, 'cancel')}
+                            onClick={() => handleCancel(region.id)}
                             className="p-2 rounded-lg bg-neutral-800 text-neutral-400 hover:text-red-400"
                             title="Cancel"
                           >
@@ -196,34 +327,27 @@ export const OfflineMapsScreen: React.FC = () => {
                           </button>
                         </>
                       ) : isDownloaded ? (
-                        <button
-                          onClick={() => {
-                            updateRegionStatus(region.id, 'remove');
-                            showToast('Removed simulated region package', 'info');
-                          }}
-                          className="p-2 rounded-lg bg-neutral-800 text-neutral-400 hover:text-red-400 transition-colors"
-                          title={t('remove')}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      ) : hasUpdate ? (
-                        <button
-                          onClick={() => {
-                            updateRegionStatus(region.id, 'update');
-                            showToast('Starting package update…', 'info');
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C9973F]/20 text-[#C9973F] text-[11px] font-medium"
-                        >
-                          <RefreshCw size={12} />
-                          <span>Update</span>
-                        </button>
+                        <>
+                          <button
+                            onClick={() => startDownload(region)}
+                            className="p-2 rounded-lg bg-neutral-800 text-neutral-300 hover:text-white transition-colors"
+                            title={t('updateAvailable')}
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleRemove(region)}
+                            className="p-2 rounded-lg bg-neutral-800 text-neutral-400 hover:text-red-400 transition-colors"
+                            title={t('remove')}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
                       ) : (
                         <button
-                          onClick={() => {
-                            updateRegionStatus(region.id, 'download');
-                            showToast(`Simulating download for ${region.name}…`, 'info');
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[11px] font-medium transition-colors"
+                          onClick={() => startDownload(region)}
+                          disabled={airplaneOfflineMode}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-medium transition-colors"
                         >
                           <Download size={13} />
                           <span>{t('download')}</span>
@@ -232,7 +356,6 @@ export const OfflineMapsScreen: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Progress bar when downloading */}
                   {isDownloading && (
                     <div className="w-full h-1.5 rounded-full bg-neutral-800 overflow-hidden mt-2.5">
                       <div
@@ -241,13 +364,20 @@ export const OfflineMapsScreen: React.FC = () => {
                       />
                     </div>
                   )}
+
+                  {isDownloaded && (
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] mt-2">
+                      <CheckCircle2 size={12} />
+                      <span>{t('downloaded')}</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Honest Limitations Notice */}
+        {/* Honest notice */}
         <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-400 flex items-start gap-2">
           <Info size={15} className="text-neutral-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed">{t('offlineStorageNotice')}</p>

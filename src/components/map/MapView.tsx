@@ -3,6 +3,7 @@ import * as maplibregl from 'maplibre-gl';
 import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { useApp } from '../../context/AppContext';
 import { FallbackMap } from './FallbackMap';
+import { MAP_STYLES } from '../../lib/offline';
 import { Place } from '../../types';
 
 // Configure MapLibre Web Worker URL via Vite asset bundler
@@ -65,8 +66,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
 
   // Style URLs
-  const primaryLightStyle = 'https://tiles.openfreemap.org/styles/positron';
-  const primaryDarkStyle = 'https://tiles.openfreemap.org/styles/dark';
+  const primaryLightStyle = MAP_STYLES.light;
+  const primaryDarkStyle = MAP_STYLES.dark;
   const demoFallbackStyle = 'https://demotiles.maplibre.org/style.json';
 
   const getTargetStyle = useCallback(() => {
