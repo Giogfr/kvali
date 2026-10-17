@@ -24,6 +24,7 @@ import { SEED_REGIONS } from '../data/seedRegions';
 import { SEED_TRACKS } from '../data/seedTracks';
 import { TRANSLATIONS } from '../lib/translations';
 import { fetchOsrmRoute, reverseGeocodeNominatim } from '../lib/services';
+import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
 import { generateRouteAlternatives } from '../lib/geo';
 
 interface ActiveNavState {
@@ -260,12 +261,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Real Geolocation
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [geolocationStatus, setGeolocationStatus] = useState<GeolocationStatus>('idle');
-  const watchPositionId = useRef<number | null>(null);
+  const stopWatchRef = useRef<(() => void) | null>(null);
 
   // Live Track Recording
   const [isRecordingLiveTrack, setIsRecordingLiveTrack] = useState(false);
   const [liveTrackPoints, setLiveTrackPoints] = useState<[number, number][]>([]);
   const liveTrackStartTime = useRef<number | null>(null);
+  const isRecordingRef = useRef(false);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecordingLiveTrack;
+  }, [isRecordingLiveTrack]);
+
+  const applyLocation = useCallback((loc: LocationResult) => {
+    setUserLocation({
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      accuracyMeters: loc.accuracyMeters ?? undefined,
+      speedKmh: loc.speedKmh,
+      headingDegrees: loc.headingDegrees,
+      timestamp: loc.timestamp,
+    });
+    if (isRecordingRef.current) {
+      setLiveTrackPoints((prev) => [...prev, [loc.longitude, loc.latitude]]);
+    }
+  }, []);
 
   // Default Kutaisi Center: 42.2679, 42.6946
   const defaultCenter = { latitude: 42.2679, longitude: 42.6946 };
@@ -421,82 +441,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [theme]);
 
-  // Request real browser geolocation
+  // Request the device location (native plugin on Android, browser API on web)
   const requestUserLocation = useCallback(async (): Promise<boolean> => {
-    if (!navigator.geolocation) {
-      setGeolocationStatus('unavailable');
+    if (geolocationStatus === 'requesting') return false;
+    setGeolocationStatus('requesting');
+    try {
+      const loc = await getCurrentLocation();
+      applyLocation(loc);
+      setRouteOrigin({
+        name: 'My Location (GPS)',
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+      });
+      setGeolocationStatus('granted');
+      setRecenterTrigger((p) => p + 1);
+      return true;
+    } catch (err) {
+      if (err instanceof LocationError && err.kind === 'denied') {
+        setGeolocationStatus('denied');
+      } else {
+        setGeolocationStatus('unavailable');
+      }
       return false;
     }
+  }, [geolocationStatus]);
 
-    setGeolocationStatus('requesting');
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const loc: UserLocation = {
-            latitude: parseFloat(pos.coords.latitude.toFixed(6)),
-            longitude: parseFloat(pos.coords.longitude.toFixed(6)),
-            accuracyMeters: Math.round(pos.coords.accuracy),
-            speedKmh: pos.coords.speed !== null ? Math.round(pos.coords.speed * 3.6) : null,
-            headingDegrees: pos.coords.heading,
-            timestamp: pos.timestamp,
-          };
-          setUserLocation(loc);
-          setGeolocationStatus('granted');
-          setRouteOrigin({
-            name: 'My Location (GPS)',
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-          });
-          setRecenterTrigger((p) => p + 1);
-          resolve(true);
-        },
-        (err) => {
-          console.warn('Geolocation denied or failed:', err.message);
-          if (err.code === err.PERMISSION_DENIED) {
-            setGeolocationStatus('denied');
-          } else {
-            setGeolocationStatus('unavailable');
-          }
-          resolve(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-      );
-    });
-  }, []);
-
-  // Continuous geolocation tracking
+  // Continuous geolocation tracking once permission has been granted
   useEffect(() => {
-    if (geolocationStatus === 'granted' && navigator.geolocation) {
-      const id = navigator.geolocation.watchPosition(
-        (pos) => {
-          const loc: UserLocation = {
-            latitude: parseFloat(pos.coords.latitude.toFixed(6)),
-            longitude: parseFloat(pos.coords.longitude.toFixed(6)),
-            accuracyMeters: Math.round(pos.coords.accuracy),
-            speedKmh: pos.coords.speed !== null ? Math.round(pos.coords.speed * 3.6) : null,
-            headingDegrees: pos.coords.heading,
-            timestamp: pos.timestamp,
-          };
-          setUserLocation(loc);
+    if (geolocationStatus !== 'granted') return;
 
-          // If recording live track, push coordinates
-          if (isRecordingLiveTrack) {
-            setLiveTrackPoints((prev) => [...prev, [loc.longitude, loc.latitude]]);
-          }
-        },
-        (err) => console.warn('WatchPosition error:', err),
-        { enableHighAccuracy: true, maximumAge: 5000 }
-      );
-      watchPositionId.current = id;
+    let cancelled = false;
+    let stop: (() => void) | null = null;
 
-      return () => {
-        if (watchPositionId.current !== null) {
-          navigator.geolocation.clearWatch(watchPositionId.current);
-          watchPositionId.current = null;
-        }
-      };
-    }
-  }, [geolocationStatus, isRecordingLiveTrack]);
+    watchLocation(
+      (loc) => {
+        if (!cancelled) applyLocation(loc);
+      },
+      (err) => {
+        if (err.kind === 'denied') setGeolocationStatus('denied');
+      }
+    ).then((stopFn) => {
+      if (cancelled) {
+        stopFn();
+      } else {
+        stop = stopFn;
+        stopWatchRef.current = stopFn;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (stop) stop();
+      stopWatchRef.current = null;
+    };
+  }, [geolocationStatus]);
 
   // Live Track Recording methods
   const startLiveTrackRecording = useCallback(() => {
