@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
-import { ToggleSwitch, DemoChip } from '../components/common/Controls';
-import { generateRouteAlternatives, formatDistance } from '../lib/geo';
+import { ToggleSwitch } from '../components/common/Controls';
+import { formatDistance } from '../lib/geo';
 import { TravelMode } from '../types';
 
 export const RoutePlanningScreen: React.FC = () => {
@@ -35,11 +35,15 @@ export const RoutePlanningScreen: React.FC = () => {
     intermediateStops,
     addIntermediateStop,
     removeIntermediateStop,
+    routeAlternatives,
     selectedRouteAlternative,
     setSelectedRouteAlternative,
+    isCalculatingRoute,
+    routeError,
     startNavigation,
     navigateTo,
     effectiveCenter,
+    userLocation,
   } = useApp();
 
   // If no destination yet, pick the first seed place (Bagrati Cathedral) as initial demo destination
@@ -66,29 +70,16 @@ export const RoutePlanningScreen: React.FC = () => {
     return { lat: routeOrigin.latitude, lon: routeOrigin.longitude, name: routeOrigin.name };
   }, [routeOrigin, effectiveCenter]);
 
-  // Generate 3 route alternatives
-  const alternatives = useMemo(() => {
-    return generateRouteAlternatives(
-      originCoords.lat,
-      originCoords.lon,
-      destCoords.lat,
-      destCoords.lon,
-      travelMode,
-      routePreferences
-    );
-  }, [originCoords, destCoords, travelMode, routePreferences]);
+  // Routes come from the shared context, which fetches them from OSRM and
+  // falls back to an approximate path when the service is unreachable.
+  const alternatives = routeAlternatives;
 
-  // Keep selected alternative in sync
+  // Keep the selected alternative valid whenever the route list changes.
   useEffect(() => {
-    if (alternatives.length > 0) {
-      if (!selectedRouteAlternative) {
-        setSelectedRouteAlternative(alternatives[0]);
-      } else {
-        const found = alternatives.find((a) => a.id === selectedRouteAlternative.id);
-        setSelectedRouteAlternative(found || alternatives[0]);
-      }
-    }
-  }, [alternatives]);
+    if (alternatives.length === 0) return;
+    const stillValid = alternatives.some((a) => a.id === selectedRouteAlternative?.id);
+    if (!stillValid) setSelectedRouteAlternative(alternatives[0]);
+  }, [alternatives, selectedRouteAlternative, setSelectedRouteAlternative]);
 
   const handleSwap = () => {
     if (!routeDestination) return;
@@ -122,7 +113,7 @@ export const RoutePlanningScreen: React.FC = () => {
       <HeaderBar
         title={t('routePlanningTitle')}
         onBack={() => navigateTo('map')}
-        subtitle={`${t('simulatedGps')} · Kutaisi`}
+        subtitle={userLocation ? t('gpsLive') : t('gpsWaiting')}
       />
 
       {/* Origin, Destination & Swap Block */}
@@ -200,7 +191,6 @@ export const RoutePlanningScreen: React.FC = () => {
             <Plus size={13} />
             <span>{t('addStop')}</span>
           </button>
-          <DemoChip label={t('demoData')} />
         </div>
       </div>
 
@@ -238,8 +228,23 @@ export const RoutePlanningScreen: React.FC = () => {
         {/* Route Alternatives */}
         <div>
           <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2">
-            Route Alternatives (Simulated)
+            {t('routesTitle')}
           </span>
+
+          {isCalculatingRoute && alternatives.length === 0 && (
+            <div className="text-[12px] text-neutral-400 py-2">{t('calculatingRoutes')}</div>
+          )}
+
+          {routeError && alternatives.length === 0 && (
+            <div className="text-[12px] text-red-400 py-2">{routeError}</div>
+          )}
+
+          {alternatives.length > 0 && !alternatives[0].isRealService && (
+            <div className="flex items-start gap-2 p-2 mb-2 rounded-lg bg-[#C9973F]/10 border border-[#C9973F]/40 text-[11px] text-[#C9973F]">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>{t('offlineRouteWarning')}</span>
+            </div>
+          )}
 
           <div className="space-y-2">
             {alternatives.map((alt) => {
@@ -283,12 +288,12 @@ export const RoutePlanningScreen: React.FC = () => {
                     </div>
                   </div>
 
-                  {alt.preferenceNote && (
-                    <div className="mt-2 pt-1.5 border-t border-neutral-800/60 text-[10px] text-neutral-400 flex items-center justify-between">
-                      <span>{language === 'ka' ? alt.preferenceNoteKa : alt.preferenceNote}</span>
-                      <span className="text-emerald-400 font-mono">Plausible route</span>
-                    </div>
-                  )}
+                  <div className="mt-2 pt-1.5 border-t border-neutral-800/60 text-[10px] text-neutral-400 flex items-center justify-between">
+                    <span>{language === 'ka' ? alt.preferenceNoteKa : alt.preferenceNote}</span>
+                    <span className={`font-mono ${alt.isRealService ? 'text-emerald-400' : 'text-[#C9973F]'}`}>
+                      {alt.isRealService ? 'OSRM' : t('approximateRoute')}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -335,7 +340,7 @@ export const RoutePlanningScreen: React.FC = () => {
         {/* Disclaimer Notice */}
         <div className="flex items-start gap-2 p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-400 leading-relaxed">
           <AlertTriangle size={15} className="text-[#C9973F] shrink-0 mt-0.5" />
-          <span>{t('simulatedRouteDisclaimer')}</span>
+          <span>{t('routeDisclaimer')}</span>
         </div>
       </div>
 
@@ -343,13 +348,11 @@ export const RoutePlanningScreen: React.FC = () => {
       <div className="p-3.5 border-t border-neutral-800 shrink-0 bg-neutral-900/60">
         <button
           onClick={handleStart}
-          className="w-full py-3.5 px-4 rounded-xl bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[14px] font-semibold flex items-center justify-center gap-2 shadow-lg transition-colors"
+          disabled={!selectedRouteAlternative}
+          className="w-full py-3.5 px-4 rounded-xl bg-[#2F6FEB] hover:bg-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold flex items-center justify-center gap-2 shadow-lg transition-colors"
         >
           <Navigation size={18} />
           <span>{t('startNavigation')}</span>
-          <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono font-normal">
-            SIMULATED
-          </span>
         </button>
       </div>
     </div>
