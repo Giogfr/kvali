@@ -18,9 +18,7 @@ import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { NativeBadge } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
-import { TravelMode } from '../types';
-
-type VoicePreference = 'chime' | 'muted' | 'spoken';
+import { TravelMode, VoiceMode } from '../types';
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -31,6 +29,8 @@ export const SettingsScreen: React.FC = () => {
     setTheme,
     units,
     setUnits,
+    voiceMode,
+    setVoiceMode,
     travelMode,
     setTravelMode,
     navigateTo,
@@ -39,7 +39,6 @@ export const SettingsScreen: React.FC = () => {
 
   const { showToast } = useToast();
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [voicePreference, setVoicePreference] = useState<VoicePreference>('chime');
 
   const handleResetConfirm = () => {
     resetPrototypeData();
@@ -230,11 +229,11 @@ export const SettingsScreen: React.FC = () => {
                 <span className="text-[12px] font-medium block text-neutral-200">
                   {t('voiceGuidance')}
                 </span>
-                <span className="text-[10px] text-neutral-500 capitalize">{voicePreference}</span>
+                <span className="text-[10px] text-neutral-500 capitalize">{voiceMode}</span>
               </div>
               <select
-                value={voicePreference}
-                onChange={(e) => setVoicePreference(e.target.value as VoicePreference)}
+                value={voiceMode}
+                onChange={(e) => setVoiceMode(e.target.value as VoiceMode)}
                 className="bg-neutral-800 border border-neutral-700 text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none"
               >
                 <option value="chime">{t('voiceChime')}</option>

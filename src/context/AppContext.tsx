@@ -17,6 +17,7 @@ import {
   TravelMode,
   UnitSystem,
   UserLocation,
+  VoiceMode,
 } from '../types';
 import { SEED_PLACES } from '../data/seedPlaces';
 import { SEED_ALERTS } from '../data/seedAlerts';
@@ -64,6 +65,8 @@ interface AppContextType {
   toggleTheme: () => void;
   units: UnitSystem;
   setUnits: (units: UnitSystem) => void;
+  voiceMode: VoiceMode;
+  setVoiceMode: (mode: VoiceMode) => void;
 
   // Travel Mode & Route Preferences
   travelMode: TravelMode;
@@ -126,6 +129,7 @@ interface AppContextType {
   toggleLayer: (layer: keyof LayerVisibility) => void;
   offlineRegions: OfflineRegion[];
   updateRegionStatus: (id: string, action: 'download' | 'pause' | 'resume' | 'cancel' | 'retry' | 'remove' | 'update') => void;
+  patchRegion: (id: string, patch: Partial<OfflineRegion>) => void;
   airplaneOfflineMode: boolean;
   setAirplaneOfflineMode: (offline: boolean) => void;
 
@@ -241,6 +245,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  // Voice guidance
+  const [voiceMode, setVoiceModeState] = useState<VoiceMode>(() => {
+    try {
+      const saved = localStorage.getItem('kvali_voice');
+      return saved === 'spoken' || saved === 'muted' ? saved : 'chime';
+    } catch {
+      return 'chime';
+    }
+  });
+
   // Travel Mode & Route Preferences
   const [travelMode, setTravelModeState] = useState<TravelMode>(() => {
     try {
@@ -271,6 +285,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const liveTrackStartTime = useRef<number | null>(null);
   const isRecordingRef = useRef(false);
   const lastRerouteRef = useRef(0);
+  const lastSpokenRef = useRef('');
 
   useEffect(() => {
     isRecordingRef.current = isRecordingLiveTrack;
@@ -729,6 +744,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setLanguage = (lang: Language) => setLanguageState(lang);
   const setTheme = (thm: ThemeMode) => setThemeState(thm);
   const setUnits = (u: UnitSystem) => setUnitsState(u);
+  const setVoiceMode = (mode: VoiceMode) => {
+    setVoiceModeState(mode);
+    try {
+      localStorage.setItem('kvali_voice', mode);
+    } catch {}
+  };
   const setTravelMode = (mode: TravelMode) => setTravelModeState(mode);
   const setAlertDistanceMeters = (m: number) => setAlertDistanceMetersState(m);
   const setBeepVolume = (vol: number) => setBeepVolumeState(vol);
@@ -850,6 +871,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const patchRegion = (id: string, patch: Partial<OfflineRegion>) => {
+    setOfflineRegions((prev) =>
+      prev.map((reg) => (reg.id === id ? { ...reg, ...patch } : reg))
+    );
+  };
+
   // Trip Tools
   const deleteTrack = (id: string) => {
     setRecordedTracks((prev) => prev.filter((t) => t.id !== id));
@@ -872,6 +899,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setRecordedTracks((prev) => [newTrack, ...prev]);
   };
+
+  // Spoken guidance using the Web Speech API (available in the browser and the Android WebView)
+  const speak = useCallback(
+    (text: string) => {
+      try {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = language === 'ka' ? 'ka-GE' : 'en-US';
+        utterance.rate = 1;
+        synth.speak(utterance);
+      } catch {}
+    },
+    [language]
+  );
 
   // Audio preview helper using browser Web Audio API
   const playTestBeep = useCallback(() => {
@@ -979,6 +1022,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveNav((prev) => (prev.isActive ? { ...prev, route: selectedRouteAlternative } : prev));
   }, [selectedRouteAlternative, activeNav.isActive]);
 
+  // Announce each new maneuver when guidance is on.
+  useEffect(() => {
+    if (!activeNav.isActive) {
+      lastSpokenRef.current = '';
+      return;
+    }
+    if (voiceMode === 'muted') return;
+
+    const text =
+      language === 'ka'
+        ? activeNav.currentManeuver.instructionKa
+        : activeNav.currentManeuver.instruction;
+    if (!text || text === lastSpokenRef.current) return;
+    lastSpokenRef.current = text;
+
+    if (voiceMode === 'spoken') {
+      speak(text);
+    } else {
+      playTestBeep();
+    }
+  }, [
+    activeNav.isActive,
+    activeNav.currentManeuver.instruction,
+    activeNav.currentManeuver.instructionKa,
+    voiceMode,
+    language,
+    speak,
+    playTestBeep,
+  ]);
+
   // Reset prototype data
   const resetPrototypeData = () => {
     try {
@@ -994,6 +1067,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUnitsState('metric');
     setThemeState('dark');
     setLanguageState('en');
+    setVoiceModeState('chime');
     setAirplaneOfflineModeState(false);
     setUserLocation(null);
     setGeolocationStatus('idle');
@@ -1016,6 +1090,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleTheme,
         units,
         setUnits,
+        voiceMode,
+        setVoiceMode,
         travelMode,
         setTravelMode,
         routePreferences,
@@ -1064,6 +1140,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleLayer,
         offlineRegions,
         updateRegionStatus,
+        patchRegion,
         airplaneOfflineMode,
         setAirplaneOfflineMode,
         savedPlaces,
