@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   X,
@@ -17,11 +17,13 @@ import {
   Footprints,
   ChevronRight,
   Navigation,
+  Globe,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { DemoChip } from '../components/common/Controls';
 import { calculateDistanceKm, formatDistance } from '../lib/geo';
+import { searchNominatim, type GeocodeResult } from '../lib/services';
 import { Place, PlaceCategory } from '../types';
 
 export const SearchScreen: React.FC = () => {
@@ -59,7 +61,7 @@ export const SearchScreen: React.FC = () => {
     { id: 'hiking', label: t('cat_hiking'), icon: Footprints },
   ];
 
-  // Live filter
+  // Live filter over the bundled catalog
   const filteredPlaces = useMemo(() => {
     let list = places;
 
@@ -82,6 +84,43 @@ export const SearchScreen: React.FC = () => {
     });
   }, [places, query, selectedCategory]);
 
+  // Search OpenStreetMap (Nominatim) for places beyond the bundled catalog
+  const [remoteResults, setRemoteResults] = useState<GeocodeResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 3) {
+      setRemoteResults([]);
+      setIsSearching(false);
+      setSearchFailed(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      setSearchFailed(false);
+      try {
+        const results = await searchNominatim(q, effectiveCenter, controller.signal);
+        setRemoteResults(results);
+      } catch {
+        if (!controller.signal.aborted) {
+          setRemoteResults([]);
+          setSearchFailed(true);
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [query, effectiveCenter]);
+
   const handleSelectPlace = (place: Place) => {
     addRecentSearch(place.name);
     setSelectedPlace(place);
@@ -96,6 +135,37 @@ export const SearchScreen: React.FC = () => {
     setRouteDestination(place);
     navigateTo('route-planning');
   };
+
+  const handleSelectResult = (result: GeocodeResult) => {
+    addRecentSearch(result.name);
+    setTemporaryPin({
+      latitude: result.latitude,
+      longitude: result.longitude,
+      title: result.name,
+      address: result.displayName,
+    });
+    setSelectedPlace(null);
+    navigateTo('map');
+  };
+
+  const handleDirectionsResult = (e: React.MouseEvent, result: GeocodeResult) => {
+    e.stopPropagation();
+    addRecentSearch(result.name);
+    const pin = {
+      latitude: result.latitude,
+      longitude: result.longitude,
+      title: result.name,
+      address: result.displayName,
+    };
+    setTemporaryPin(pin);
+    setSelectedPlace(null);
+    setRouteDestination(pin);
+    navigateTo('route-planning');
+  };
+
+  const hasQuery = query.trim().length > 0 || selectedCategory !== null;
+  const nothingFound =
+    filteredPlaces.length === 0 && remoteResults.length === 0 && !isSearching && query.trim().length >= 3;
 
   return (
     <div
@@ -164,73 +234,146 @@ export const SearchScreen: React.FC = () => {
 
       {/* Main Search Body */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
-        {/* Results List */}
-        {filteredPlaces.length > 0 ? (
-          <div>
-            <div className="flex items-center justify-between py-1 text-[11px] text-neutral-500 font-medium">
-              <span>{filteredPlaces.length} locations found</span>
-              <span className="text-[10px]">{t('demoCatalogNote')}</span>
-            </div>
-            <div className="divide-y divide-neutral-800/40">
-              {filteredPlaces.map((place) => {
-                const distKm = calculateDistanceKm(
-                  effectiveCenter.latitude,
-                  effectiveCenter.longitude,
-                  place.latitude,
-                  place.longitude
-                );
-                const distStr = formatDistance(distKm, units);
+        {hasQuery ? (
+          <>
+            {/* Bundled catalog matches */}
+            {filteredPlaces.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between py-1 text-[11px] text-neutral-500 font-medium">
+                  <span>{filteredPlaces.length} locations found</span>
+                  <span className="text-[10px]">{t('demoCatalogNote')}</span>
+                </div>
+                <div className="divide-y divide-neutral-800/40">
+                  {filteredPlaces.map((place) => {
+                    const distKm = calculateDistanceKm(
+                      effectiveCenter.latitude,
+                      effectiveCenter.longitude,
+                      place.latitude,
+                      place.longitude
+                    );
+                    const distStr = formatDistance(distKm, units);
 
-                return (
-                  <div
-                    key={place.id}
-                    onClick={() => handleSelectPlace(place)}
-                    className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-800/30 cursor-pointer transition-colors group"
-                  >
-                    <div className="min-w-0 flex-1 pr-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-semibold truncate">
-                          {language === 'ka' ? place.nameKa : place.name}
-                        </span>
-                        <DemoChip label={t('demoData')} />
-                      </div>
-                      <p className="text-[11px] text-neutral-400 truncate mt-0.5">
-                        {language === 'ka' ? place.descriptionKa : place.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
-                        <span className="capitalize">{place.category}</span>
-                        <span>·</span>
-                        <span className="tabular-nums font-mono text-[#2F6FEB]">
-                          ~{distStr}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={(e) => handleDirectionsDirect(e, place)}
-                        className="p-2 rounded-lg bg-[#2F6FEB]/10 hover:bg-[#2F6FEB]/20 text-[#2F6FEB] transition-colors"
-                        title={t('directions')}
-                        aria-label={t('directions')}
+                    return (
+                      <div
+                        key={place.id}
+                        onClick={() => handleSelectPlace(place)}
+                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-800/30 cursor-pointer transition-colors group"
                       >
-                        <Navigation size={15} />
-                      </button>
-                      <ChevronRight size={16} className="text-neutral-500 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold truncate">
+                              {language === 'ka' ? place.nameKa : place.name}
+                            </span>
+                            <DemoChip label={t('demoData')} />
+                          </div>
+                          <p className="text-[11px] text-neutral-400 truncate mt-0.5">
+                            {language === 'ka' ? place.descriptionKa : place.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
+                            <span className="capitalize">{place.category}</span>
+                            <span>·</span>
+                            <span className="tabular-nums font-mono text-[#2F6FEB]">
+                              ~{distStr}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={(e) => handleDirectionsDirect(e, place)}
+                            className="p-2 rounded-lg bg-[#2F6FEB]/10 hover:bg-[#2F6FEB]/20 text-[#2F6FEB] transition-colors"
+                            title={t('directions')}
+                            aria-label={t('directions')}
+                          >
+                            <Navigation size={15} />
+                          </button>
+                          <ChevronRight size={16} className="text-neutral-500 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* OpenStreetMap results */}
+            {query.trim().length >= 3 && (
+              <div>
+                <div className="flex items-center justify-between py-1 text-[11px] text-neutral-500 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <Globe size={13} />
+                    <span>OpenStreetMap</span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : query.trim() || selectedCategory ? (
-          /* Empty Search State */
-          <div className="py-12 text-center text-neutral-400">
-            <Search size={32} className="mx-auto mb-2 opacity-30" />
-            <h4 className="text-[14px] font-semibold">{t('noResultsFound')}</h4>
-            <p className="text-[12px] text-neutral-500 mt-1 max-w-[240px] mx-auto">
-              {t('tryAnotherSearch')}
-            </p>
-          </div>
+                  {isSearching && <span className="text-[10px]">{t('searching')}</span>}
+                </div>
+
+                {searchFailed && !isSearching && (
+                  <div className="text-[12px] text-neutral-500 py-2">{t('searchUnavailable')}</div>
+                )}
+
+                <div className="divide-y divide-neutral-800/40">
+                  {remoteResults.map((result) => {
+                    const distKm = calculateDistanceKm(
+                      effectiveCenter.latitude,
+                      effectiveCenter.longitude,
+                      result.latitude,
+                      result.longitude
+                    );
+                    const distStr = formatDistance(distKm, units);
+
+                    return (
+                      <div
+                        key={result.id}
+                        onClick={() => handleSelectResult(result)}
+                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-800/30 cursor-pointer transition-colors group"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <span className="text-[13px] font-semibold truncate block">
+                            {result.name}
+                          </span>
+                          <p className="text-[11px] text-neutral-400 truncate mt-0.5">
+                            {result.displayName}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
+                            {result.category && (
+                              <>
+                                <span className="capitalize">{result.category.replace(/_/g, ' ')}</span>
+                                <span>·</span>
+                              </>
+                            )}
+                            <span className="tabular-nums font-mono text-[#2F6FEB]">~{distStr}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={(e) => handleDirectionsResult(e, result)}
+                            className="p-2 rounded-lg bg-[#2F6FEB]/10 hover:bg-[#2F6FEB]/20 text-[#2F6FEB] transition-colors"
+                            title={t('directions')}
+                            aria-label={t('directions')}
+                          >
+                            <Navigation size={15} />
+                          </button>
+                          <ChevronRight size={16} className="text-neutral-500 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Nothing came back */}
+            {nothingFound && (
+              <div className="py-12 text-center text-neutral-400">
+                <Search size={32} className="mx-auto mb-2 opacity-30" />
+                <h4 className="text-[14px] font-semibold">{t('noResultsFound')}</h4>
+                <p className="text-[12px] text-neutral-500 mt-1 max-w-[240px] mx-auto">
+                  {t('tryAnotherSearch')}
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           /* Recent Searches & Suggested Places */
           <div>

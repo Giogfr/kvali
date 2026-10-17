@@ -33,6 +33,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     clearAll: 'Clear all',
     noResultsFound: 'No places matching your search',
     tryAnotherSearch: 'Try searching for cathedral, canyon, fuel, or Kutaisi.',
+    searching: 'Searching…',
+    searchUnavailable: 'Could not reach the search service. Check your connection.',
     demoCatalogNote: 'Displaying seeded demo places across Georgia.',
 
     // Categories
@@ -101,6 +103,19 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     mobilePolice: 'Mobile enforcement reports',
 
     // Offline Maps
+    pause: 'Pause',
+    resume: 'Resume',
+    remove: 'Remove',
+    regionsTitle: 'Regions in Georgia',
+    estimate: 'est.',
+    downloadedOn: 'Saved',
+    downloadComplete: 'Offline area saved',
+    downloadFailed: 'Download failed. Check your connection and try again.',
+    downloadCancelled: 'Download cancelled',
+    clearCache: 'Clear cached map data',
+    cacheCleared: 'Cached map data cleared',
+    storageUnavailable: 'Storage details are not available on this device.',
+    offlineStorageNotice: 'Downloaded areas store real map tiles in this device\'s storage so the map keeps rendering without a connection. Search and turn-by-turn routing still need a network connection.',
     offlineMapsTitle: 'Offline Maps',
     storageUsage: 'Storage usage',
     airplaneMode: 'Simulated Offline Mode',
@@ -108,11 +123,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     download: 'Download',
     downloading: 'Downloading…',
     downloaded: 'Downloaded',
+    notDownloaded: 'Not downloaded',
     updateAvailable: 'Update available',
-    pause: 'Pause',
-    resume: 'Resume',
-    remove: 'Remove',
-    offlineStorageNotice: 'Demonstration simulation: Map packages are simulated in browser storage and do not download physical GIS raster/vector archives.',
 
     // Saved Places
     savedPlacesTitle: 'Saved Places',
@@ -227,6 +239,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     clearAll: 'გასუფთავება',
     noResultsFound: 'ადგილები ვერ მოიძებნა',
     tryAnotherSearch: 'სცადეთ: ბაგრატი, კანიონი, ბენზინი, ბაზარი.',
+    searching: 'ძიება…',
+    searchUnavailable: 'ძიების სერვისი მიუწვდომელია. შეამოწმეთ კავშირი.',
     demoCatalogNote: 'ნაჩვენებია საქართველოს დემო კატალოგი.',
 
     // Categories
@@ -295,6 +309,19 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     mobilePolice: 'მოძრავი ეკიპაჟების მონაკვეთები',
 
     // Offline Maps
+    pause: 'პაუზა',
+    resume: 'გაგრძელება',
+    remove: 'წაშლა',
+    regionsTitle: 'რეგიონები საქართველოში',
+    estimate: 'მიახლ.',
+    downloadedOn: 'შენახულია',
+    downloadComplete: 'ოფლაინ არეალი შენახულია',
+    downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა. შეამოწმეთ კავშირი და სცადეთ ხელახლა.',
+    downloadCancelled: 'ჩამოტვირთვა გაუქმდა',
+    clearCache: 'რუკის ქეშის გასუფთავება',
+    cacheCleared: 'რუკის ქეში გასუფთავებულია',
+    storageUnavailable: 'მეხსიერების მონაცემები მიუწვდომელია ამ მოწყობილობაზე.',
+    offlineStorageNotice: 'ჩამოტვირთული არეალები ინახავს ნამდვილ რუკის ტაილებს მოწყობილობაზე, რომ რუკა ინტერნეტის გარეშე მუშაობდეს. ძიებასა და მარშრუტიზაციას კვლავ სჭირდება კავშირი.',
     offlineMapsTitle: 'ოფლაინ რუკები',
     storageUsage: 'მეხსიერების გამოყენება',
     airplaneMode: 'სიმულირებული ოფლაინ რეჟიმი',
@@ -302,11 +329,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     download: 'ჩამოტვირთვა',
     downloading: 'იტვირთება…',
     downloaded: 'ჩამოტვირთულია',
+    notDownloaded: 'არ არის ჩამოტვირთული',
     updateAvailable: 'ხელმისაწვდომია განახლება',
-    pause: 'პაუზა',
-    resume: 'გაგრძელება',
-    remove: 'წაშლა',
-    offlineStorageNotice: 'დემო სიმულაცია: რუკის პაკეტები სიმულირებულია ბრაუზერის მეხსიერებაში.',
 
     // Saved Places
     savedPlacesTitle: 'შენახული ადგილები',

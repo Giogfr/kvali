@@ -4,6 +4,7 @@ export type Language = 'en' | 'ka';
 export type ThemeMode = 'light' | 'dark';
 export type UnitSystem = 'metric' | 'imperial';
 export type TravelMode = 'car' | 'walking' | 'cycling';
+export type VoiceMode = 'chime' | 'spoken' | 'muted';
 
 export type ScreenId =
   | 'map'
@@ -116,10 +117,12 @@ export interface OfflineRegion {
   id: string;
   name: string;
   nameKa: string;
-  sizeMb: number;
+  sizeMb: number; // approximate estimate shown before download
+  bbox: [number, number, number, number]; // minLon, minLat, maxLon, maxLat
   status: 'not_downloaded' | 'downloading' | 'paused' | 'downloaded' | 'update_available';
   downloadProgress: number; // 0 to 100
   lastUpdated: string;
+  bytes?: number; // real size once downloaded
 }
 
 export interface RecordedTrack {

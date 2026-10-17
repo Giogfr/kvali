@@ -28,6 +28,79 @@ export interface RealRouteResult {
   isRealService: boolean;
 }
 
+export interface GeocodeResult {
+  id: string;
+  name: string;
+  displayName: string;
+  latitude: number;
+  longitude: number;
+  category?: string;
+  type?: string;
+}
+
+/**
+ * Searches places by name using Nominatim. When a reference point is given the
+ * results are biased towards that area, which keeps the Georgian places on top.
+ */
+export async function searchNominatim(
+  query: string,
+  near?: { latitude: number; longitude: number },
+  signal?: AbortSignal
+): Promise<GeocodeResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 3) return [];
+
+  const params = new URLSearchParams({
+    format: 'jsonv2',
+    q: trimmed,
+    limit: '8',
+    addressdetails: '0',
+    'accept-language': 'ka,en',
+  });
+
+  if (near) {
+    const d = 0.6;
+    params.set(
+      'viewbox',
+      `${near.longitude - d},${near.latitude + d},${near.longitude + d},${near.latitude - d}`
+    );
+    params.set('bounded', '0');
+  }
+
+  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+
+  try {
+    const response = await fetch(url, {
+      signal,
+      headers: { 'User-Agent': 'KvaliNavigationApp/1.0' },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .map((item: any): GeocodeResult | null => {
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        if (isNaN(lat) || isNaN(lon)) return null;
+        const displayName: string = item.display_name || '';
+        return {
+          id: `nominatim-${item.osm_type || 'place'}-${item.osm_id ?? item.place_id}`,
+          name: item.name || displayName.split(',')[0] || trimmed,
+          displayName,
+          latitude: lat,
+          longitude: lon,
+          category: item.category,
+          type: item.type,
+        };
+      })
+      .filter((r: GeocodeResult | null): r is GeocodeResult => r !== null);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') throw err;
+    return [];
+  }
+}
+
 /**
  * Reverse geocodes coordinates to street address using Nominatim
  */
