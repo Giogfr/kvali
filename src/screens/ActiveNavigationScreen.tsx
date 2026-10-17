@@ -54,15 +54,29 @@ export const ActiveNavigationScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* SIMULATED NAVIGATION CHIP */}
+          {/* GPS status */}
           <div className="flex flex-col items-end shrink-0 pl-2">
-            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#C9973F] text-black">
-              SIMULATED
+            <span
+              className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold ${
+                activeNav.gpsActive
+                  ? 'bg-[#2F6FEB] text-white'
+                  : 'bg-neutral-600 text-neutral-200'
+              }`}
+            >
+              {activeNav.gpsActive ? t('gpsLive') : t('gpsWaiting')}
             </span>
-            <span className="text-[9px] text-neutral-400 mt-0.5 font-mono">1s = 1min</span>
           </div>
         </div>
       </div>
+
+      {/* Off-route notice */}
+      {activeNav.gpsActive && activeNav.offRouteM > 60 && (
+        <div className="absolute top-[92px] left-2 right-2 z-30">
+          <div className="px-3 py-1.5 rounded-xl bg-[#C9973F]/90 text-black text-[12px] font-semibold text-center shadow-lg">
+            {t('offRouteRerouting')}
+          </div>
+        </div>
+      )}
 
       {/* Floating Map Controls in Nav Mode */}
       <div className="absolute right-3 top-28 z-20 flex flex-col gap-2">
@@ -104,7 +118,7 @@ export const ActiveNavigationScreen: React.FC = () => {
                 {activeNav.currentSpeedKmh}
               </div>
               <div className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
-                {units === 'imperial' ? 'MPH' : 'KM/H'} · SIMULATED
+                {units === 'imperial' ? 'MPH' : 'KM/H'}
               </div>
             </div>
 
@@ -121,9 +135,6 @@ export const ActiveNavigationScreen: React.FC = () => {
             </div>
             <div className="text-[12px] text-neutral-300 tabular-nums">
               {distStr} · ETA {etaString}
-            </div>
-            <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
-              {t('acceleratedTimeNotice')}
             </div>
           </div>
         </div>

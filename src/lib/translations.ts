@@ -5,7 +5,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // App & Branding
     appName: 'Kvali',
     appTagline: 'Georgia, mapped your way.',
-    simulatedGps: 'Simulated GPS',
     demoData: 'Demo data',
 
     // Bottom Navigation
@@ -63,12 +62,19 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     avoidTolls: 'Avoid tolls',
     avoidHighways: 'Avoid highways',
     avoidUnpaved: 'Avoid unpaved roads',
-    simulatedRouteDisclaimer: 'Routes and estimates are deterministically generated simulations for prototype demonstration only. Not for real driving.',
+    routesTitle: 'Routes',
+    calculatingRoutes: 'Calculating routes…',
+    offlineRouteWarning: 'Routing service unavailable — showing approximate routes.',
+    osmRoutingCredit: 'Distances and times from OSRM.',
+    approximateRoute: 'Approximate',
+    routeDisclaimer: 'Route data © OpenStreetMap contributors. Travel times are estimates.',
 
     // Active Navigation
     endNavigation: 'End Navigation',
-    acceleratedTimeNotice: 'Accelerated simulation: 1 sec = 1 min',
     cameraWarning: 'Camera Warning',
+    gpsLive: 'Live GPS',
+    gpsWaiting: 'Waiting for GPS…',
+    offRouteRerouting: 'Off route — recalculating…',
 
     // Road Alerts Screen
     alertsTitle: 'Road Alerts & Enforcement',
@@ -193,7 +199,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // App & Branding
     appName: 'კვალი',
     appTagline: 'საქართველო, შენი გზით.',
-    simulatedGps: 'სიმულირებული GPS',
     demoData: 'დემო მონაცემი',
 
     // Bottom Navigation
@@ -251,12 +256,19 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     avoidTolls: 'ფასიანი გზების გარეშე',
     avoidHighways: 'მაგისტრალის გარეშე',
     avoidUnpaved: 'მოუასფალტებელი გზის გარეშე',
-    simulatedRouteDisclaimer: 'მარშრუტი და დროები წარმოადგენს დემო სიმულაციას. არ გამოიყენოთ რეალური მართვისას.',
+    routesTitle: 'მარშრუტები',
+    calculatingRoutes: 'მარშრუტების გამოთვლა…',
+    offlineRouteWarning: 'მარშრუტის სერვისი მიუწვდომელია — ნაჩვენებია სავარაუდო მარშრუტები.',
+    osmRoutingCredit: 'მანძილი და დრო OSRM-ის მონაცემებით.',
+    approximateRoute: 'სავარაუდო',
+    routeDisclaimer: 'მარშრუტის მონაცემები © OpenStreetMap contributors. დროები მიახლოებითია.',
 
     // Active Navigation
     endNavigation: 'ნავიგაციის დასრულება',
-    acceleratedTimeNotice: 'აჩქარებული სიმულაცია: 1 წამი = 1 წუთი',
     cameraWarning: 'რადარის გაფრთხილება',
+    gpsLive: 'პირდაპირი GPS',
+    gpsWaiting: 'ველოდებით GPS-ს…',
+    offRouteRerouting: 'მარშრუტიდან გადახრა — გადაანგარიშება…',
 
     // Road Alerts Screen
     alertsTitle: 'საგზაო რადარები და საფრთხეები',

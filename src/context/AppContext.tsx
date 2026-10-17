@@ -25,12 +25,14 @@ import { SEED_TRACKS } from '../data/seedTracks';
 import { TRANSLATIONS } from '../lib/translations';
 import { fetchOsrmRoute, reverseGeocodeNominatim } from '../lib/services';
 import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
+import { computeProgress } from '../lib/navigation';
 import { generateRouteAlternatives } from '../lib/geo';
 
 interface ActiveNavState {
   isActive: boolean;
   route: RouteAlternative | null;
-  currentCoordIndex: number;
+  gpsActive: boolean;
+  offRouteM: number;
   remainingDistanceKm: number;
   remainingDurationMinutes: number;
   currentSpeedKmh: number;
@@ -268,6 +270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [liveTrackPoints, setLiveTrackPoints] = useState<[number, number][]>([]);
   const liveTrackStartTime = useRef<number | null>(null);
   const isRecordingRef = useRef(false);
+  const lastRerouteRef = useRef(0);
 
   useEffect(() => {
     isRecordingRef.current = isRecordingLiveTrack;
@@ -415,16 +418,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeNav, setActiveNav] = useState<ActiveNavState>({
     isActive: false,
     route: null,
-    currentCoordIndex: 0,
+    gpsActive: false,
+    offRouteM: 0,
     remainingDistanceKm: 0,
     remainingDurationMinutes: 0,
-    currentSpeedKmh: 48,
+    currentSpeedKmh: 0,
     speedLimitKmh: 50,
     currentManeuver: {
-      instruction: 'In 250 m, turn right onto Rustaveli Ave',
-      instructionKa: '250 მ-ში შეუხვიეთ მარჯვნივ რუსთაველის გამზირზე',
-      roadName: 'Rustaveli Avenue',
-      distanceMeters: 250,
+      instruction: '',
+      instructionKa: '',
+      roadName: '',
+      distanceMeters: 0,
     },
     upcomingAlert: null,
   });
@@ -584,11 +588,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   // Real OSRM Route Calculation
-  const calculateRoutes = useCallback(async () => {
+  const calculateRoutes = useCallback(async (originOverride?: { latitude: number; longitude: number }) => {
     if (!routeDestination) return;
 
-    const origLat = routeOrigin ? routeOrigin.latitude : effectiveCenter.latitude;
-    const origLon = routeOrigin ? routeOrigin.longitude : effectiveCenter.longitude;
+    const origLat = originOverride ? originOverride.latitude : routeOrigin ? routeOrigin.latitude : effectiveCenter.latitude;
+    const origLon = originOverride ? originOverride.longitude : routeOrigin ? routeOrigin.longitude : effectiveCenter.longitude;
 
     const destLat = routeDestination.latitude;
     const destLon = routeDestination.longitude;
@@ -895,76 +899,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [soundEnabled, beepVolume]);
 
-  // Navigation start with real steps
+  // Start live navigation. Progress is driven by GPS fixes, not a timer.
   const startNavigation = (route: RouteAlternative) => {
-    const firstStep = route.steps?.[0];
-    const initialInstruction = firstStep
+    const startStep = route.steps && route.steps.length > 1 ? route.steps[1] : route.steps?.[0];
+    const initialInstruction = startStep
       ? language === 'ka'
-        ? firstStep.instructionKa || firstStep.instruction
-        : firstStep.instruction
-      : 'Continue straight onto route';
-
-    const roadName = firstStep?.name || route.via || 'Road';
-    const distM = firstStep ? firstStep.distanceMeters : 250;
+        ? startStep.instructionKa || startStep.instruction
+        : startStep.instruction
+      : 'Follow the route';
 
     setActiveNav({
       isActive: true,
       route,
-      currentCoordIndex: 0,
+      gpsActive: userLocation !== null,
+      offRouteM: 0,
       remainingDistanceKm: route.distanceKm,
       remainingDurationMinutes: route.durationMinutes,
-      currentSpeedKmh: userLocation?.speedKmh || (travelMode === 'car' ? 52 : travelMode === 'cycling' ? 16 : 4.5),
+      currentSpeedKmh: userLocation?.speedKmh ?? 0,
       speedLimitKmh: travelMode === 'car' ? 60 : travelMode === 'cycling' ? 25 : 5,
       currentManeuver: {
         instruction: initialInstruction,
         instructionKa: initialInstruction,
-        roadName,
-        distanceMeters: distM,
+        roadName: startStep?.name || route.via || 'Route',
+        distanceMeters: startStep?.distanceMeters ?? 0,
       },
       upcomingAlert: roadAlerts[0] || null,
     });
+    lastRerouteRef.current = 0;
     navigateTo('active-navigation');
   };
 
   const endNavigation = () => {
-    setActiveNav((prev) => ({ ...prev, isActive: false, route: null }));
+    setActiveNav((prev) => ({ ...prev, isActive: false, route: null, gpsActive: false, offRouteM: 0 }));
     navigateTo('map');
   };
 
-  // Navigation timer: smoothly countdown remaining distance & steps
+  // Recompute navigation progress on every GPS fix.
   useEffect(() => {
-    if (!activeNav.isActive || !activeNav.route) return;
+    if (!activeNav.isActive || !activeNav.route || !userLocation) return;
 
-    const interval = setInterval(() => {
-      setActiveNav((prev) => {
-        if (!prev.isActive || !prev.route) return prev;
+    const progress = computeProgress(activeNav.route, userLocation);
+    setActiveNav((prev) => {
+      if (!prev.isActive || !prev.route) return prev;
+      const step = progress.nextStep;
+      return {
+        ...prev,
+        gpsActive: true,
+        offRouteM: Math.round(progress.offRouteM),
+        remainingDistanceKm: parseFloat(progress.remainingKm.toFixed(2)),
+        remainingDurationMinutes: Math.round(progress.remainingMinutes),
+        currentSpeedKmh: userLocation.speedKmh ?? prev.currentSpeedKmh,
+        currentManeuver: step
+          ? {
+              instruction: step.instruction,
+              instructionKa: step.instructionKa || step.instruction,
+              roadName: step.name,
+              distanceMeters: Math.round(progress.distanceToNextStepM),
+            }
+          : prev.currentManeuver,
+      };
+    });
+  }, [userLocation, activeNav.isActive, activeNav.route]);
 
-        const nextDuration = Math.max(0, prev.remainingDurationMinutes - 0.2);
-        const ratio = prev.route.durationMinutes > 0 ? nextDuration / prev.route.durationMinutes : 0;
-        const nextDist = parseFloat((prev.route.distanceKm * ratio).toFixed(1));
+  // Re-route when the driver has clearly drifted off the current route.
+  useEffect(() => {
+    if (!activeNav.isActive || !activeNav.route || !userLocation || !activeNav.gpsActive) return;
+    if (activeNav.offRouteM < 60) return;
 
-        // Use real GPS speed if available, otherwise gentle jitter around driving speed
-        const currentSpeed =
-          userLocation?.speedKmh ||
-          Math.max(1, (travelMode === 'car' ? 48 : travelMode === 'cycling' ? 16 : 4.5) + (Math.floor(Math.random() * 5) - 2));
+    const now = Date.now();
+    if (now - lastRerouteRef.current < 15000) return;
+    lastRerouteRef.current = now;
 
-        const maneuverDist = Math.max(20, prev.currentManeuver.distanceMeters - 15);
+    calculateRoutes({ latitude: userLocation.latitude, longitude: userLocation.longitude });
+  }, [activeNav.isActive, activeNav.route, activeNav.gpsActive, activeNav.offRouteM, userLocation, calculateRoutes]);
 
-        return {
-          ...prev,
-          remainingDurationMinutes: parseFloat(nextDuration.toFixed(1)),
-          remainingDistanceKm: nextDist,
-          currentSpeedKmh: currentSpeed,
-          currentManeuver: {
-            ...prev.currentManeuver,
-            distanceMeters: maneuverDist,
-          },
-        };
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeNav.isActive, activeNav.route, travelMode, userLocation]);
+  // Keep the active route in sync when a recalculation produces a new one.
+  useEffect(() => {
+    if (!activeNav.isActive || !selectedRouteAlternative) return;
+    setActiveNav((prev) => (prev.isActive ? { ...prev, route: selectedRouteAlternative } : prev));
+  }, [selectedRouteAlternative, activeNav.isActive]);
 
   // Reset prototype data
   const resetPrototypeData = () => {

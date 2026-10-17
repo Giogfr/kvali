@@ -30,6 +30,7 @@ export const MapScreen: React.FC = () => {
     setTemporaryPin,
     routeDestination,
     selectedRouteAlternative,
+    userLocation,
   } = useApp();
 
   const { showToast } = useToast();
@@ -162,7 +163,7 @@ export const MapScreen: React.FC = () => {
         <button
           onClick={() => {
             triggerRecenter();
-            showToast(t('recenter') + ': ' + t('simulatedGps'), 'info');
+            showToast(t('recenter') + ': ' + (userLocation ? t('gpsLive') : t('gpsWaiting')), 'info');
           }}
           className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md transition-colors ${
             theme === 'dark'
@@ -211,7 +212,7 @@ export const MapScreen: React.FC = () => {
                     : t('planRoute')}
                 </span>
                 <span className="text-[10px] text-neutral-400">
-                  {t('simulatedGps')} · Kutaisi
+                  {userLocation ? t('gpsLive') : t('gpsWaiting')}
                 </span>
               </div>
             </div>
