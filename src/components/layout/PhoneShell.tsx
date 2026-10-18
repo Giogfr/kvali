@@ -15,7 +15,7 @@ export const PhoneShell: React.FC<{ children: React.ReactNode }> = ({ children }
         {airplaneOfflineMode && (
           <div className="bg-[#C9973F] text-black px-3 py-1 text-[11px] font-semibold flex items-center gap-1.5 z-30 shrink-0">
             <WifiOff size={12} />
-            <span>Offline mode (simulated)</span>
+            <span>Offline map rendering</span>
           </div>
         )}
 

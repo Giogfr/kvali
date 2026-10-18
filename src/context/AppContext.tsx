@@ -154,7 +154,6 @@ interface AppContextType {
   // Tracks & Trips
   recordedTracks: RecordedTrack[];
   deleteTrack: (id: string) => void;
-  addSimulatedTrack: () => void;
   isRecordingLiveTrack: boolean;
   startLiveTrackRecording: () => void;
   stopAndSaveLiveTrack: (title?: string) => void;
@@ -988,24 +987,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecordedTracks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const addSimulatedTrack = () => {
-    const newTrack: RecordedTrack = {
-      id: 'track-sim-' + Date.now(),
-      title: 'Kutaisi - Tskaltubo Scenic Route',
-      date: new Date().toISOString().split('T')[0],
-      distanceKm: 14.2,
-      durationMinutes: 19,
-      avgSpeedKmh: 44.8,
-      coordinates: [
-        [42.7001, 42.2679],
-        [42.6738, 42.3129],
-        [42.5976, 42.3275],
-      ],
-      demo: true,
-    };
-    setRecordedTracks((prev) => [newTrack, ...prev]);
-  };
-
   // Spoken guidance using the Web Speech API (available in the browser and the Android WebView)
   const speak = useCallback(
     (text: string) => {
@@ -1261,7 +1242,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importPlacesJson,
         recordedTracks,
         deleteTrack,
-        addSimulatedTrack,
         isRecordingLiveTrack,
         startLiveTrackRecording,
         stopAndSaveLiveTrack,

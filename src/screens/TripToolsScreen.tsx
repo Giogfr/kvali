@@ -1,5 +1,5 @@
 import React from 'react';
-import { Footprints, Plus, Download, Trash2, Gauge, Clock, Compass } from 'lucide-react';
+import { Footprints, Plus, Square, Download, Trash2, Gauge, Clock, Compass } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { DemoChip } from '../components/common/Controls';
@@ -14,12 +14,24 @@ export const TripToolsScreen: React.FC = () => {
     units,
     recordedTracks,
     deleteTrack,
-    addSimulatedTrack,
+    isRecordingLiveTrack,
+    startLiveTrackRecording,
+    stopAndSaveLiveTrack,
     navigateTo,
     setSelectedRouteAlternative,
   } = useApp();
 
   const { showToast } = useToast();
+
+  const handleToggleRecording = () => {
+    if (isRecordingLiveTrack) {
+      stopAndSaveLiveTrack();
+      showToast('Track saved', 'success');
+    } else {
+      startLiveTrackRecording();
+      showToast('Recording your track', 'info');
+    }
+  };
 
   const handleExportTrack = (track: RecordedTrack) => {
     try {
@@ -83,14 +95,15 @@ export const TripToolsScreen: React.FC = () => {
         onBack={() => navigateTo('map')}
         rightAction={
           <button
-            onClick={() => {
-              addSimulatedTrack();
-              showToast('Recorded new simulated track', 'success');
-            }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[11px] font-medium shadow transition-colors"
+            onClick={handleToggleRecording}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-white text-[11px] font-medium shadow transition-colors ${
+              isRecordingLiveTrack
+                ? 'bg-red-600 hover:bg-red-500'
+                : 'bg-[#2F6FEB] hover:bg-[#2563EB]'
+            }`}
           >
-            <Plus size={13} />
-            <span>Add Track</span>
+            {isRecordingLiveTrack ? <Square size={12} /> : <Plus size={13} />}
+            <span>{isRecordingLiveTrack ? 'Stop' : 'Record'}</span>
           </button>
         }
       />
@@ -102,7 +115,7 @@ export const TripToolsScreen: React.FC = () => {
             <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
               {t('recordedTracks')} ({recordedTracks.length})
             </span>
-            <DemoChip label={t('demoData')} />
+            {recordedTracks.some((track) => track.demo) && <DemoChip label={t('demoData')} />}
           </div>
 
           {recordedTracks.length > 0 ? (
@@ -123,6 +136,7 @@ export const TripToolsScreen: React.FC = () => {
                           <span className="text-[13px] font-semibold text-neutral-100 truncate">
                             {track.title}
                           </span>
+                          {track.demo && <DemoChip label={t('demoData')} />}
                         </div>
 
                         {/* Metadata stats */}

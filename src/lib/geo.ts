@@ -103,8 +103,8 @@ export function generateRouteAlternatives(
       via: 'via Rustaveli Ave & Bypass',
       viaKa: 'რუსთაველის გამზ. და შემოვლითი გზით',
       coordinates: r1Coords,
-      preferenceNote: preferences.avoidTolls ? 'Toll-free simulation' : undefined,
-      preferenceNoteKa: preferences.avoidTolls ? 'უფასო სიმულაცია' : undefined,
+      preferenceNote: preferences.avoidTolls ? 'Toll-free' : undefined,
+      preferenceNoteKa: preferences.avoidTolls ? 'უფასო გზებით' : undefined,
     },
     {
       id: 'shortest',
