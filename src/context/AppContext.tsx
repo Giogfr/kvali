@@ -713,12 +713,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [routeOrigin, routeDestination, intermediateStops, travelMode, routePreferences, effectiveCenter]);
 
-  // Recalculate route whenever destination, origin, mode, or intermediate stops change
+  // Recalculate route whenever destination, origin, mode, preferences or stops change
   useEffect(() => {
     if (routeDestination) {
       calculateRoutes();
     }
-  }, [routeDestination, routeOrigin, travelMode, intermediateStops.length]);
+  }, [routeDestination, routeOrigin, travelMode, routePreferences, intermediateStops.length]);
 
   // Check URL parameters for shareable route links on initial load
   useEffect(() => {
