@@ -17,6 +17,7 @@ const TILE_CACHE = 'kvali-tiles-v1';
 const MAX_TILES = 1200;
 
 export function registerServiceWorker() {
+  if (import.meta.env.DEV) return;
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
   const register = () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
