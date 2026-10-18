@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Search,
   SlidersHorizontal,
@@ -8,9 +8,11 @@ import {
   Navigation,
   Compass,
   ArrowRight,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { MapView } from '../components/map/MapView';
+import { MapView, type MapViewHandle } from '../components/map/MapView';
 import { PinCallout } from '../components/map/PinCallout';
 import { useToast } from '../context/ToastContext';
 
@@ -36,6 +38,13 @@ export const MapScreen: React.FC = () => {
 
   const { showToast } = useToast();
   const [showCallout, setShowCallout] = useState(true);
+  const mapRef = useRef<MapViewHandle>(null);
+
+  const controlButtonClass = `w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
+    theme === 'dark'
+      ? 'bg-[#1E1E1E]/95 border-neutral-700 text-neutral-300 hover:text-white'
+      : 'bg-white/95 border-neutral-200 text-neutral-700 hover:text-black'
+  } backdrop-blur-md`;
 
   const handleToggleAlerts = () => {
     toggleLayer('speedCameras');
@@ -69,6 +78,7 @@ export const MapScreen: React.FC = () => {
       {/* Interactive Map Surface */}
       <div className="absolute inset-0">
         <MapView
+          ref={mapRef}
           activeRouteCoordinates={selectedRouteAlternative?.coordinates}
           onTapLocation={(coords) => {
             setShowCallout(true);
@@ -117,6 +127,27 @@ export const MapScreen: React.FC = () => {
 
       {/* Map controls */}
       <div className="absolute right-3 top-16 z-20 flex flex-col gap-2">
+        {/* Zoom */}
+        <div className={`flex flex-col rounded-xl border shadow-md overflow-hidden ${theme === 'dark' ? 'bg-[#1E1E1E]/95 border-neutral-700' : 'bg-white/95 border-neutral-200'} backdrop-blur-md`}>
+          <button
+            onClick={() => mapRef.current?.zoomIn()}
+            className={`w-11 h-10 flex items-center justify-center press transition-colors ${theme === 'dark' ? 'text-neutral-300 hover:text-white' : 'text-neutral-700 hover:text-black'}`}
+            aria-label={t('zoomIn')}
+            title={t('zoomIn')}
+          >
+            <Plus size={18} />
+          </button>
+          <div className={`h-px ${theme === 'dark' ? 'bg-neutral-700' : 'bg-neutral-200'}`} />
+          <button
+            onClick={() => mapRef.current?.zoomOut()}
+            className={`w-11 h-10 flex items-center justify-center press transition-colors ${theme === 'dark' ? 'text-neutral-300 hover:text-white' : 'text-neutral-700 hover:text-black'}`}
+            aria-label={t('zoomOut')}
+            title={t('zoomOut')}
+          >
+            <Minus size={18} />
+          </button>
+        </div>
+
         {/* Map layers */}
         <button
           onClick={() => navigateTo('map-layers')}

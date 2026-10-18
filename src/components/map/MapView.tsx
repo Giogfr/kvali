@@ -38,11 +38,15 @@ function checkWebGL(): boolean {
   }
 }
 
-export const MapView: React.FC<MapViewProps> = ({
-  onTapLocation,
-  onSelectPlace,
-  activeRouteCoordinates,
-}) => {
+export interface MapViewHandle {
+  zoomIn: () => void;
+  zoomOut: () => void;
+}
+
+export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function MapView(
+  { onTapLocation, onSelectPlace, activeRouteCoordinates },
+  ref
+) {
   const {
     theme,
     airplaneOfflineMode,
@@ -64,6 +68,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const appliedStyleRef = useRef<string | null>(null);
   const onSelectPlaceRef = useRef(onSelectPlace);
@@ -73,6 +78,23 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectPlaceRef.current = onSelectPlace;
   onTapLocationRef.current = onTapLocation;
   centerRef.current = effectiveCenter;
+
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      zoomIn: () => {
+        try {
+          mapInstanceRef.current?.zoomIn({ duration: 250 });
+        } catch {}
+      },
+      zoomOut: () => {
+        try {
+          mapInstanceRef.current?.zoomOut({ duration: 250 });
+        } catch {}
+      },
+    }),
+    []
+  );
 
   const [hasInitError, setHasInitError] = useState(false);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
@@ -138,24 +160,30 @@ export const MapView: React.FC<MapViewProps> = ({
         'bottom-right'
       );
 
+      // Only downgrade to the schematic map for problems that make the map unusable.
+      // Transient tile/sprite 404s and network hiccups must never kill the real map.
       map.on('error', (e: any) => {
         if (!isSubscribed) return;
-        const msg = e?.error?.message || e?.message || (typeof e === 'string' ? e : '');
-        if (
+        const msg = String(e?.error?.message || e?.message || (typeof e === 'string' ? e : ''));
+        const isFatal =
           msg.includes('Worker failed to load') ||
-          msg.includes('worker') ||
           msg.includes('WebGL') ||
           msg.includes('GPU') ||
-          msg.includes('context') ||
-          msg.includes('style') ||
-          msg.includes('404') ||
-          msg.includes('Failed to fetch') ||
-          msg.includes('NetworkError')
-        ) {
-          console.warn('MapLibre could not load the vector style, using schematic map:', msg);
+          msg.includes('WebGL context') ||
+          msg.includes('context lost');
+        if (isFatal) {
+          console.warn('MapLibre cannot run on this device, using schematic map:', msg);
           setHasInitError(true);
         }
       });
+
+      // Make sure every interaction is enabled (pan, wheel zoom, pinch, rotate, keyboard)
+      map.dragPan.enable();
+      map.scrollZoom.enable();
+      map.boxZoom.enable();
+      map.doubleClickZoom.enable();
+      map.keyboard.enable();
+      if (map.touchZoomRotate) map.touchZoomRotate.enable();
 
       map.on('load', () => {
         if (!isSubscribed) return;
@@ -193,6 +221,16 @@ export const MapView: React.FC<MapViewProps> = ({
       });
 
       mapInstanceRef.current = map;
+
+      // Keep the canvas sized to its container (sidebar toggles, orientation changes, etc.)
+      if (mapContainerRef.current && typeof ResizeObserver !== 'undefined') {
+        resizeObserverRef.current = new ResizeObserver(() => {
+          try {
+            map.resize();
+          } catch {}
+        });
+        resizeObserverRef.current.observe(mapContainerRef.current);
+      }
     } catch {
       setHasInitError(true);
     }
@@ -202,6 +240,8 @@ export const MapView: React.FC<MapViewProps> = ({
       clearTimeout(timeoutTimer);
       cancelPressSafe(pressTimerRef);
       gpsMarkerRef.current = null;
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -480,7 +520,7 @@ export const MapView: React.FC<MapViewProps> = ({
       <div ref={mapContainerRef} className="w-full h-full bg-[#181818]" />
     </div>
   );
-};
+});
 
 function cancelPressSafe(ref: React.MutableRefObject<number | null>) {
   if (ref.current !== null) {
