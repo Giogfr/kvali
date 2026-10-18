@@ -16,6 +16,18 @@ export const ActiveNavigationScreen: React.FC = () => {
 
   const distStr = formatDistance(activeNav.remainingDistanceKm, units);
 
+  const speedValue =
+    units === 'imperial'
+      ? Math.round(activeNav.currentSpeedKmh * 0.621371)
+      : Math.round(activeNav.currentSpeedKmh);
+  const speedUnit = units === 'imperial' ? 'MPH' : 'KM/H';
+  const speedLimit =
+    activeNav.speedLimitKmh === null
+      ? null
+      : units === 'imperial'
+      ? Math.round(activeNav.speedLimitKmh * 0.621371)
+      : activeNav.speedLimitKmh;
+
   const now = new Date();
   const etaDate = new Date(now.getTime() + activeNav.remainingDurationMinutes * 60000);
   const etaHours = etaDate.getHours().toString().padStart(2, '0');
@@ -41,7 +53,7 @@ export const ActiveNavigationScreen: React.FC = () => {
 
             <div className="min-w-0">
               <div className="text-[20px] font-bold tracking-tight leading-tight">
-                {activeNav.currentManeuver.distanceMeters} m
+                {formatDistance(activeNav.currentManeuver.distanceMeters / 1000, units)}
               </div>
               <div className="text-[14px] font-medium text-neutral-200 truncate">
                 {language === 'ka'
@@ -115,17 +127,22 @@ export const ActiveNavigationScreen: React.FC = () => {
           <div className="flex items-baseline gap-3">
             <div>
               <div className="text-[44px] font-extrabold tracking-tighter tabular-nums leading-none text-white">
-                {activeNav.currentSpeedKmh}
+                {speedValue}
               </div>
               <div className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
-                {units === 'imperial' ? 'MPH' : 'KM/H'}
+                {speedUnit}
               </div>
             </div>
 
-            {/* Speed Limit Badge */}
-            <div className="w-10 h-10 rounded-full border-[3px] border-red-500 bg-white text-black flex flex-col items-center justify-center shadow font-bold text-[13px] tabular-nums shrink-0">
-              <span>{activeNav.speedLimitKmh}</span>
-            </div>
+            {/* Speed Limit Badge — only when a nearby alert reports a limit */}
+            {speedLimit !== null && (
+              <div
+                className="w-10 h-10 rounded-full border-[3px] border-red-500 bg-white text-black flex flex-col items-center justify-center shadow font-bold text-[13px] tabular-nums shrink-0"
+                title={t('speedLimit')}
+              >
+                <span>{speedLimit}</span>
+              </div>
+            )}
           </div>
 
           {/* Remaining Distance & Duration */}
