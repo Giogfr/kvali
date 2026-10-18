@@ -28,7 +28,7 @@ import { TRANSLATIONS } from '../lib/translations';
 import { fetchOsrmRoute, fetchOverpassPois, reverseGeocodeNominatim } from '../lib/services';
 import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
 import { computeProgress } from '../lib/navigation';
-import { generateRouteAlternatives } from '../lib/geo';
+import { calculateDistanceKm, generateRouteAlternatives } from '../lib/geo';
 
 interface ActiveNavState {
   isActive: boolean;
@@ -38,7 +38,7 @@ interface ActiveNavState {
   remainingDistanceKm: number;
   remainingDurationMinutes: number;
   currentSpeedKmh: number;
-  speedLimitKmh: number;
+  speedLimitKmh: number | null;
   currentManeuver: {
     instruction: string;
     instructionKa: string;
@@ -137,7 +137,6 @@ interface AppContextType {
   layers: LayerVisibility;
   toggleLayer: (layer: keyof LayerVisibility) => void;
   offlineRegions: OfflineRegion[];
-  updateRegionStatus: (id: string, action: 'download' | 'pause' | 'resume' | 'cancel' | 'retry' | 'remove' | 'update') => void;
   patchRegion: (id: string, patch: Partial<OfflineRegion>) => void;
   airplaneOfflineMode: boolean;
   setAirplaneOfflineMode: (offline: boolean) => void;
@@ -339,7 +338,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Route Planning State
   const [routeOrigin, setRouteOrigin] = useState<{ name: string; latitude: number; longitude: number } | null>({
-    name: 'Kutaisi Center (Default)',
+    name: 'Kutaisi Center',
     latitude: 42.2679,
     longitude: 42.6946,
   });
@@ -456,7 +455,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     remainingDistanceKm: 0,
     remainingDurationMinutes: 0,
     currentSpeedKmh: 0,
-    speedLimitKmh: 50,
+    speedLimitKmh: null,
     currentManeuver: {
       instruction: '',
       instructionKa: '',
@@ -941,39 +940,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importPlacesJson = (jsonData: string): boolean => {
     try {
       const parsed = JSON.parse(jsonData);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].latitude && parsed[0].longitude) {
-        setSavedPlaces((prev) => [...parsed, ...prev]);
-        return true;
-      }
-      return false;
+      if (!Array.isArray(parsed) || parsed.length === 0) return false;
+
+      const valid: SavedPlace[] = parsed
+        .filter(
+          (entry: unknown): entry is Record<string, unknown> =>
+            !!entry &&
+            typeof entry === 'object' &&
+            typeof (entry as SavedPlace).name === 'string' &&
+            Number.isFinite(Number((entry as SavedPlace).latitude)) &&
+            Number.isFinite(Number((entry as SavedPlace).longitude))
+        )
+        .map((entry, index) => ({
+          id: typeof entry.id === 'string' ? entry.id : `saved-import-${Date.now()}-${index}`,
+          name: String(entry.name),
+          latitude: Number(entry.latitude),
+          longitude: Number(entry.longitude),
+          collection: typeof entry.collection === 'string' ? entry.collection : 'Favorites',
+          note: typeof entry.note === 'string' ? entry.note : undefined,
+          category: entry.category as SavedPlace['category'],
+          createdAt: Number.isFinite(Number(entry.createdAt)) ? Number(entry.createdAt) : Date.now(),
+        }));
+
+      if (valid.length === 0) return false;
+      setSavedPlaces((prev) => [...valid, ...prev]);
+      return true;
     } catch {
       return false;
     }
-  };
-
-  const updateRegionStatus = (
-    id: string,
-    action: 'download' | 'pause' | 'resume' | 'cancel' | 'retry' | 'remove' | 'update'
-  ) => {
-    setOfflineRegions((prev) =>
-      prev.map((reg) => {
-        if (reg.id !== id) return reg;
-        switch (action) {
-          case 'download':
-          case 'resume':
-          case 'retry':
-          case 'update':
-            return { ...reg, status: 'downloading', downloadProgress: Math.max(10, reg.downloadProgress) };
-          case 'pause':
-            return { ...reg, status: 'paused' };
-          case 'cancel':
-          case 'remove':
-            return { ...reg, status: 'not_downloaded', downloadProgress: 0 };
-          default:
-            return reg;
-        }
-      })
-    );
   };
 
   const patchRegion = (id: string, patch: Partial<OfflineRegion>) => {
@@ -1029,6 +1023,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [soundEnabled, beepVolume]);
 
+  // Nearest enabled alert ahead of the driver, if any falls inside the alert radius.
+  const findUpcomingAlert = useCallback(
+    (loc: { latitude: number; longitude: number }): RoadAlert | null => {
+      let nearest: RoadAlert | null = null;
+      let bestMeters = Infinity;
+      for (const alert of roadAlerts) {
+        if (!enabledAlertCategories[alert.category]) continue;
+        const meters =
+          calculateDistanceKm(loc.latitude, loc.longitude, alert.latitude, alert.longitude) * 1000;
+        if (meters <= alertDistanceMeters && meters < bestMeters) {
+          bestMeters = meters;
+          nearest = alert;
+        }
+      }
+      return nearest;
+    },
+    [roadAlerts, enabledAlertCategories, alertDistanceMeters]
+  );
+
   // Start live navigation. Progress is driven by GPS fixes, not a timer.
   const startNavigation = (route: RouteAlternative) => {
     const startStep = route.steps && route.steps.length > 1 ? route.steps[1] : route.steps?.[0];
@@ -1038,6 +1051,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : startStep.instruction
       : 'Follow the route';
 
+    const initialAlert = userLocation ? findUpcomingAlert(userLocation) : null;
+
     setActiveNav({
       isActive: true,
       route,
@@ -1046,14 +1061,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       remainingDistanceKm: route.distanceKm,
       remainingDurationMinutes: route.durationMinutes,
       currentSpeedKmh: userLocation?.speedKmh ?? 0,
-      speedLimitKmh: travelMode === 'car' ? 60 : travelMode === 'cycling' ? 25 : 5,
+      speedLimitKmh: initialAlert?.speedLimit ?? null,
       currentManeuver: {
         instruction: initialInstruction,
         instructionKa: initialInstruction,
         roadName: startStep?.name || route.via || 'Route',
         distanceMeters: startStep?.distanceMeters ?? 0,
       },
-      upcomingAlert: roadAlerts[0] || null,
+      upcomingAlert: initialAlert,
     });
     lastRerouteRef.current = 0;
     navigateTo('active-navigation');
@@ -1069,6 +1084,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!activeNav.isActive || !activeNav.route || !userLocation) return;
 
     const progress = computeProgress(activeNav.route, userLocation);
+    const upcoming = findUpcomingAlert(userLocation);
     setActiveNav((prev) => {
       if (!prev.isActive || !prev.route) return prev;
       const step = progress.nextStep;
@@ -1079,6 +1095,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         remainingDistanceKm: parseFloat(progress.remainingKm.toFixed(2)),
         remainingDurationMinutes: Math.round(progress.remainingMinutes),
         currentSpeedKmh: userLocation.speedKmh ?? prev.currentSpeedKmh,
+        speedLimitKmh: upcoming?.speedLimit ?? null,
+        upcomingAlert: upcoming,
         currentManeuver: step
           ? {
               instruction: step.instruction,
@@ -1089,7 +1107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : prev.currentManeuver,
       };
     });
-  }, [userLocation, activeNav.isActive, activeNav.route]);
+  }, [userLocation, activeNav.isActive, activeNav.route, findUpcomingAlert]);
 
   // Re-route when the driver has clearly drifted off the current route.
   useEffect(() => {
@@ -1229,7 +1247,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         layers,
         toggleLayer,
         offlineRegions,
-        updateRegionStatus,
         patchRegion,
         airplaneOfflineMode,
         setAirplaneOfflineMode,
