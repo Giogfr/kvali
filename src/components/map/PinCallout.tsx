@@ -162,7 +162,7 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
         <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-neutral-700/40">
           <button
             onClick={handleDirections}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[12px] font-medium shadow-sm transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[12px] font-medium shadow-sm press"
           >
             <Navigation size={14} />
             <span>{t('directions')}</span>

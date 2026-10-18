@@ -79,7 +79,7 @@ export const MapScreen: React.FC = () => {
         {/* Settings */}
         <button
           onClick={() => navigateTo('settings')}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md shrink-0 transition-colors ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press shrink-0 transition-colors ${
             theme === 'dark'
               ? 'bg-[#1E1E1E]/95 border-neutral-700 text-neutral-300 hover:text-white'
               : 'bg-white/95 border-neutral-200 text-neutral-700 hover:text-black'
@@ -93,7 +93,7 @@ export const MapScreen: React.FC = () => {
         {/* Floating Search Bar */}
         <button
           onClick={handleOpenSearch}
-          className={`flex-1 h-10 px-3.5 rounded-xl flex items-center justify-between border shadow-md text-left transition-colors ${
+          className={`flex-1 h-11 px-3.5 rounded-xl flex items-center justify-between border shadow-md text-left press ${
             theme === 'dark'
               ? 'bg-[#1E1E1E]/95 border-neutral-700 text-neutral-400 hover:border-neutral-500'
               : 'bg-white/95 border-neutral-200 text-neutral-500 hover:border-neutral-400'
@@ -116,7 +116,7 @@ export const MapScreen: React.FC = () => {
         {/* Map layers */}
         <button
           onClick={() => navigateTo('map-layers')}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md transition-colors ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
             theme === 'dark'
               ? 'bg-[#1E1E1E]/95 border-neutral-700 text-neutral-300 hover:text-white'
               : 'bg-white/95 border-neutral-200 text-neutral-700 hover:text-black'
@@ -130,7 +130,7 @@ export const MapScreen: React.FC = () => {
         {/* Alert overlay toggle */}
         <button
           onClick={handleToggleAlerts}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md transition-colors ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
             layers.speedCameras
               ? 'bg-[#C9973F] text-black border-amber-600'
               : theme === 'dark'
@@ -146,7 +146,7 @@ export const MapScreen: React.FC = () => {
         {/* Offline mode toggle */}
         <button
           onClick={handleToggleOffline}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md transition-colors ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
             airplaneOfflineMode
               ? 'bg-[#C9973F] text-black border-amber-600'
               : theme === 'dark'
@@ -165,7 +165,7 @@ export const MapScreen: React.FC = () => {
             triggerRecenter();
             showToast(t('recenter') + ': ' + (userLocation ? t('gpsLive') : t('gpsWaiting')), 'info');
           }}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-md transition-colors ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
             theme === 'dark'
               ? 'bg-[#1E1E1E]/95 border-neutral-700 text-neutral-300 hover:text-white active:bg-neutral-800'
               : 'bg-white/95 border-neutral-200 text-neutral-700 hover:text-black active:bg-neutral-100'
@@ -200,7 +200,7 @@ export const MapScreen: React.FC = () => {
         <div className="absolute bottom-3 left-3 right-3 z-20">
           <button
             onClick={handleOpenRoutePlanning}
-            className={`w-full py-3 px-4 rounded-xl border shadow-lg flex items-center justify-between transition-colors ${
+            className={`w-full py-3 px-4 rounded-xl border shadow-lg flex items-center justify-between press ${
               theme === 'dark'
                 ? 'bg-[#181818]/95 border-neutral-700 text-white hover:bg-[#202020]'
                 : 'bg-white/95 border-neutral-200 text-[#111111] hover:bg-neutral-50'

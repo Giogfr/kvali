@@ -94,7 +94,7 @@ export const ActiveNavigationScreen: React.FC = () => {
       <div className="absolute right-3 top-28 z-20 flex flex-col gap-2">
         <button
           onClick={triggerRecenter}
-          className="w-10 h-10 rounded-xl bg-[#1E1E1E]/90 border border-neutral-700 text-white flex items-center justify-center shadow-lg"
+          className="w-11 h-11 rounded-xl bg-[#1E1E1E]/90 border border-neutral-700 text-white flex items-center justify-center shadow-lg press"
           aria-label={t('recenter')}
         >
           <Compass size={20} />
@@ -167,7 +167,7 @@ export const ActiveNavigationScreen: React.FC = () => {
 
           <button
             onClick={endNavigation}
-            className="px-3.5 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow"
+            className="px-4 py-2 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[12px] font-semibold flex items-center gap-1.5 press shadow"
           >
             <X size={14} />
             <span>{t('endNavigation')}</span>

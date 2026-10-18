@@ -349,7 +349,7 @@ export const RoutePlanningScreen: React.FC = () => {
         <button
           onClick={handleStart}
           disabled={!selectedRouteAlternative}
-          className="w-full py-3.5 px-4 rounded-xl bg-[#2F6FEB] hover:bg-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold flex items-center justify-center gap-2 shadow-lg transition-colors"
+          className="w-full py-3.5 px-4 rounded-xl bg-[#2F6FEB] hover:bg-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold flex items-center justify-center gap-2 shadow-lg press"
         >
           <Navigation size={18} />
           <span>{t('startNavigation')}</span>
