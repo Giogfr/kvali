@@ -9,8 +9,6 @@ interface FallbackMapProps {
   savedPlaces: SavedPlace[];
   alerts: RoadAlert[];
   routeCoordinates?: [number, number][]; // [lng, lat]
-  styleNotice?: string;
-  onRetryRealMap?: () => void;
 }
 
 export const FallbackMap: React.FC<FallbackMapProps> = ({
@@ -20,8 +18,6 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
   savedPlaces,
   alerts,
   routeCoordinates,
-  styleNotice,
-  onRetryRealMap,
 }) => {
   // Kutaisi center approx: lng 42.6946, lat 42.2679
   const [zoom, setZoom] = useState(1);
@@ -29,46 +25,11 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPan({
-      x: e.clientX - dragStartRef.current.x,
-      y: e.clientY - dragStartRef.current.y,
-    });
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
-
-  // Touch handling for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1 && e.touches[0]) {
-      setIsDragging(true);
-      dragStartRef.current = {
-        x: e.touches[0].clientX - pan.x,
-        y: e.touches[0].clientY - pan.y,
-      };
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1 || !e.touches[0]) return;
-    setPan({
-      x: e.touches[0].clientX - dragStartRef.current.x,
-      y: e.touches[0].clientY - dragStartRef.current.y,
-    });
-  };
-
-  const handleTouchEnd = () => setIsDragging(false);
+  const pressTimerRef = useRef<number | null>(null);
+  const pressStartRef = useRef({ x: 0, y: 0 });
 
   // Map coordinate conversion to SVG canvas
-  // Kutaisi bounding box approx:
-  // Center: lng 42.7000, lat 42.2680
+  // Kutaisi bounding box approx: center lng 42.7000, lat 42.2680
   const centerLng = 42.7000;
   const centerLat = 42.2680;
   const scale = 8000 * zoom;
@@ -82,19 +43,83 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
     [centerLat, scale, pan.y]
   );
 
-  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (isDragging) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left - pan.x - 200;
-    const clickY = e.clientY - rect.top - pan.y - 300;
+  const cancelPress = () => {
+    if (pressTimerRef.current !== null) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
 
+  const dropPinAt = (clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clickX = clientX - rect.left - pan.x - 200;
+    const clickY = clientY - rect.top - pan.y - 300;
     const clickLng = centerLng + clickX / scale;
     const clickLat = centerLat - clickY / (scale * 1.35);
-
     onTapLocation({
       latitude: parseFloat(clickLat.toFixed(5)),
       longitude: parseFloat(clickLng.toFixed(5)),
     });
+  };
+
+  const beginPress = (clientX: number, clientY: number) => {
+    cancelPress();
+    pressStartRef.current = { x: clientX, y: clientY };
+    pressTimerRef.current = window.setTimeout(() => {
+      pressTimerRef.current = null;
+      dropPinAt(clientX, clientY);
+    }, 500);
+  };
+
+  const movedTooFar = (clientX: number, clientY: number) =>
+    Math.abs(clientX - pressStartRef.current.x) > 8 ||
+    Math.abs(clientY - pressStartRef.current.y) > 8;
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+    beginPress(e.clientX, e.clientY);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    if (movedTooFar(e.clientX, e.clientY)) cancelPress();
+    setPan({
+      x: e.clientX - dragStartRef.current.x,
+      y: e.clientY - dragStartRef.current.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    cancelPress();
+  };
+
+  // Touch handling for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && e.touches[0]) {
+      setIsDragging(true);
+      dragStartRef.current = {
+        x: e.touches[0].clientX - pan.x,
+        y: e.touches[0].clientY - pan.y,
+      };
+      beginPress(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1 || !e.touches[0]) return;
+    if (movedTooFar(e.touches[0].clientX, e.touches[0].clientY)) cancelPress();
+    setPan({
+      x: e.touches[0].clientX - dragStartRef.current.x,
+      y: e.touches[0].clientY - dragStartRef.current.y,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    cancelPress();
   };
 
   const resetView = () => {
@@ -119,11 +144,7 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
       onTouchEnd={handleTouchEnd}
     >
       {/* SVG Canvas Map */}
-      <svg
-        className="w-full h-full"
-        onClick={handleSvgClick}
-        style={{ touchAction: 'none' }}
-      >
+      <svg className="w-full h-full" style={{ touchAction: 'none' }}>
         <defs>
           <linearGradient id="riverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#1E3A8A" stopOpacity="0.8" />
@@ -256,87 +277,6 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
           />
         )}
 
-        {/* Seeded Place Markers */}
-        <g>
-          {/* Colchis Fountain */}
-          <g
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectPlace({
-                id: 'colchis-fountain',
-                name: 'Colchis Fountain',
-                nameKa: 'კოლხური შადრევანი',
-                category: 'attractions',
-                latitude: 42.2679,
-                longitude: 42.7001,
-                description: 'Central square monument with Colchian jewelry replicas.',
-                descriptionKa: 'ცენტრალური მოედნის მონუმენტი.',
-                aliases: [],
-                demo: true,
-              });
-            }}
-          >
-            <circle
-              cx={toSvgX(42.7001)}
-              cy={toSvgY(42.2679)}
-              r={7 * zoom}
-              fill="#C9973F"
-              stroke="#FFFFFF"
-              strokeWidth="2"
-            />
-            <text
-              x={toSvgX(42.7001)}
-              y={toSvgY(42.2679) - 10 * zoom}
-              fill="#FFFFFF"
-              fontSize={10 * Math.max(0.8, zoom)}
-              fontWeight="600"
-              textAnchor="middle"
-            >
-              Colchis Fountain
-            </text>
-          </g>
-
-          {/* Bagrati Cathedral */}
-          <g
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectPlace({
-                id: 'bagrati-cathedral',
-                name: 'Bagrati Cathedral',
-                nameKa: 'ბაგრატის ტაძარი',
-                category: 'attractions',
-                latitude: 42.2772,
-                longitude: 42.7042,
-                description: '11th-century cathedral overlooking Kutaisi.',
-                descriptionKa: 'XI საუკუნის ტაძარი.',
-                aliases: [],
-                demo: true,
-              });
-            }}
-          >
-            <circle
-              cx={toSvgX(42.7042)}
-              cy={toSvgY(42.2772)}
-              r={7 * zoom}
-              fill="#2F6FEB"
-              stroke="#FFFFFF"
-              strokeWidth="2"
-            />
-            <text
-              x={toSvgX(42.7042)}
-              y={toSvgY(42.2772) - 10 * zoom}
-              fill="#FFFFFF"
-              fontSize={10 * Math.max(0.8, zoom)}
-              fontWeight="600"
-              textAnchor="middle"
-            >
-              Bagrati Cathedral
-            </text>
-          </g>
-        </g>
-
         {/* Road Alert Markers */}
         {alerts.map((alert) => (
           <g key={alert.id}>
@@ -385,43 +325,17 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
           </g>
         )}
 
-        {/* Schematic centre marker (this fallback map is not GPS driven) */}
-        <g>
-          <circle
-            cx={toSvgX(42.6946)}
-            cy={toSvgY(42.2679)}
-            r={5 * zoom}
-            fill="#2F6FEB"
-            stroke="#FFFFFF"
-            strokeWidth="2"
-          />
-        </g>
       </svg>
 
-      {/* Top Banner Notice: Offline Demo Map */}
+      {/* Top Banner Notice: Offline Schematic Map */}
       <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto bg-[#181818]/90 text-neutral-300 text-[11px] px-2.5 py-1.5 rounded-lg border border-neutral-700/80 shadow-md backdrop-blur-md flex items-center gap-1.5">
           <Compass size={13} className="text-[#C9973F]" />
-          <span className="font-medium">Offline demo map</span>
+          <span className="font-medium">Offline schematic map</span>
           <span className="text-neutral-500">·</span>
-          <span className="text-neutral-400">Kutaisi streets & river</span>
+          <span className="text-neutral-400">Approximate streets</span>
         </div>
-
-        {onRetryRealMap && (
-          <button
-            onClick={onRetryRealMap}
-            className="pointer-events-auto bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-md transition-colors"
-          >
-            Retry Vector Map
-          </button>
-        )}
       </div>
-
-      {styleNotice && (
-        <div className="absolute top-12 left-3 bg-[#181818]/90 text-neutral-400 text-[10px] px-2 py-0.5 rounded border border-neutral-700">
-          {styleNotice}
-        </div>
-      )}
 
       {/* Fallback Map Controls (Zoom in/out, Recenter) */}
       <div className="absolute bottom-20 left-3 flex flex-col gap-1.5 z-20">
@@ -448,9 +362,9 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
         </button>
       </div>
 
-      {/* Tap hint at bottom */}
+      {/* Hint at bottom */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-neutral-500 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
-        Drag to pan · Tap to drop pin · Kutaisi (42.2679, 42.6946)
+        Drag to pan · Long-press to drop a pin
       </div>
     </div>
   );

@@ -31,6 +31,7 @@ export const MapScreen: React.FC = () => {
     routeDestination,
     selectedRouteAlternative,
     userLocation,
+    handleMapTapCoords,
   } = useApp();
 
   const { showToast } = useToast();
@@ -69,7 +70,10 @@ export const MapScreen: React.FC = () => {
       <div className="absolute inset-0">
         <MapView
           activeRouteCoordinates={selectedRouteAlternative?.coordinates}
-          onTapLocation={() => setShowCallout(true)}
+          onTapLocation={(coords) => {
+            setShowCallout(true);
+            handleMapTapCoords(coords);
+          }}
           onSelectPlace={() => setShowCallout(true)}
         />
       </div>

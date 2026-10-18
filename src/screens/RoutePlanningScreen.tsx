@@ -4,7 +4,6 @@ import {
   Footprints,
   Bike,
   ArrowUpDown,
-  Plus,
   Trash2,
   Navigation,
   Check,
@@ -23,7 +22,6 @@ export const RoutePlanningScreen: React.FC = () => {
     language,
     theme,
     units,
-    places,
     travelMode,
     setTravelMode,
     routePreferences,
@@ -33,7 +31,6 @@ export const RoutePlanningScreen: React.FC = () => {
     routeDestination,
     setRouteDestination,
     intermediateStops,
-    addIntermediateStop,
     removeIntermediateStop,
     routeAlternatives,
     selectedRouteAlternative,
@@ -46,29 +43,21 @@ export const RoutePlanningScreen: React.FC = () => {
     userLocation,
   } = useApp();
 
-  // If no destination yet, pick the first seed place (Bagrati Cathedral) as initial demo destination
-  useEffect(() => {
-    if (!routeDestination && places.length > 0) {
-      setRouteDestination(places[1] || places[0]);
-    }
-  }, [routeDestination, places, setRouteDestination]);
-
   const destCoords = useMemo(() => {
-    if (!routeDestination) return { lat: 42.2772, lon: 42.7042, name: 'Bagrati Cathedral' };
-    if ('latitude' in routeDestination) {
+    if (routeDestination && 'latitude' in routeDestination) {
       return {
         lat: routeDestination.latitude,
         lon: routeDestination.longitude,
         name: 'name' in routeDestination ? routeDestination.name : routeDestination.title || t('droppedPin'),
       };
     }
-    return { lat: 42.2772, lon: 42.7042, name: 'Bagrati Cathedral' };
-  }, [routeDestination, t]);
+    return { lat: effectiveCenter.latitude, lon: effectiveCenter.longitude, name: t('chooseDestination') };
+  }, [routeDestination, effectiveCenter, t]);
 
   const originCoords = useMemo(() => {
-    if (!routeOrigin) return { lat: effectiveCenter.latitude, lon: effectiveCenter.longitude, name: 'Kutaisi Center' };
-    return { lat: routeOrigin.latitude, lon: routeOrigin.longitude, name: routeOrigin.name };
-  }, [routeOrigin, effectiveCenter]);
+    if (routeOrigin) return { lat: routeOrigin.latitude, lon: routeOrigin.longitude, name: routeOrigin.name };
+    return { lat: effectiveCenter.latitude, lon: effectiveCenter.longitude, name: t('chooseOrigin') };
+  }, [routeOrigin, effectiveCenter, t]);
 
   // Routes come from the shared context, which fetches them from OSRM and
   // falls back to an approximate path when the service is unreachable.
@@ -179,19 +168,6 @@ export const RoutePlanningScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* Add intermediate stop button */}
-        <div className="mt-2.5 flex justify-between items-center text-[11px]">
-          <button
-            onClick={() => {
-              const extraStop = places[4] || places[0];
-              addIntermediateStop(extraStop);
-            }}
-            className="flex items-center gap-1 text-[#2F6FEB] hover:underline font-medium"
-          >
-            <Plus size={13} />
-            <span>{t('addStop')}</span>
-          </button>
-        </div>
       </div>
 
       {/* Travel Modes (Car, Walk, Cycle) */}
