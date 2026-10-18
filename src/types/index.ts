@@ -74,7 +74,7 @@ export interface RoadAlert {
   roadNameKa: string;
   speedLimit?: number; // km/h
   warningDistanceMeters: number;
-  source: 'simulated' | 'mapped' | 'community' | 'unverified';
+  source: 'simulated' | 'mapped' | 'community' | 'unverified' | 'user';
   lastUpdatedText: string;
   demo: boolean;
   description: string;

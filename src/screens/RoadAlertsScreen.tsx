@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ShieldAlert,
   Volume2,
@@ -14,6 +14,9 @@ import {
   Ban,
   Activity,
   Layers,
+  MapPin,
+  Send,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
@@ -37,9 +40,42 @@ export const RoadAlertsScreen: React.FC = () => {
     playTestBeep,
     layers,
     toggleLayer,
+    roadAlerts,
+    userLocation,
+    requestUserLocation,
+    reportAlert,
+    removeAlert,
   } = useApp();
 
   const { showToast } = useToast();
+  const [reportCategory, setReportCategory] = useState<AlertCategory>('dangerous_conditions');
+  const [reportNote, setReportNote] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
+
+  const myReports = roadAlerts.filter((a) => a.source === 'user');
+
+  const handleReport = async () => {
+    if (!userLocation) {
+      setIsLocating(true);
+      const ok = await requestUserLocation();
+      setIsLocating(false);
+      if (!ok) {
+        showToast(t('locationRequired'), 'warn');
+        return;
+      }
+    }
+    const coords = userLocation;
+    const report = reportAlert({
+      category: reportCategory,
+      latitude: coords?.latitude ?? 0,
+      longitude: coords?.longitude ?? 0,
+      description: reportNote,
+    });
+    if (report) {
+      setReportNote('');
+      showToast(t('reportSubmitted'), 'success');
+    }
+  };
 
   const alertCategoriesList: {
     id: AlertCategory;
@@ -200,6 +236,78 @@ export const RoadAlertsScreen: React.FC = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* Report a hazard */}
+        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-900/40 space-y-3">
+          <div className="flex items-center gap-2">
+            <MapPin size={15} className="text-[#2F6FEB]" />
+            <span className="text-[13px] font-semibold text-neutral-200">{t('reportTitle')}</span>
+          </div>
+
+          <select
+            value={reportCategory}
+            onChange={(e) => setReportCategory(e.target.value as AlertCategory)}
+            className="w-full bg-neutral-800 border border-neutral-700 text-white text-[12px] rounded-lg px-2.5 py-2 focus:outline-none"
+          >
+            {alertCategoriesList.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+
+          <input
+            value={reportNote}
+            onChange={(e) => setReportNote(e.target.value)}
+            placeholder={t('reportNotePlaceholder')}
+            className="w-full bg-neutral-800 border border-neutral-700 text-white text-[12px] rounded-lg px-2.5 py-2 focus:outline-none"
+          />
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-neutral-500 font-mono truncate">
+              {userLocation
+                ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`
+                : t('locationRequired')}
+            </span>
+            <button
+              onClick={handleReport}
+              disabled={isLocating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] disabled:opacity-50 text-white text-[11px] font-medium transition-colors shrink-0"
+            >
+              <Send size={12} />
+              <span>{userLocation ? t('submitReport') : t('useMyLocation')}</span>
+            </button>
+          </div>
+
+          <p className="text-[10px] text-neutral-500 leading-relaxed">{t('reportHint')}</p>
+
+          {myReports.length > 0 && (
+            <div className="pt-2 border-t border-neutral-800 space-y-1.5">
+              <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
+                {t('myReports')}
+              </span>
+              {myReports.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center justify-between text-[11px] text-neutral-300"
+                >
+                  <span className="truncate pr-2">
+                    {alertCategoriesList.find((c) => c.id === r.category)?.label ?? r.category}
+                    {' · '}
+                    {r.description}
+                  </span>
+                  <button
+                    onClick={() => removeAlert(r.id)}
+                    className="p-1 rounded text-neutral-500 hover:text-red-400 transition-colors shrink-0"
+                    title={t('remove')}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Data Source */}
