@@ -63,7 +63,9 @@ const MainScreenRouter: React.FC = () => {
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden">
       <div className="flex-1 relative overflow-hidden flex flex-col">
-        {renderScreen()}
+        <div key={currentScreen} className="flex-1 min-h-0 flex flex-col animate-screen-in">
+          {renderScreen()}
+        </div>
       </div>
       <BottomNav />
     </div>
