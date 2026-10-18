@@ -243,7 +243,7 @@ export const SearchScreen: React.FC = () => {
                   <span>{filteredPlaces.length} locations found</span>
                   <span className="text-[10px]">{t('demoCatalogNote')}</span>
                 </div>
-                <div className="divide-y divide-neutral-800/40">
+                <div className="divide-y divide-neutral-800/40 stagger">
                   {filteredPlaces.map((place) => {
                     const distKm = calculateDistanceKm(
                       effectiveCenter.latitude,
@@ -311,7 +311,18 @@ export const SearchScreen: React.FC = () => {
                   <div className="text-[12px] text-neutral-500 py-2">{t('searchUnavailable')}</div>
                 )}
 
-                <div className="divide-y divide-neutral-800/40">
+                {isSearching && remoteResults.length === 0 && (
+                  <div className="space-y-3 py-2 px-2">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="skeleton h-3.5 w-40" />
+                        <div className="skeleton h-2.5 w-56" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="divide-y divide-neutral-800/40 stagger">
                   {remoteResults.map((result) => {
                     const distKm = calculateDistanceKm(
                       effectiveCenter.latitude,

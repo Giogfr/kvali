@@ -232,7 +232,23 @@ export const RoutePlanningScreen: React.FC = () => {
           </span>
 
           {isCalculatingRoute && alternatives.length === 0 && (
-            <div className="text-[12px] text-neutral-400 py-2">{t('calculatingRoutes')}</div>
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="p-3 rounded-xl border border-neutral-800 bg-neutral-900/40">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <div className="skeleton h-3.5 w-28" />
+                      <div className="skeleton h-2.5 w-40" />
+                    </div>
+                    <div className="flex flex-col items-end space-y-2">
+                      <div className="skeleton h-4 w-12" />
+                      <div className="skeleton h-2.5 w-10" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="text-[12px] text-neutral-400 py-1">{t('calculatingRoutes')}</div>
+            </div>
           )}
 
           {routeError && alternatives.length === 0 && (
@@ -246,7 +262,7 @@ export const RoutePlanningScreen: React.FC = () => {
             </div>
           )}
 
-          <div className="space-y-2">
+          <div className="space-y-2 stagger">
             {alternatives.map((alt) => {
               const isSelected = selectedRouteAlternative?.id === alt.id;
               const distStr = formatDistance(alt.distanceKm, units);
