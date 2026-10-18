@@ -248,7 +248,7 @@ export const SettingsScreen: React.FC = () => {
         <div className="space-y-2">
           <button
             onClick={() => navigateTo('road-alerts')}
-            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left transition-colors"
+            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left press"
           >
             <div className="flex items-center gap-3">
               <ShieldAlert size={18} className="text-[#C9973F]" />
@@ -266,7 +266,7 @@ export const SettingsScreen: React.FC = () => {
 
           <button
             onClick={() => navigateTo('offline-maps')}
-            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left transition-colors"
+            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left press"
           >
             <div className="flex items-center gap-3">
               <HardDrive size={18} className="text-[#2F6FEB]" />
@@ -284,7 +284,7 @@ export const SettingsScreen: React.FC = () => {
 
           <button
             onClick={() => navigateTo('trip-tools')}
-            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left transition-colors"
+            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left press"
           >
             <div className="flex items-center gap-3">
               <Navigation size={18} className="text-purple-400" />
