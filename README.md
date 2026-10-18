@@ -27,6 +27,36 @@ Kvali is a work in progress and not ready for real driving yet. Some things to b
 
 The app has only been built, not field-tested — treat it as a development preview.
 
+## How to test
+
+The quickest loop is the web build, but a few things (native location, screen wake lock, offline tile caching) only behave properly on a real Android device.
+
+### In the browser
+
+1. `bun install` then `bun run dev` and open http://localhost:3000.
+2. Allow the location prompt on the map screen. Without it the app falls back to a Kutaisi city centre and shows a "waiting for GPS" badge.
+3. Tap the search bar and type a town (for example `Batumi` or `Gori`). Results come from Nominatim; the small built-in catalogue also matches locally.
+4. Open a result's directions button, pick a route alternative, then **Start navigation**. If there is no GPS fix the manoeuvre banner stays on the first instruction; with a fix the banner, remaining distance and ETA update as you move.
+5. Change the units to imperial in **Settings → Distance units** and confirm speed, distance and speed-limit values switch to mph/mi.
+6. In **Settings → Voice guidance**, pick *Spoken*, *Chime* or *Muted*. A manoeuvre change should speak, chime, or stay silent accordingly.
+7. **Offline Maps**: download an area and watch the progress bar fill. Turn on the connection (DevTools → Network → Offline) and confirm the map still renders from the cache. Search, routing and POIs will stop working offline, as noted above.
+8. **Road alerts**: add a report at your location and confirm a marker appears on the map.
+
+To exercise location-dependent screens without real movement, use your browser's sensor override (Chrome DevTools → Sensors → Location) and set a custom position, or take the APK out with you.
+
+### On Android
+
+1. Build and install the APK (see below), then open Kvali.
+2. Grant location permission — select "While using the app" and, if asked, allow precise location.
+3. Walk or drive a short distance and confirm the blue location dot follows you and the navigation banner advances.
+4. Start navigation and leave the screen on: the display should stay awake while guidance is active.
+5. Airplane mode test: download an offline area first, then switch the phone to airplane mode and confirm the map still draws the downloaded tiles.
+
+### Checking a build
+
+- `bun run lint` type-checks the source.
+- `bun run build` produces `dist/`; the service worker is only registered on a production build, not during `bun run dev`.
+
 ## Stack
 
 React 19, TypeScript, Vite, MapLibre GL JS, Tailwind CSS v4, Lucide, Capacitor.
