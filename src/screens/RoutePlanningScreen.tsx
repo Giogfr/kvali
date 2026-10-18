@@ -93,6 +93,10 @@ export const RoutePlanningScreen: React.FC = () => {
     }
   };
 
+  const fieldClass =
+    'flex items-center justify-between px-3 rounded-lg bg-white dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700/80 text-[12px]';
+  const panel = 'rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40';
+
   return (
     <div
       className={`w-full h-full flex flex-col transition-colors ${
@@ -106,20 +110,20 @@ export const RoutePlanningScreen: React.FC = () => {
       />
 
       {/* Origin, Destination & Swap Block */}
-      <div className="p-3.5 border-b border-neutral-800/60 bg-neutral-900/30">
+      <div className="p-3.5 border-b border-neutral-200 dark:border-neutral-800/60 bg-neutral-50 dark:bg-neutral-900/30">
         <div className="flex items-center gap-2">
           {/* Timeline dots line */}
           <div className="flex flex-col items-center justify-between py-2 shrink-0">
             <div className="w-2.5 h-2.5 rounded-full bg-[#2F6FEB] border-2 border-white" />
-            <div className="w-0.5 h-7 bg-neutral-600 my-1 border-dashed" />
+            <div className="w-0.5 h-7 bg-neutral-400 dark:bg-neutral-600 my-1 border-dashed" />
             <div className="w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white" />
           </div>
 
           {/* Fields */}
           <div className="flex-1 space-y-2">
             {/* Origin */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-800/80 border border-neutral-700/80 text-[12px]">
-              <span className="truncate text-neutral-300 font-medium">
+            <div className={`${fieldClass} py-2`}>
+              <span className="truncate text-neutral-700 dark:text-neutral-300 font-medium">
                 {originCoords.name}
               </span>
               <span className="text-[10px] text-neutral-500 shrink-0 font-mono">
@@ -131,14 +135,14 @@ export const RoutePlanningScreen: React.FC = () => {
             {intermediateStops.map((stop, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-neutral-800/60 border border-neutral-700/50 text-[11px]"
+                className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-300 dark:border-neutral-700/50 text-[11px]"
               >
-                <span className="truncate text-neutral-400">
+                <span className="truncate text-neutral-500 dark:text-neutral-400">
                   Via: {'name' in stop ? stop.name : t('droppedPin')}
                 </span>
                 <button
                   onClick={() => removeIntermediateStop(idx)}
-                  className="text-neutral-500 hover:text-red-400"
+                  className="text-neutral-500 hover:text-red-500"
                   aria-label={t('removeStop')}
                 >
                   <Trash2 size={13} />
@@ -147,8 +151,8 @@ export const RoutePlanningScreen: React.FC = () => {
             ))}
 
             {/* Destination */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-800/80 border border-neutral-700/80 text-[12px]">
-              <span className="truncate text-white font-medium">
+            <div className={`${fieldClass} py-2`}>
+              <span className="truncate text-neutral-900 dark:text-white font-medium">
                 {destCoords.name}
               </span>
               <span className="text-[10px] text-neutral-500 shrink-0 font-mono">
@@ -160,7 +164,7 @@ export const RoutePlanningScreen: React.FC = () => {
           {/* Swap Button */}
           <button
             onClick={handleSwap}
-            className="p-2.5 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors shrink-0"
+            className="p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white transition-colors shrink-0"
             aria-label={t('swapPoints')}
             title={t('swapPoints')}
           >
@@ -171,7 +175,7 @@ export const RoutePlanningScreen: React.FC = () => {
       </div>
 
       {/* Travel Modes (Car, Walk, Cycle) */}
-      <div className="px-3.5 py-2.5 border-b border-neutral-800/40 flex items-center justify-around gap-2 bg-neutral-900/10">
+      <div className="px-3.5 py-2.5 border-b border-neutral-200 dark:border-neutral-800/40 flex items-center justify-around gap-2">
         {(
           [
             { id: 'car', label: t('car'), icon: Car },
@@ -189,7 +193,7 @@ export const RoutePlanningScreen: React.FC = () => {
               className={`flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-2 text-[12px] font-medium border transition-all ${
                 isSelected
                   ? 'bg-[#2F6FEB] border-[#2F6FEB] text-white shadow-sm'
-                  : 'bg-neutral-800/60 border-neutral-700/60 text-neutral-400 hover:text-white'
+                  : 'bg-neutral-100 dark:bg-neutral-800/60 border-neutral-300 dark:border-neutral-700/60 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
               }`}
             >
               <Icon size={16} />
@@ -203,14 +207,14 @@ export const RoutePlanningScreen: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4">
         {/* Route Alternatives */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2">
+          <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold block mb-2">
             {t('routesTitle')}
           </span>
 
           {isCalculatingRoute && alternatives.length === 0 && (
             <div className="space-y-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="p-3 rounded-xl border border-neutral-800 bg-neutral-900/40">
+                <div key={i} className={`p-3 ${panel}`}>
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
                       <div className="skeleton h-3.5 w-28" />
@@ -223,12 +227,12 @@ export const RoutePlanningScreen: React.FC = () => {
                   </div>
                 </div>
               ))}
-              <div className="text-[12px] text-neutral-400 py-1">{t('calculatingRoutes')}</div>
+              <div className="text-[12px] text-neutral-500 dark:text-neutral-400 py-1">{t('calculatingRoutes')}</div>
             </div>
           )}
 
           {routeError && alternatives.length === 0 && (
-            <div className="text-[12px] text-red-400 py-2">{routeError}</div>
+            <div className="text-[12px] text-red-500 py-2">{routeError}</div>
           )}
 
           {alternatives.length > 0 && !alternatives[0].isRealService && (
@@ -249,8 +253,8 @@ export const RoutePlanningScreen: React.FC = () => {
                   onClick={() => setSelectedRouteAlternative(alt)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-[#2F6FEB]/10 border-[#2F6FEB] text-white'
-                      : 'bg-neutral-800/40 border-neutral-800 hover:border-neutral-700 text-neutral-300'
+                      ? 'bg-[#2F6FEB]/10 border-[#2F6FEB] text-neutral-900 dark:text-white'
+                      : 'bg-white dark:bg-neutral-800/40 border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -265,7 +269,7 @@ export const RoutePlanningScreen: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-neutral-400 mt-0.5">
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                         {language === 'ka' ? alt.viaKa : alt.via}
                       </p>
                     </div>
@@ -274,15 +278,15 @@ export const RoutePlanningScreen: React.FC = () => {
                       <span className="text-[16px] font-bold tabular-nums text-[#2F6FEB]">
                         {alt.durationMinutes} min
                       </span>
-                      <span className="text-[11px] text-neutral-400 block tabular-nums">
+                      <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block tabular-nums">
                         {distStr}
                       </span>
                     </div>
                   </div>
 
-                  <div className="mt-2 pt-1.5 border-t border-neutral-800/60 text-[10px] text-neutral-400 flex items-center justify-between">
+                  <div className="mt-2 pt-1.5 border-t border-neutral-200 dark:border-neutral-800/60 text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
                     <span>{language === 'ka' ? alt.preferenceNoteKa : alt.preferenceNote}</span>
-                    <span className={`font-mono ${alt.isRealService ? 'text-emerald-400' : 'text-[#C9973F]'}`}>
+                    <span className={`font-mono ${alt.isRealService ? 'text-emerald-500 dark:text-emerald-400' : 'text-[#C9973F]'}`}>
                       {alt.isRealService ? 'OSRM' : t('approximateRoute')}
                     </span>
                   </div>
@@ -293,16 +297,16 @@ export const RoutePlanningScreen: React.FC = () => {
         </div>
 
         {/* Route Preferences Switches */}
-        <div className="p-3 rounded-xl border border-neutral-800 bg-neutral-900/40 space-y-3">
-          <div className="flex items-center gap-2 pb-1 border-b border-neutral-800">
-            <Sliders size={15} className="text-neutral-400" />
-            <span className="text-[12px] font-semibold text-neutral-300">
+        <div className={`p-3 ${panel} space-y-3`}>
+          <div className="flex items-center gap-2 pb-1 border-b border-neutral-200 dark:border-neutral-800">
+            <Sliders size={15} className="text-neutral-500 dark:text-neutral-400" />
+            <span className="text-[12px] font-semibold text-neutral-700 dark:text-neutral-300">
               {t('routePreferences')}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-neutral-300">{t('avoidTolls')}</span>
+            <span className="text-[12px] text-neutral-700 dark:text-neutral-300">{t('avoidTolls')}</span>
             <ToggleSwitch
               checked={routePreferences.avoidTolls}
               onChange={(c) => setRoutePreferences((p) => ({ ...p, avoidTolls: c }))}
@@ -311,7 +315,7 @@ export const RoutePlanningScreen: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-neutral-300">{t('avoidHighways')}</span>
+            <span className="text-[12px] text-neutral-700 dark:text-neutral-300">{t('avoidHighways')}</span>
             <ToggleSwitch
               checked={routePreferences.avoidHighways}
               onChange={(c) => setRoutePreferences((p) => ({ ...p, avoidHighways: c }))}
@@ -320,7 +324,7 @@ export const RoutePlanningScreen: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-neutral-300">{t('avoidUnpaved')}</span>
+            <span className="text-[12px] text-neutral-700 dark:text-neutral-300">{t('avoidUnpaved')}</span>
             <ToggleSwitch
               checked={routePreferences.avoidUnpaved}
               onChange={(c) => setRoutePreferences((p) => ({ ...p, avoidUnpaved: c }))}
@@ -330,14 +334,14 @@ export const RoutePlanningScreen: React.FC = () => {
         </div>
 
         {/* Disclaimer Notice */}
-        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-400 leading-relaxed">
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
           <AlertTriangle size={15} className="text-[#C9973F] shrink-0 mt-0.5" />
           <span>{t('routeDisclaimer')}</span>
         </div>
       </div>
 
       {/* Bottom Start Navigation CTA */}
-      <div className="p-3.5 border-t border-neutral-800 shrink-0 bg-neutral-900/60">
+      <div className="p-3.5 border-t border-neutral-200 dark:border-neutral-800 shrink-0 bg-white dark:bg-neutral-900/60">
         <button
           onClick={handleStart}
           disabled={!selectedRouteAlternative}
