@@ -175,7 +175,7 @@ export const OfflineMapsScreen: React.FC = () => {
 
           <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
             <div
-              className="h-full bg-[#2F6FEB] rounded-full transition-all duration-300"
+              className="h-full bg-[#2F6FEB] rounded-full kvali-bar"
               style={{ width: `${storageSupported ? Math.max(2, usedPercent) : 0}%` }}
             />
           </div>
@@ -359,7 +359,7 @@ export const OfflineMapsScreen: React.FC = () => {
                   {isDownloading && (
                     <div className="w-full h-1.5 rounded-full bg-neutral-800 overflow-hidden mt-2.5">
                       <div
-                        className="h-full bg-[#2F6FEB] rounded-full transition-all duration-300"
+                        className="h-full bg-[#2F6FEB] rounded-full kvali-bar shimmer"
                         style={{ width: `${region.downloadProgress}%` }}
                       />
                     </div>
