@@ -206,9 +206,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // About
     aboutTitle: 'About Kvali',
     aboutVersion: 'Prototype Version 0.9.4-alpha',
-    aboutDesc: 'Kvali (კვალი — "track/trace") is an open-source navigation prototype for Georgia.',
-    mapDataAttribution: 'Map data © OpenStreetMap contributors. Vector tile rendering powered by OpenFreeMap & MapLibre GL JS.',
-    knownLimitations: 'Route paths and camera locations are simulated; map downloads simulate storage without caching real GIS data.',
+    aboutDesc: 'Kvali (კვალი — "track/trace") is an open-source navigation app for Georgia, built on OpenStreetMap data.',
+    mapDataAttribution: 'Map data © OpenStreetMap contributors. Vector tiles by OpenFreeMap, rendering with MapLibre GL JS, search and geocoding by Nominatim, routing by OSRM, places by the Overpass API.',
+    knownLimitations: 'Routing, search and nearby places need a network connection. Camera and hazard markers are demonstration data; reports you add stay on this device. Voice quality depends on the device speech engine.',
 
     // Dialogs & Toasts
     close: 'Close',
@@ -420,9 +420,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // About
     aboutTitle: 'კვალის შესახებ',
     aboutVersion: 'ვერსია 0.9.4-alpha',
-    aboutDesc: 'კვალი არის ღია კოდის სანავიგაციო პროტოტიპი, შექმნილი საქართველოსთვის.',
-    mapDataAttribution: 'რუკის მონაცემები © OpenStreetMap contributors. ვექტორული რენდერი OpenFreeMap & MapLibre GL JS.',
-    knownLimitations: 'მარშრუტები და რადარები წარმოადგენს სიმულაციას; რუკების ჩამოტვირთვა სიმულირებს მეხსიერებას რეალური GIS მონაცემების შენახვის გარეშე.',
+    aboutDesc: 'კვალი არის ღია კოდის სანავიგაციო აპლიკაცია საქართველოსთვის, შექმნილი OpenStreetMap-ის მონაცემებზე.',
+    mapDataAttribution: 'რუკის მონაცემები © OpenStreetMap contributors. ვექტორული ტაილები OpenFreeMap, რენდერი MapLibre GL JS, ძიება Nominatim, მარშრუტიზაცია OSRM, ობიექტები Overpass API.',
+    knownLimitations: 'მარშრუტიზაციას, ძიებასა და ახლომდებარე ობიექტებს სჭირდება კავშირი. კამერებისა და საფრთხის ნიშნები დემო მონაცემებია; თქვენი შეტყობინებები რჩება ამ მოწყობილობაზე. ხმის ხარისხი დამოკიდებულია მოწყობილობის სინთეზატორზე.',
 
     // Dialogs & Toasts
     close: 'დახურვა',

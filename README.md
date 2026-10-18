@@ -7,19 +7,25 @@ Maps come from OpenStreetMap vector tiles rendered with MapLibre GL, search and 
 ## Features
 
 - Live GPS positioning — native location on Android, browser geolocation on the web
-- Map view with layer toggles and speed-limit / point-of-interest overlays
-- Place search with reverse geocoding, saved places and collections
-- Route planning for car, walking and cycling, with alternatives and waypoints
-- Recorded tracks, plus units, theme and language settings
+- Map view rendered with MapLibre GL, with layer toggles and point-of-interest overlays
+- Place search backed by OpenStreetMap Nominatim, plus a small built-in Georgian catalogue
+- Route planning for car, walking and cycling, with alternatives and waypoints (OSRM)
+- Turn-by-turn navigation driven by your GPS fix, with spoken or chime guidance
+- Offline map areas that cache real map tiles on the device
+- Nearby points of interest loaded from OpenStreetMap (Overpass)
+- Road alerts screen where you can drop your own hazard reports on the map
+- Recorded tracks, saved places, and units / theme / language settings
 
 ## Project status
 
-Kvali is a work in progress and not ready for real driving yet. The following parts are still simulated or missing:
+Kvali is a work in progress and not ready for real driving yet. Some things to be aware of:
 
-- Active navigation shows a maneuver banner and a countdown, but it advances on a fixed timer instead of tracking your position along the route.
-- Offline map downloads aren't implemented — the Offline Maps screen is interface only.
-- Road alerts and speed cameras use placeholder data.
-- When OSRM can't be reached (for example with no network), routing falls back to a straight-line estimate.
+- Routing, search and point-of-interest lookup need a network connection. Offline areas keep the map itself rendering, not the routing.
+- The camera and hazard markers that ship with the app are demonstration data, not verified enforcement locations. Reports you add are stored only on your device.
+- Map detail and coverage for Georgia come from OpenStreetMap and are only as good as the underlying community data.
+- Voice guidance uses the platform speech synthesiser, so the available voices depend on the device.
+
+The app has only been built, not field-tested — treat it as a development preview.
 
 ## Stack
 

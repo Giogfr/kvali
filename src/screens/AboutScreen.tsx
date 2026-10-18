@@ -81,7 +81,9 @@ export const AboutScreen: React.FC = () => {
               <span>Client-Side Local Storage Only</span>
             </div>
             <p className="text-neutral-400">
-              Kvali stores your bookmarks, preferences, and custom collections directly inside your browser’s localStorage. No telemetry, third-party user identifiers, or advertising SDKs exist in the codebase.
+              Kvali keeps your bookmarks, preferences and road reports inside your browser's local
+              storage, and caches map tiles on the device for offline use. There is no telemetry,
+              no third-party user identifiers and no advertising SDK in the codebase.
             </p>
           </div>
         </div>
@@ -89,13 +91,13 @@ export const AboutScreen: React.FC = () => {
         {/* Known Limitations */}
         <div>
           <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            Known Prototype Boundaries
+            Good to know
           </span>
 
           <div className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/40 text-[11px] space-y-1 text-neutral-400 leading-relaxed">
             <div className="flex items-center gap-1.5 text-[#C9973F] font-medium">
               <AlertTriangle size={14} />
-              <span>Simulated Data Notice</span>
+              <span>Data & coverage</span>
             </div>
             <p>{t('knownLimitations')}</p>
           </div>
