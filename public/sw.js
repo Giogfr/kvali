@@ -8,7 +8,6 @@ const ASSET_CACHE = `kvali-assets-${VERSION}`;
 
 const MAP_HOSTS = [
   'tiles.openfreemap.org',
-  'demotiles.maplibre.org',
   'fonts.openfreemap.org',
 ];
 

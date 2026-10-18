@@ -5,7 +5,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // App & Branding
     appName: 'Kvali',
     appTagline: 'Georgia, mapped your way.',
-    demoData: 'Demo data',
 
     // Bottom Navigation
     navMap: 'Map',
@@ -35,7 +34,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     tryAnotherSearch: 'Try searching for cathedral, canyon, fuel, or Kutaisi.',
     searching: 'Searching…',
     searchUnavailable: 'Could not reach the search service. Check your connection.',
-    demoCatalogNote: 'Displaying seeded demo places across Georgia.',
+    nearbyPlaces: 'Nearby places',
+    noNearbyPlaces: 'No nearby places found here yet.',
 
     // Categories
     cat_fuel: 'Fuel',
@@ -53,6 +53,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Route Planning
     routePlanningTitle: 'Route Planning',
+    chooseOrigin: 'Set origin',
+    chooseDestination: 'Set destination',
     addStop: 'Add intermediate stop',
     removeStop: 'Remove stop',
     swapPoints: 'Swap origin and destination',
@@ -85,7 +87,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     enableSound: 'Sound alerts',
     soundDisclaimer: 'Browser audio synthesized chime preview.',
     testChime: 'Play audio test',
-    sourceLegend: 'Camera and hazard markers here are simulated demonstration data. Reports you add are stored only on this device.',
+    sourceLegend: 'Road alerts shown here are reports you add yourself. They are stored only on this device and are never uploaded.',
     alertCategoriesTitle: 'Monitored Categories',
     reportTitle: 'Report a hazard',
     reportNotePlaceholder: 'Optional note (e.g. pothole, queue)',
@@ -95,6 +97,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     locationRequired: 'Location needed to report',
     reportHint: 'Your report is saved on this device only and is never uploaded.',
     myReports: 'Your reports',
+    noAlertsYet: 'No road reports yet.',
     fixedSpeedCamera: 'Fixed speed cameras',
     averageSpeedZone: 'Average-speed camera zones',
     redLightCamera: 'Red-light cameras',
@@ -115,7 +118,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     pause: 'Pause',
     resume: 'Resume',
     remove: 'Remove',
-    regionsTitle: 'Regions in Georgia',
+    regionsTitle: 'Saved offline areas',
+    offlineAreaAdded: 'Area added. Tap Download to save its tiles.',
     estimate: 'est.',
     downloadedOn: 'Saved',
     downloadComplete: 'Offline area saved',
@@ -127,8 +131,12 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     offlineStorageNotice: 'Downloaded areas store real map tiles in this device\'s storage so the map keeps rendering without a connection. Search and turn-by-turn routing still need a network connection.',
     offlineMapsTitle: 'Offline Maps',
     storageUsage: 'Storage usage',
-    airplaneMode: 'Simulated Offline Mode',
-    airplaneModeDesc: 'Disconnects vector tile queries to test fallback offline map rendering.',
+    noOfflineAreas: 'No offline areas saved yet.',
+    downloadCurrentArea: 'Save area around me',
+    currentArea: 'Area around my location',
+    locationNeededForOffline: 'Turn on location to save the area around you.',
+    airplaneMode: 'Offline-only rendering',
+    airplaneModeDesc: 'Stops requesting vector tiles so you can check how the map behaves without a connection.',
     download: 'Download',
     downloading: 'Downloading…',
     downloaded: 'Downloaded',
@@ -162,7 +170,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     layerSaved: 'Saved place markers',
     layerTracks: 'Recorded track paths',
     terrainNoticeTitle: '3D Terrain Elevation',
-    terrainNoticeUnavailable: 'Terrain raster tiles require specialized global DEM source. Currently unavailable in demo.',
+    terrainNoticeUnavailable: 'Terrain elevation tiles are not available in this build.',
 
     // Settings
     settingsTitle: 'Settings',
@@ -209,7 +217,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     aboutVersion: 'Prototype Version 0.9.4-alpha',
     aboutDesc: 'Kvali (კვალი — "track/trace") is an open-source navigation app for Georgia, built on OpenStreetMap data.',
     mapDataAttribution: 'Map data © OpenStreetMap contributors. Vector tiles by OpenFreeMap, rendering with MapLibre GL JS, search and geocoding by Nominatim, routing by OSRM, places by the Overpass API.',
-    knownLimitations: 'Routing, search and nearby places need a network connection. Camera and hazard markers are demonstration data; reports you add stay on this device. Voice quality depends on the device speech engine.',
+    knownLimitations: 'Routing, search and nearby places need a network connection. Road alerts are reports you add yourself and stay on this device. Voice quality depends on the device speech engine.',
 
     // Dialogs & Toasts
     close: 'Close',
@@ -220,7 +228,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // App & Branding
     appName: 'კვალი',
     appTagline: 'საქართველო, შენი გზით.',
-    demoData: 'დემო მონაცემი',
 
     // Bottom Navigation
     navMap: 'რუკა',
@@ -250,7 +257,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     tryAnotherSearch: 'სცადეთ: ბაგრატი, კანიონი, ბენზინი, ბაზარი.',
     searching: 'ძიება…',
     searchUnavailable: 'ძიების სერვისი მიუწვდომელია. შეამოწმეთ კავშირი.',
-    demoCatalogNote: 'ნაჩვენებია საქართველოს დემო კატალოგი.',
+    nearbyPlaces: 'ახლომდებარე ობიექტები',
+    noNearbyPlaces: 'ახლომდებარე ობიექტები ჯერ არ არის.',
 
     // Categories
     cat_fuel: 'საწვავი',
@@ -268,6 +276,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Route Planning
     routePlanningTitle: 'მარშრუტის დაგეგმვა',
+    chooseOrigin: 'საწყისის არჩევა',
+    chooseDestination: 'დანიშნულების არჩევა',
     addStop: 'შუალედური წერტილის დამატება',
     removeStop: 'წერტილის წაშლა',
     swapPoints: 'საწყისისა და დანიშნულების შეცვლა',
@@ -300,7 +310,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     enableSound: 'ხმოვანი სიგნალი',
     soundDisclaimer: 'ბრაუზერის სინთეზირებული აუდიო სიგნალის ტესტირება.',
     testChime: 'ხმის შემოწმება',
-    sourceLegend: 'კამერებისა და საფრთხის ნიშნები დემო მონაცემებია. თქვენ მიერ დამატებული შეტყობინებები ინახება მხოლოდ ამ მოწყობილობაზე.',
+    sourceLegend: 'აქ ნაჩვენები საგზაო შეტყობინებები თქვენ მიერ დამატებულია. ინახება მხოლოდ ამ მოწყობილობაზე და არ იტვირთება.',
     alertCategoriesTitle: 'გაფრთხილების კატეგორიები',
     reportTitle: 'შეატყობინეთ საფრთხეს',
     reportNotePlaceholder: 'სურვილისამებრ შენიშვნა (მაგ. ორმო, რიგი)',
@@ -310,6 +320,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     locationRequired: 'საჭიროა მდებარეობა',
     reportHint: 'თქვენი შეტყობინება ინახება მხოლოდ ამ მოწყობილობაზე და არ იტვირთება.',
     myReports: 'თქვენი შეტყობინებები',
+    noAlertsYet: 'საგზაო შეტყობინებები ჯერ არ არის.',
     fixedSpeedCamera: 'ფიქსირებული რადარები',
     averageSpeedZone: 'საშუალო სიჩქარის ზონები',
     redLightCamera: 'შუქნიშნის კამერები',
@@ -330,7 +341,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     pause: 'პაუზა',
     resume: 'გაგრძელება',
     remove: 'წაშლა',
-    regionsTitle: 'რეგიონები საქართველოში',
+    regionsTitle: 'შენახული ოფლაინ არეალები',
+    offlineAreaAdded: 'არეალი დაემატა. ჩამოტვირთვისთვის დააჭირეთ Download-ს.',
     estimate: 'მიახლ.',
     downloadedOn: 'შენახულია',
     downloadComplete: 'ოფლაინ არეალი შენახულია',
@@ -342,8 +354,12 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     offlineStorageNotice: 'ჩამოტვირთული არეალები ინახავს ნამდვილ რუკის ტაილებს მოწყობილობაზე, რომ რუკა ინტერნეტის გარეშე მუშაობდეს. ძიებასა და მარშრუტიზაციას კვლავ სჭირდება კავშირი.',
     offlineMapsTitle: 'ოფლაინ რუკები',
     storageUsage: 'მეხსიერების გამოყენება',
-    airplaneMode: 'სიმულირებული ოფლაინ რეჟიმი',
-    airplaneModeDesc: 'თიშავს გარე რუკის სერვერს ოფლაინ რენდერის შესამოწმებლად.',
+    noOfflineAreas: 'ოფლაინ არეალები ჯერ არ არის.',
+    downloadCurrentArea: 'ჩემ გარშემო არეალის შენახვა',
+    currentArea: 'ჩემი მდებარეობის არეალი',
+    locationNeededForOffline: 'ჩართეთ მდებარეობა გარშემო არეალის შესანახად.',
+    airplaneMode: 'მხოლოდ ოფლაინ რენდერი',
+    airplaneModeDesc: 'თიშავს ვექტორული ტაილების მოთხოვნას, რომ შეამოწმოთ რუკის ქცევა კავშირის გარეშე.',
     download: 'ჩამოტვირთვა',
     downloading: 'იტვირთება…',
     downloaded: 'ჩამოტვირთულია',
@@ -377,7 +393,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     layerSaved: 'შენახული წერტილები',
     layerTracks: 'ჩაწერილი ბილიკები',
     terrainNoticeTitle: '3D რელიეფის სიმაღლეები',
-    terrainNoticeUnavailable: 'რელიეფის ფენა მოითხოვს გლობალურ DEM სერვერს. დემოში მიუწვდომელია.',
+    terrainNoticeUnavailable: 'რელიეფის სიმაღლეების ფენა ამ ვერსიაში მიუწვდომელია.',
 
     // Settings
     settingsTitle: 'პარამეტრები',
@@ -424,7 +440,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     aboutVersion: 'ვერსია 0.9.4-alpha',
     aboutDesc: 'კვალი არის ღია კოდის სანავიგაციო აპლიკაცია საქართველოსთვის, შექმნილი OpenStreetMap-ის მონაცემებზე.',
     mapDataAttribution: 'რუკის მონაცემები © OpenStreetMap contributors. ვექტორული ტაილები OpenFreeMap, რენდერი MapLibre GL JS, ძიება Nominatim, მარშრუტიზაცია OSRM, ობიექტები Overpass API.',
-    knownLimitations: 'მარშრუტიზაციას, ძიებასა და ახლომდებარე ობიექტებს სჭირდება კავშირი. კამერებისა და საფრთხის ნიშნები დემო მონაცემებია; თქვენი შეტყობინებები რჩება ამ მოწყობილობაზე. ხმის ხარისხი დამოკიდებულია მოწყობილობის სინთეზატორზე.',
+    knownLimitations: 'მარშრუტიზაციას, ძიებასა და ახლომდებარე ობიექტებს სჭირდება კავშირი. საგზაო შეტყობინებები თქვენ მიერ დამატებულია და რჩება ამ მოწყობილობაზე. ხმის ხარისხი დამოკიდებულია მოწყობილობის სინთეზატორზე.',
 
     // Dialogs & Toasts
     close: 'დახურვა',

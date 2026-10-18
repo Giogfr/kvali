@@ -20,10 +20,6 @@ import {
   UserLocation,
   VoiceMode,
 } from '../types';
-import { SEED_PLACES } from '../data/seedPlaces';
-import { SEED_ALERTS } from '../data/seedAlerts';
-import { SEED_REGIONS } from '../data/seedRegions';
-import { SEED_TRACKS } from '../data/seedTracks';
 import { TRANSLATIONS } from '../lib/translations';
 import { fetchOsrmRoute, fetchOverpassPois, reverseGeocodeNominatim } from '../lib/services';
 import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
@@ -78,7 +74,7 @@ interface AppContextType {
   // Real Geolocation
   userLocation: UserLocation | null;
   geolocationStatus: GeolocationStatus;
-  requestUserLocation: () => Promise<boolean>;
+  requestUserLocation: () => Promise<{ latitude: number; longitude: number } | null>;
   effectiveCenter: { latitude: number; longitude: number };
 
   // Places, Map Pins & Search
@@ -138,6 +134,8 @@ interface AppContextType {
   toggleLayer: (layer: keyof LayerVisibility) => void;
   offlineRegions: OfflineRegion[];
   patchRegion: (id: string, patch: Partial<OfflineRegion>) => void;
+  addRegion: (region: OfflineRegion) => void;
+  removeRegion: (id: string) => void;
   airplaneOfflineMode: boolean;
   setAirplaneOfflineMode: (offline: boolean) => void;
 
@@ -193,29 +191,6 @@ const DEFAULT_LAYERS: LayerVisibility = {
   recordedTracks: true,
   terrainNotice: false,
 };
-
-const INITIAL_SAVED_PLACES: SavedPlace[] = [
-  {
-    id: 'saved-bagrati',
-    name: 'Bagrati Cathedral',
-    collection: 'Favorites',
-    latitude: 42.2772,
-    longitude: 42.7042,
-    category: 'attractions',
-    note: 'Panoramic overlook of Kutaisi at sunset.',
-    createdAt: Date.now() - 86400000 * 2,
-  },
-  {
-    id: 'saved-fountain',
-    name: 'Colchis Fountain',
-    collection: 'Favorites',
-    latitude: 42.2679,
-    longitude: 42.7001,
-    category: 'attractions',
-    note: 'Central meeting point.',
-    createdAt: Date.now() - 86400000 * 5,
-  },
-];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation & Screens
@@ -320,28 +295,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [recenterTrigger, setRecenterTrigger] = useState<number>(0);
 
-  // Places, Pins & Search
-  const [seedPlaces] = useState<Place[]>(SEED_PLACES);
+  // Places from OpenStreetMap around the current area, plus dropped pins.
   const [nearbyPois, setNearbyPois] = useState<Place[]>([]);
-  const places = useMemo<Place[]>(() => [...seedPlaces, ...nearbyPois], [seedPlaces, nearbyPois]);
+  const places = nearbyPois;
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [temporaryPin, setTemporaryPin] = useState<TemporaryPin | null>(null);
 
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('kvali_recent_searches');
-      return saved ? JSON.parse(saved) : ['Colchis Fountain', 'Bagrati', 'Gelati Monastery'];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['Colchis Fountain', 'Bagrati', 'Gelati Monastery'];
+      return [];
     }
   });
 
   // Route Planning State
-  const [routeOrigin, setRouteOrigin] = useState<{ name: string; latitude: number; longitude: number } | null>({
-    name: 'Kutaisi Center',
-    latitude: 42.2679,
-    longitude: 42.6946,
-  });
+  const [routeOrigin, setRouteOrigin] = useState<{ name: string; latitude: number; longitude: number } | null>(null);
   const [routeDestination, setRouteDestination] = useState<Place | TemporaryPin | null>(null);
   const [intermediateStops, setIntermediateStops] = useState<(Place | TemporaryPin)[]>([]);
   const [routeAlternatives, setRouteAlternatives] = useState<RouteAlternative[]>([]);
@@ -353,10 +323,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [roadAlerts, setRoadAlerts] = useState<RoadAlert[]>(() => {
     try {
       const saved = localStorage.getItem('kvali_road_reports');
-      const mine: RoadAlert[] = saved ? JSON.parse(saved) : [];
-      return [...mine, ...SEED_ALERTS];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return SEED_ALERTS;
+      return [];
     }
   });
   const [enabledAlertCategories, setEnabledAlertCategories] = useState<Record<AlertCategory, boolean>>(() => {
@@ -404,9 +373,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [offlineRegions, setOfflineRegions] = useState<OfflineRegion[]>(() => {
     try {
       const saved = localStorage.getItem('kvali_offline_regions');
-      return saved ? JSON.parse(saved) : SEED_REGIONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return SEED_REGIONS;
+      return [];
     }
   });
   const [airplaneOfflineMode, setAirplaneOfflineModeState] = useState<boolean>(() => {
@@ -422,9 +391,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(() => {
     try {
       const saved = localStorage.getItem('kvali_saved_places');
-      return saved ? JSON.parse(saved) : INITIAL_SAVED_PLACES;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_SAVED_PLACES;
+      return [];
     }
   });
   const [collections, setCollections] = useState<string[]>(() => {
@@ -440,9 +409,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [recordedTracks, setRecordedTracks] = useState<RecordedTrack[]>(() => {
     try {
       const saved = localStorage.getItem('kvali_tracks');
-      return saved ? JSON.parse(saved) : SEED_TRACKS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return SEED_TRACKS;
+      return [];
     }
   });
 
@@ -478,8 +447,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [theme]);
 
   // Request the device location (native plugin on Android, browser API on web)
-  const requestUserLocation = useCallback(async (): Promise<boolean> => {
-    if (geolocationStatus === 'requesting') return false;
+  const requestUserLocation = useCallback(async (): Promise<{ latitude: number; longitude: number } | null> => {
+    if (geolocationStatus === 'requesting') return null;
     setGeolocationStatus('requesting');
     try {
       const loc = await getCurrentLocation();
@@ -491,14 +460,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       setGeolocationStatus('granted');
       setRecenterTrigger((p) => p + 1);
-      return true;
+      return { latitude: loc.latitude, longitude: loc.longitude };
     } catch (err) {
       if (err instanceof LocationError && err.kind === 'denied') {
         setGeolocationStatus('denied');
       } else {
         setGeolocationStatus('unavailable');
       }
-      return false;
+      return null;
     }
   }, [geolocationStatus]);
 
@@ -557,7 +526,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           description: poi.address || 'OpenStreetMap place',
           descriptionKa: poi.address || 'OpenStreetMap-ის ობიექტი',
           aliases: [],
-          demo: false,
           address: poi.address,
         }));
         setNearbyPois(mapped);
@@ -618,8 +586,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         distanceKm: dist,
         durationMinutes: elapsedMinutes,
         avgSpeedKmh: avgSpeed,
-        coordinates: points.length > 0 ? points : [[42.6946, 42.2679]],
-        demo: false,
+        coordinates: points,
       };
 
       setRecordedTracks((prev) => [newTrack, ...prev]);
@@ -844,7 +811,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       warningDistanceMeters: 300,
       source: 'user',
       lastUpdatedText: new Date().toLocaleString(),
-      demo: false,
       description: input.description?.trim() || 'Reported by you',
       descriptionKa: input.description?.trim() || 'თქვენ მიერ მოხსენებული',
     };
@@ -971,9 +937,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const patchRegion = (id: string, patch: Partial<OfflineRegion>) => {
-    setOfflineRegions((prev) =>
-      prev.map((reg) => (reg.id === id ? { ...reg, ...patch } : reg))
-    );
+    setOfflineRegions((prev) => {
+      const next = prev.map((reg) => (reg.id === id ? { ...reg, ...patch } : reg));
+      try {
+        localStorage.setItem('kvali_offline_regions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const addRegion = (region: OfflineRegion) => {
+    setOfflineRegions((prev) => {
+      const next = [...prev, region];
+      try {
+        localStorage.setItem('kvali_offline_regions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const removeRegion = (id: string) => {
+    setOfflineRegions((prev) => {
+      const next = prev.filter((reg) => reg.id !== id);
+      try {
+        localStorage.setItem('kvali_offline_regions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   // Trip Tools
@@ -1162,12 +1152,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       localStorage.clear();
     } catch {}
-    setSavedPlaces(INITIAL_SAVED_PLACES);
+    setSavedPlaces([]);
     setCollections(['Favorites', 'Home', 'Work']);
-    setOfflineRegions(SEED_REGIONS);
-    setRecordedTracks(SEED_TRACKS);
-    setRoadAlerts(SEED_ALERTS);
-    setRecentSearches(['Colchis Fountain', 'Bagrati', 'Gelati Monastery']);
+    setOfflineRegions([]);
+    setRecordedTracks([]);
+    setRoadAlerts([]);
+    setRecentSearches([]);
     setEnabledAlertCategories(DEFAULT_ALERT_CATEGORIES);
     setLayers(DEFAULT_LAYERS);
     setUnitsState('metric');
@@ -1248,6 +1238,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleLayer,
         offlineRegions,
         patchRegion,
+        addRegion,
+        removeRegion,
         airplaneOfflineMode,
         setAirplaneOfflineMode,
         savedPlaces,

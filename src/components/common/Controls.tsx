@@ -73,12 +73,6 @@ export const CustomSlider: React.FC<CustomSliderProps> = ({
   );
 };
 
-export const DemoChip: React.FC<{ label?: string }> = ({ label = 'Demo data' }) => (
-  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium tracking-tight bg-neutral-200/80 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-300/50 dark:border-neutral-700/50">
-    {label}
-  </span>
-);
-
 export const NativeBadge: React.FC<{ label?: string }> = ({ label = 'Native feature' }) => (
   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium tracking-tight bg-amber-500/10 text-[#C9973F] border border-[#C9973F]/30">
     {label}

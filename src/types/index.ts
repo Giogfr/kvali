@@ -45,7 +45,6 @@ export interface Place {
   description: string;
   descriptionKa: string;
   aliases: string[];
-  demo: boolean;
   address?: string;
 }
 
@@ -74,9 +73,8 @@ export interface RoadAlert {
   roadNameKa: string;
   speedLimit?: number; // km/h
   warningDistanceMeters: number;
-  source: 'simulated' | 'mapped' | 'community' | 'unverified' | 'user';
+  source: 'mapped' | 'community' | 'unverified' | 'user';
   lastUpdatedText: string;
-  demo: boolean;
   description: string;
   descriptionKa: string;
 }
@@ -133,7 +131,6 @@ export interface RecordedTrack {
   durationMinutes: number;
   avgSpeedKmh: number;
   coordinates: [number, number][]; // [lng, lat]
-  demo: boolean;
 }
 
 export interface LayerVisibility {

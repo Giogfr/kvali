@@ -22,7 +22,7 @@
 
 Kvali is an open-source navigation app for Georgia. It is a React + TypeScript app that runs in the browser and on Android through Capacitor. Maps are OpenStreetMap vector tiles rendered with MapLibre GL; search and reverse geocoding come from Nominatim, routes from OSRM, and nearby points of interest from Overpass.
 
-> **Status: development preview (0.9.x).** Kvali is not ready for real driving yet. It has been built and tested in the browser and on an Android device, but not field-tested on the road. Please read [Project status](#project-status), [Demo data & simulated behaviour](#demo-data--simulated-behaviour), and [How to test](#how-to-test) before relying on it.
+> **Status: development preview (0.9.x).** Kvali is not ready for real driving yet. It has been built and tested in the browser and on an Android device, but not field-tested on the road. Please read [Project status](#project-status) and [How to test](#how-to-test) before relying on it.
 
 ## Table of contents
 
@@ -38,7 +38,6 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 - [Accessibility](#accessibility)
 - [Offline behaviour](#offline-behaviour)
 - [Data & attribution](#data--attribution)
-- [Demo data & simulated behaviour](#demo-data--simulated-behaviour)
 - [Android build](#android-build)
 - [Releases](#releases)
 - [How to test](#how-to-test)
@@ -50,17 +49,17 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 
 ### Maps & layers
 
-- MapLibre GL map with light (Positron) and dark styles from OpenFreeMap, plus a low-detail fallback style when tiles are unreachable.
+- MapLibre GL map with light (Positron) and dark styles from OpenFreeMap.
 - A schematic SVG fallback view for devices or browsers without WebGL.
 - Layer toggles for points of interest, speed/enforcement cameras, saved places, and recorded tracks.
-- Live location dot, recenter control, and tap-to-drop pins anywhere on the map.
+- Live location dot, recenter control, and long-press to drop pins anywhere on the map.
 
 ### Search & discovery
 
-- Place search over OpenStreetMap Nominatim with a 3-character debounce and cancellable requests, backed by a small bundled Georgian catalogue.
+- Place search over OpenStreetMap Nominatim with a 3-character debounce and cancellable requests.
 - Category shortcuts (fuel, parking, food, hotels, hospitals, ATMs, EV charging, viewpoints, pharmacies, groceries, attractions, hiking).
 - Nearby points of interest loaded from OpenStreetMap (Overpass) around the current area.
-- Reverse geocoding when you tap the map.
+- Reverse geocoding when you long-press the map.
 
 ### Routing & guidance
 
@@ -148,7 +147,6 @@ src/
 │  ├─ layout/    # PhoneShell (responsive frame), BottomNav
 │  └─ map/       # MapView (MapLibre), FallbackMap (SVG), PinCallout
 ├─ context/      # AppContext (app state), ToastContext
-├─ data/         # seedPlaces.ts, seedAlerts.ts, seedRegions.ts, seedTracks.ts
 ├─ lib/          # geo.ts, navigation.ts, services.ts, location.ts, offline.ts,
 │                # wakeLock.ts, translations.ts
 ├─ screens/      # One component per screen (lazy-loaded)
@@ -177,7 +175,7 @@ Everything cross-cutting lives in one `AppProvider` (`src/context/AppContext.tsx
 - **Localization** — `language` and the `t()` translator (English / Georgian).
 - **Preferences** — `theme`, `units`, `voiceMode`, `travelMode`, `routePreferences`.
 - **Location** — `userLocation`, `geolocationStatus`, `requestUserLocation`, continuous watch.
-- **Places** — the bundled catalogue plus nearby Overpass POIs; selected place and dropped pin.
+- **Places** — nearby Overpass POIs; selected place and dropped pin.
 - **Routing** — origin/destination/waypoints, OSRM alternatives, and active-navigation state.
 - **Alerts** — categories, distance/volume, your own reports.
 - **Offline** — regions and their download state.
@@ -189,7 +187,6 @@ Persisted to `localStorage`: theme, language, units, voice mode, travel mode, ro
 ## Customization
 
 - **Bilingual strings** — `src/lib/translations.ts` holds the `en` and `ka` dictionaries.
-- **Seed data** — `src/data/seedPlaces.ts`, `seedAlerts.ts`, `seedRegions.ts`, `seedTracks.ts`.
 - **Design tokens** — the CSS custom properties at the top of `src/index.css` drive colours for both themes; keyframe animations and utilities live below them.
 - **Native config** — `capacitor.config.ts` (app id `com.kvali.navigation`, name `Kvali`, web dir `dist`).
 - **Branding** — `public/logo.svg` and `public/favicon.svg` are the source logo; the Android launcher icon lives under `android/app/src/main/res/`.
@@ -222,15 +219,13 @@ Voice guidance uses the device speech synthesiser, so the available voices and l
 
 These are shared community services — keep to reasonable request rates if you run your own copy, and respect each service's usage policy.
 
-## Demo data & simulated behaviour
+## Data
 
-Kvali bundles some sample content so the screens are explorable. It is not verified data:
+Kvali ships with **no bundled sample or demonstration data**. Places, routes, and points of interest all come from live community services, and anything that cannot be fetched is shown as empty rather than faked:
 
-- The camera and hazard markers in `seedAlerts.ts` are **demonstration data**, not real enforcement locations.
-- The bundled place catalogue in `seedPlaces.ts` is a small hand-written sample; live results come from OpenStreetMap.
-- Offline regions in `seedRegions.ts` are start points for real tile downloads, not pre-baked tiles.
-- The bundled track history in `seedTracks.ts` is sample content.
-- Your own hazard reports and recorded tracks are stored **on this device only** and are never uploaded.
+- An empty map shows no markers until real results arrive.
+- Offline regions are areas you download yourself; nothing is pre-baked.
+- Your own hazard reports, saved places, and recorded tracks are stored **on this device only** and are never uploaded.
 
 ## Android build
 
@@ -263,7 +258,7 @@ The quickest loop is the web build, but native location, the screen wake lock, a
 
 1. `bun install`, then `bun run dev` and open http://localhost:3000.
 2. Allow the location prompt on the map screen. Without it the app falls back to a Kutaisi city centre and shows a "waiting for GPS" badge.
-3. Tap the search bar and type a town (for example `Batumi` or `Gori`). Results come from Nominatim; the bundled catalogue also matches locally.
+3. Tap the search bar and type a town (for example `Batumi` or `Gori`). Results come from Nominatim.
 4. Open a result's directions button, pick a route alternative, then **Start navigation**. Without a GPS fix the banner stays on the first instruction; with a fix the banner, remaining distance, and ETA update as you move.
 5. Switch **Settings → Distance units** to imperial and confirm speed, distance, and speed-limit values change to mph/mi.
 6. In **Settings → Voice guidance**, pick *Spoken*, *Chime*, or *Muted* and confirm guidance speaks, chimes, or stays silent.
@@ -287,8 +282,7 @@ To exercise location screens without moving, use your browser's sensor override 
 
 ## Troubleshooting
 
-- **Blank page / no map** — confirm the browser supports WebGL. Without it, Kvali falls back to a schematic SVG map; you can also force it from the map's "Switch to SVG Map" control.
-- **"Low-detail demo style" notice** — the OpenFreeMap style could not be fetched; the app drops to a lightweight demo style.
+- **Blank page / no map** — confirm the browser supports WebGL. Without it, Kvali falls back to a schematic SVG map that renders offline without tiles.
 - **Map worker error** — usually the MapLibre worker failed to load; it should fall back to the SVG map. Rebuilding (`bun run build`) normally fixes a stale worker asset.
 - **Stale map tiles or saved data** — state and tiles are cached. Clear site data / storage for the origin to reset, or use **Settings → Reset data**.
 - **Location never starts** — permission was denied; re-enable location for the site/app in system settings and reload.
