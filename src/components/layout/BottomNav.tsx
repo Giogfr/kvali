@@ -21,7 +21,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav
-      className={`h-[60px] px-2 flex items-center justify-around border-t shrink-0 z-30 transition-colors ${
+      className={`h-16 px-2 pb-[env(safe-area-inset-bottom)] flex items-stretch justify-around border-t shrink-0 z-30 transition-colors ${
         theme === 'dark'
           ? 'bg-[#181818]/95 border-neutral-800 text-neutral-400'
           : 'bg-white/95 border-neutral-200 text-neutral-500'
@@ -36,7 +36,7 @@ export const BottomNav: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => navigateTo(tab.id)}
-            className={`flex flex-col items-center justify-center w-16 py-1 transition-all ${
+            className={`relative flex flex-col items-center justify-center w-16 min-h-[48px] press ${
               isActive
                 ? theme === 'dark'
                   ? 'text-white font-medium'
@@ -44,7 +44,13 @@ export const BottomNav: React.FC = () => {
                 : 'hover:text-neutral-300 dark:hover:text-neutral-200'
             }`}
           >
-            <Icon size={20} className={isActive ? 'stroke-[2.2px]' : 'stroke-[1.7px]'} />
+            {isActive && (
+              <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#2F6FEB] animate-fade-in" />
+            )}
+            <Icon
+              size={20}
+              className={`transition-transform ${isActive ? 'stroke-[2.2px] -translate-y-0.5' : 'stroke-[1.7px]'}`}
+            />
             <span className="text-[10px] mt-0.5 tracking-tight">{tab.label}</span>
           </button>
         );

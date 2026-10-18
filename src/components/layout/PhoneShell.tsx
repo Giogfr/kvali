@@ -6,14 +6,14 @@ export const PhoneShell: React.FC<{ children: React.ReactNode }> = ({ children }
   const { airplaneOfflineMode, theme } = useApp();
 
   return (
-    <div className="w-full h-full min-h-screen flex items-center justify-center sm:p-3 select-none bg-[#0D0D0D]">
+    <div className="w-full h-full min-h-screen flex items-center justify-center select-none bg-[#0D0D0D] sm:portrait:p-3">
       <div
-        className={`w-full h-full sm:h-[min(844px,96vh)] sm:max-w-[400px] sm:rounded-[40px] overflow-hidden flex flex-col relative sm:shadow-[0_24px_64px_rgba(0,0,0,0.85)] sm:border-[8px] sm:border-[#222222] transition-colors ${
+        className={`w-full h-full overflow-hidden flex flex-col relative transition-colors sm:portrait:h-[min(844px,96vh)] sm:portrait:max-w-[400px] sm:portrait:rounded-[40px] sm:portrait:shadow-[0_24px_64px_rgba(0,0,0,0.85)] sm:portrait:border-[8px] sm:portrait:border-[#222222] ${
           theme === 'dark' ? 'bg-[#121212] text-white' : 'bg-[#F7F7F5] text-[#111111]'
         }`}
       >
         {airplaneOfflineMode && (
-          <div className="bg-[#C9973F] text-black px-3 py-1 text-[11px] font-semibold flex items-center gap-1.5 z-30 shrink-0">
+          <div className="bg-[#C9973F] text-black px-3 py-1 text-[11px] font-semibold flex items-center gap-1.5 z-30 shrink-0 safe-top">
             <WifiOff size={12} />
             <span>Offline map rendering</span>
           </div>
