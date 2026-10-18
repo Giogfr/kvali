@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   X,
@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
-import { DemoChip } from '../components/common/Controls';
 import { calculateDistanceKm, formatDistance } from '../lib/geo';
 import { searchNominatim, type GeocodeResult } from '../lib/services';
 import { Place, PlaceCategory } from '../types';
@@ -61,7 +60,7 @@ export const SearchScreen: React.FC = () => {
     { id: 'hiking', label: t('cat_hiking'), icon: Footprints },
   ];
 
-  // Live filter over the bundled catalog
+  // Live filter over nearby OpenStreetMap places
   const filteredPlaces = useMemo(() => {
     let list = places;
 
@@ -84,10 +83,14 @@ export const SearchScreen: React.FC = () => {
     });
   }, [places, query, selectedCategory]);
 
-  // Search OpenStreetMap (Nominatim) for places beyond the bundled catalog
+  // Search OpenStreetMap (Nominatim) for places beyond the nearby results
   const [remoteResults, setRemoteResults] = useState<GeocodeResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
+
+  // Keep the latest center in a ref so GPS fixes don't re-trigger the search.
+  const centerRef = useRef(effectiveCenter);
+  centerRef.current = effectiveCenter;
 
   useEffect(() => {
     const q = query.trim();
@@ -103,7 +106,7 @@ export const SearchScreen: React.FC = () => {
       setIsSearching(true);
       setSearchFailed(false);
       try {
-        const results = await searchNominatim(q, effectiveCenter, controller.signal);
+        const results = await searchNominatim(q, centerRef.current, controller.signal);
         setRemoteResults(results);
       } catch {
         if (!controller.signal.aborted) {
@@ -119,7 +122,7 @@ export const SearchScreen: React.FC = () => {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [query, effectiveCenter]);
+  }, [query]);
 
   const handleSelectPlace = (place: Place) => {
     addRecentSearch(place.name);
@@ -176,7 +179,7 @@ export const SearchScreen: React.FC = () => {
       <HeaderBar title={t('searchTitle')} onBack={() => navigateTo('map')} />
 
       {/* Search Input Box */}
-      <div className="p-3 border-b border-neutral-800/40">
+      <div className="p-3 border-b border-neutral-200 dark:border-neutral-800/40">
         <div
           className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors ${
             theme === 'dark'
@@ -196,7 +199,7 @@ export const SearchScreen: React.FC = () => {
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="p-1 text-neutral-400 hover:text-white"
+              className="p-1 text-neutral-400 hover:text-black dark:hover:text-white"
               aria-label="Clear search"
             >
               <X size={15} />
@@ -236,14 +239,13 @@ export const SearchScreen: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
         {hasQuery ? (
           <>
-            {/* Bundled catalog matches */}
+            {/* Nearby OpenStreetMap matches */}
             {filteredPlaces.length > 0 && (
               <div>
                 <div className="flex items-center justify-between py-1 text-[11px] text-neutral-500 font-medium">
                   <span>{filteredPlaces.length} locations found</span>
-                  <span className="text-[10px]">{t('demoCatalogNote')}</span>
                 </div>
-                <div className="divide-y divide-neutral-800/40 stagger">
+                <div className="divide-y divide-neutral-200 dark:divide-neutral-800/40 stagger">
                   {filteredPlaces.map((place) => {
                     const distKm = calculateDistanceKm(
                       effectiveCenter.latitude,
@@ -257,16 +259,15 @@ export const SearchScreen: React.FC = () => {
                       <div
                         key={place.id}
                         onClick={() => handleSelectPlace(place)}
-                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-800/30 cursor-pointer transition-colors group"
+                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800/30 cursor-pointer transition-colors group"
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-semibold truncate">
                               {language === 'ka' ? place.nameKa : place.name}
                             </span>
-                            <DemoChip label={t('demoData')} />
                           </div>
-                          <p className="text-[11px] text-neutral-400 truncate mt-0.5">
+                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
                             {language === 'ka' ? place.descriptionKa : place.description}
                           </p>
                           <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
@@ -322,7 +323,7 @@ export const SearchScreen: React.FC = () => {
                   </div>
                 )}
 
-                <div className="divide-y divide-neutral-800/40 stagger">
+                <div className="divide-y divide-neutral-200 dark:divide-neutral-800/40 stagger">
                   {remoteResults.map((result) => {
                     const distKm = calculateDistanceKm(
                       effectiveCenter.latitude,
@@ -336,13 +337,13 @@ export const SearchScreen: React.FC = () => {
                       <div
                         key={result.id}
                         onClick={() => handleSelectResult(result)}
-                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-800/30 cursor-pointer transition-colors group"
+                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800/30 cursor-pointer transition-colors group"
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <span className="text-[13px] font-semibold truncate block">
                             {result.name}
                           </span>
-                          <p className="text-[11px] text-neutral-400 truncate mt-0.5">
+                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
                             {result.displayName}
                           </p>
                           <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
@@ -376,7 +377,7 @@ export const SearchScreen: React.FC = () => {
 
             {/* Nothing came back */}
             {nothingFound && (
-              <div className="py-12 text-center text-neutral-400">
+              <div className="py-12 text-center text-neutral-500 dark:text-neutral-400">
                 <Search size={32} className="mx-auto mb-2 opacity-30" />
                 <h4 className="text-[14px] font-semibold">{t('noResultsFound')}</h4>
                 <p className="text-[12px] text-neutral-500 mt-1 max-w-[240px] mx-auto">
@@ -391,12 +392,12 @@ export const SearchScreen: React.FC = () => {
             {recentSearches.length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center justify-between py-1 mb-1">
-                  <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
+                  <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
                     {t('recentSearches')}
                   </span>
                   <button
                     onClick={clearRecentSearches}
-                    className="text-[11px] text-neutral-500 hover:text-neutral-300"
+                    className="text-[11px] text-neutral-500 hover:text-black dark:hover:text-neutral-300"
                   >
                     {t('clearAll')}
                   </button>
@@ -406,7 +407,7 @@ export const SearchScreen: React.FC = () => {
                     <button
                       key={idx}
                       onClick={() => setQuery(item)}
-                      className="w-full flex items-center justify-between py-2 px-2.5 rounded-lg text-left text-[12px] text-neutral-300 hover:bg-neutral-800/40 transition-colors"
+                      className="w-full flex items-center justify-between py-2 px-2.5 rounded-lg text-left text-[12px] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/40 transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
                         <Clock size={13} className="text-neutral-500" />
@@ -419,27 +420,31 @@ export const SearchScreen: React.FC = () => {
               </div>
             )}
 
-            {/* Popular Georgian Landmarks */}
+            {/* Nearby places from OpenStreetMap around the current location */}
             <div>
-              <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
-                Popular in Georgia
+              <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
+                {t('nearbyPlaces')}
               </span>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {places.slice(0, 6).map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSelectPlace(p)}
-                    className="p-2.5 rounded-xl border border-neutral-800/80 bg-neutral-900/40 hover:bg-neutral-800/60 text-left transition-colors"
-                  >
-                    <span className="text-[12px] font-medium block truncate">
-                      {language === 'ka' ? p.nameKa : p.name}
-                    </span>
-                    <span className="text-[10px] text-neutral-500 capitalize block truncate mt-0.5">
-                      {p.category}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {places.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2 mt-2 stagger">
+                  {places.slice(0, 6).map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleSelectPlace(p)}
+                      className="p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800/80 bg-white dark:bg-neutral-900/40 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-left transition-colors press"
+                    >
+                      <span className="text-[12px] font-medium block truncate">
+                        {language === 'ka' ? p.nameKa : p.name}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 capitalize block truncate mt-0.5">
+                        {p.category}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12px] text-neutral-500 mt-2">{t('noNearbyPlaces')}</p>
+              )}
             </div>
           </div>
         )}

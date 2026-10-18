@@ -26,6 +26,12 @@ export const MapLayersScreen: React.FC = () => {
 
   const { showToast } = useToast();
 
+  const sectionLabel =
+    'text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold block mb-2 px-1';
+  const panel =
+    'divide-y divide-neutral-200 dark:divide-neutral-800/60 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50';
+  const rowTitle = 'text-[13px] font-medium block text-neutral-800 dark:text-neutral-200';
+
   return (
     <div
       className={`w-full h-full flex flex-col transition-colors ${
@@ -37,9 +43,7 @@ export const MapLayersScreen: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Vector Map Style Selection */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            Map style
-          </span>
+          <span className={sectionLabel}>Map style</span>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* Standard Light */}
@@ -51,7 +55,7 @@ export const MapLayersScreen: React.FC = () => {
               className={`p-3 rounded-xl border text-left transition-all ${
                 theme === 'light'
                   ? 'bg-white border-[#2F6FEB] text-[#111111] shadow-md ring-1 ring-[#2F6FEB]'
-                  : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700'
+                  : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-700'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -87,17 +91,17 @@ export const MapLayersScreen: React.FC = () => {
         </div>
 
         {/* 3D Terrain (unavailable) */}
-        <div className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/40">
+        <div className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-2.5 pr-3">
               <Mountain size={17} className="text-neutral-500 shrink-0 mt-0.5" />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] font-semibold text-neutral-300">
+                  <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300">
                     {t('terrainNoticeTitle')}
                   </span>
-                  <span className="text-[9px] font-mono bg-neutral-800 text-neutral-400 px-1.5 py-0.2 rounded border border-neutral-700">
-                    Demo Layer
+                  <span className="text-[9px] font-mono bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 px-1.5 py-0.2 rounded border border-neutral-300 dark:border-neutral-700">
+                    Unavailable
                   </span>
                 </div>
                 <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
@@ -116,19 +120,15 @@ export const MapLayersScreen: React.FC = () => {
 
         {/* Layer Toggles */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            Overlays
-          </span>
+          <span className={sectionLabel}>Overlays</span>
 
-          <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-900/50">
+          <div className={panel}>
             {/* POIs */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <MapPin size={16} className="text-[#2F6FEB]" />
                 <div>
-                  <span className="text-[13px] font-medium block text-neutral-200">
-                    {t('layerPoi')}
-                  </span>
+                  <span className={rowTitle}>{t('layerPoi')}</span>
                   <span className="text-[11px] text-neutral-500">
                     Cathedrals, markets, gas stations, ATMs
                   </span>
@@ -146,9 +146,7 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Camera size={16} className="text-[#C9973F]" />
                 <div>
-                  <span className="text-[13px] font-medium block text-neutral-200">
-                    {t('layerCameras')}
-                  </span>
+                  <span className={rowTitle}>{t('layerCameras')}</span>
                   <span className="text-[11px] text-neutral-500">
                     Fixed radar, red-light, average speed zones
                   </span>
@@ -166,9 +164,7 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Users size={16} className="text-amber-500" />
                 <div>
-                  <span className="text-[13px] font-medium block text-neutral-200">
-                    {t('layerCommunity')}
-                  </span>
+                  <span className={rowTitle}>{t('layerCommunity')}</span>
                 </div>
               </div>
               <ToggleSwitch
@@ -183,9 +179,7 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Bookmark size={16} className="text-emerald-400" />
                 <div>
-                  <span className="text-[13px] font-medium block text-neutral-200">
-                    {t('layerSaved')}
-                  </span>
+                  <span className={rowTitle}>{t('layerSaved')}</span>
                 </div>
               </div>
               <ToggleSwitch
@@ -200,9 +194,7 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Footprints size={16} className="text-purple-400" />
                 <div>
-                  <span className="text-[13px] font-medium block text-neutral-200">
-                    {t('layerTracks')}
-                  </span>
+                  <span className={rowTitle}>{t('layerTracks')}</span>
                 </div>
               </div>
               <ToggleSwitch

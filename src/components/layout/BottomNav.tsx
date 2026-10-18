@@ -41,7 +41,7 @@ export const BottomNav: React.FC = () => {
                 ? theme === 'dark'
                   ? 'text-white font-medium'
                   : 'text-[#111111] font-medium'
-                : 'hover:text-neutral-300 dark:hover:text-neutral-200'
+                : 'hover:text-neutral-700 dark:hover:text-neutral-200'
             }`}
           >
             {isActive && (

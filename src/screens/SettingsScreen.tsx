@@ -46,6 +46,20 @@ export const SettingsScreen: React.FC = () => {
     setShowResetDialog(false);
   };
 
+  const sectionLabel =
+    'text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold block mb-2 px-1';
+  const panel =
+    'rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50';
+  const rowTitle = 'text-[12px] font-medium block text-neutral-800 dark:text-neutral-200';
+  const rowHint = 'text-[10px] text-neutral-500';
+  const optionActive = 'bg-[#2F6FEB]/10 dark:bg-neutral-800 border-[#2F6FEB] text-neutral-900 dark:text-white';
+  const optionInactive =
+    'bg-white dark:bg-neutral-900/60 border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-400';
+  const quickLink =
+    'w-full p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 flex items-center justify-between text-left press';
+  const libraryRow =
+    'p-3 flex items-start justify-between gap-2';
+
   return (
     <div
       className={`w-full h-full flex flex-col transition-colors ${
@@ -58,7 +72,7 @@ export const SettingsScreen: React.FC = () => {
         rightAction={
           <button
             onClick={() => navigateTo('about')}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
+            className="p-1.5 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
             title={t('aboutTitle')}
             aria-label={t('aboutTitle')}
           >
@@ -70,16 +84,14 @@ export const SettingsScreen: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Appearance (Theme) */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            {t('appearance')}
-          </span>
+          <span className={sectionLabel}>{t('appearance')}</span>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setTheme('light')}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
                 theme === 'light'
                   ? 'bg-white border-[#2F6FEB] text-black shadow'
-                  : 'bg-neutral-900 border-neutral-800 text-neutral-300'
+                  : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -108,9 +120,7 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Language (English vs Georgian) */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            {t('language')}
-          </span>
+          <span className={sectionLabel}>{t('language')}</span>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => {
@@ -118,9 +128,7 @@ export const SettingsScreen: React.FC = () => {
                 showToast('Language: English', 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
-                language === 'en'
-                  ? 'bg-neutral-800 border-[#2F6FEB] text-white'
-                  : 'bg-neutral-900/60 border-neutral-800 text-neutral-400'
+                language === 'en' ? optionActive : optionInactive
               }`}
             >
               <div className="flex items-center gap-2">
@@ -136,9 +144,7 @@ export const SettingsScreen: React.FC = () => {
                 showToast('ენა: ქართული', 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
-                language === 'ka'
-                  ? 'bg-neutral-800 border-[#2F6FEB] text-white'
-                  : 'bg-neutral-900/60 border-neutral-800 text-neutral-400'
+                language === 'ka' ? optionActive : optionInactive
               }`}
             >
               <div className="flex items-center gap-2">
@@ -152,9 +158,7 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Distance Units (Metric vs Imperial) */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            {t('distanceUnits')}
-          </span>
+          <span className={sectionLabel}>{t('distanceUnits')}</span>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => {
@@ -162,9 +166,7 @@ export const SettingsScreen: React.FC = () => {
                 showToast('Units: Metric (km, m, km/h)', 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
-                units === 'metric'
-                  ? 'bg-neutral-800 border-[#2F6FEB] text-white'
-                  : 'bg-neutral-900/60 border-neutral-800 text-neutral-400'
+                units === 'metric' ? optionActive : optionInactive
               }`}
             >
               <div className="flex items-center gap-2">
@@ -180,9 +182,7 @@ export const SettingsScreen: React.FC = () => {
                 showToast('Units: Imperial (mi, ft, mph)', 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
-                units === 'imperial'
-                  ? 'bg-neutral-800 border-[#2F6FEB] text-white'
-                  : 'bg-neutral-900/60 border-neutral-800 text-neutral-400'
+                units === 'imperial' ? optionActive : optionInactive
               }`}
             >
               <div className="flex items-center gap-2">
@@ -196,25 +196,23 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Navigation Defaults & Guidance */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            {t('navigationSettings')}
-          </span>
-          <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-900/50">
+          <span className={sectionLabel}>{t('navigationSettings')}</span>
+          <div className={`divide-y divide-neutral-200 dark:divide-neutral-800/60 ${panel}`}>
             {/* Travel Mode */}
             <div className="p-3.5 flex items-center justify-between">
               <div>
-                <span className="text-[12px] font-medium block text-neutral-200">
-                  {t('defaultTravelMode')}
-                </span>
-                <span className="text-[10px] text-neutral-500 capitalize">{travelMode}</span>
+                <span className={rowTitle}>{t('defaultTravelMode')}</span>
+                <span className={`${rowHint} capitalize`}>{travelMode}</span>
               </div>
-              <div className="flex items-center gap-1 bg-neutral-800 p-1 rounded-lg">
+              <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-lg">
                 {(['car', 'walking', 'cycling'] as TravelMode[]).map((m) => (
                   <button
                     key={m}
                     onClick={() => setTravelMode(m)}
                     className={`px-2 py-1 text-[11px] font-medium rounded capitalize transition-colors ${
-                      travelMode === m ? 'bg-[#2F6FEB] text-white' : 'text-neutral-400'
+                      travelMode === m
+                        ? 'bg-[#2F6FEB] text-white'
+                        : 'text-neutral-500 dark:text-neutral-400'
                     }`}
                   >
                     {m}
@@ -226,15 +224,13 @@ export const SettingsScreen: React.FC = () => {
             {/* Voice Guidance */}
             <div className="p-3.5 flex items-center justify-between">
               <div>
-                <span className="text-[12px] font-medium block text-neutral-200">
-                  {t('voiceGuidance')}
-                </span>
-                <span className="text-[10px] text-neutral-500 capitalize">{voiceMode}</span>
+                <span className={rowTitle}>{t('voiceGuidance')}</span>
+                <span className={`${rowHint} capitalize`}>{voiceMode}</span>
               </div>
               <select
                 value={voiceMode}
                 onChange={(e) => setVoiceMode(e.target.value as VoiceMode)}
-                className="bg-neutral-800 border border-neutral-700 text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none"
+                className="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none"
               >
                 <option value="chime">{t('voiceChime')}</option>
                 <option value="spoken">{t('voiceFull')}</option>
@@ -246,50 +242,37 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Quick Links: Alerts & Offline Maps & Trip Tools */}
         <div className="space-y-2">
-          <button
-            onClick={() => navigateTo('road-alerts')}
-            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left press"
-          >
+          <button onClick={() => navigateTo('road-alerts')} className={quickLink}>
             <div className="flex items-center gap-3">
               <ShieldAlert size={18} className="text-[#C9973F]" />
               <div>
-                <span className="text-[13px] font-medium block text-neutral-200">
+                <span className="text-[13px] font-medium block text-neutral-800 dark:text-neutral-200">
                   {t('safetyAndAlerts')}
                 </span>
-                <span className="text-[11px] text-neutral-500">
-                  {t('manageAlerts')}
-                </span>
+                <span className="text-[11px] text-neutral-500">{t('manageAlerts')}</span>
               </div>
             </div>
             <ChevronRight size={16} className="text-neutral-500" />
           </button>
 
-          <button
-            onClick={() => navigateTo('offline-maps')}
-            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left press"
-          >
+          <button onClick={() => navigateTo('offline-maps')} className={quickLink}>
             <div className="flex items-center gap-3">
               <HardDrive size={18} className="text-[#2F6FEB]" />
               <div>
-                <span className="text-[13px] font-medium block text-neutral-200">
+                <span className="text-[13px] font-medium block text-neutral-800 dark:text-neutral-200">
                   {t('storageManagement')}
                 </span>
-                <span className="text-[11px] text-neutral-500">
-                  {t('manageOfflineMaps')}
-                </span>
+                <span className="text-[11px] text-neutral-500">{t('manageOfflineMaps')}</span>
               </div>
             </div>
             <ChevronRight size={16} className="text-neutral-500" />
           </button>
 
-          <button
-            onClick={() => navigateTo('trip-tools')}
-            className="w-full p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/40 flex items-center justify-between text-left press"
-          >
+          <button onClick={() => navigateTo('trip-tools')} className={quickLink}>
             <div className="flex items-center gap-3">
               <Navigation size={18} className="text-purple-400" />
               <div>
-                <span className="text-[13px] font-medium block text-neutral-200">
+                <span className="text-[13px] font-medium block text-neutral-800 dark:text-neutral-200">
                   {t('tripToolsTitle')}
                 </span>
                 <span className="text-[11px] text-neutral-500">
@@ -303,46 +286,44 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Native Feature Limitations Notice */}
         <div>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-2 px-1">
-            {t('nativeLimitationsTitle')}
-          </span>
+          <span className={sectionLabel}>{t('nativeLimitationsTitle')}</span>
 
-          <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-900/40 text-[11px]">
-            <div className="p-3 flex items-start justify-between gap-2">
+          <div className={`divide-y divide-neutral-200 dark:divide-neutral-800/60 bg-white dark:bg-neutral-900/40 text-[11px] border border-neutral-200 dark:border-neutral-800 rounded-xl`}>
+            <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-300 block">Background GPS Service</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Background GPS Service</span>
                 <span className="text-neutral-500">{t('bgGpsDesc')}</span>
               </div>
               <NativeBadge label={t('nativeBadge')} />
             </div>
 
-            <div className="p-3 flex items-start justify-between gap-2">
+            <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-300 block">Screen-off Navigation</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Screen-off Navigation</span>
                 <span className="text-neutral-500">{t('screenOffDesc')}</span>
               </div>
               <NativeBadge label={t('nativeBadge')} />
             </div>
 
-            <div className="p-3 flex items-start justify-between gap-2">
+            <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-300 block">Offline Neural Speech</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Offline Neural Speech</span>
                 <span className="text-neutral-500">{t('ttsDesc')}</span>
               </div>
               <NativeBadge label={t('nativeBadge')} />
             </div>
 
-            <div className="p-3 flex items-start justify-between gap-2">
+            <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-300 block">Android Auto & CarPlay</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Android Auto & CarPlay</span>
                 <span className="text-neutral-500">{t('androidAutoDesc')}</span>
               </div>
               <NativeBadge label={t('nativeBadge')} />
             </div>
 
-            <div className="p-3 flex items-start justify-between gap-2">
+            <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-300 block">System Foreground Banner</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">System Foreground Banner</span>
                 <span className="text-neutral-500">{t('systemNotifsDesc')}</span>
               </div>
               <NativeBadge label={t('nativeBadge')} />
@@ -351,21 +332,21 @@ export const SettingsScreen: React.FC = () => {
         </div>
 
         {/* Privacy Philosophy */}
-        <div className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/40 space-y-1.5">
-          <div className="flex items-center gap-2 text-[12px] font-semibold text-neutral-300">
+        <div className={`p-3.5 border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40 rounded-xl space-y-1.5`}>
+          <div className="flex items-center gap-2 text-[12px] font-semibold text-neutral-700 dark:text-neutral-300">
             <Lock size={14} className="text-emerald-400" />
             <span>{t('privacyTitle')}</span>
           </div>
-          <p className="text-[11px] text-neutral-400 leading-relaxed">
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
             {t('privacyNote')}
           </p>
         </div>
 
-        {/* Reset Prototype Data Button */}
+        {/* Reset Data Button */}
         <div className="pt-2 pb-4">
           <button
             onClick={() => setShowResetDialog(true)}
-            className="w-full py-2.5 px-4 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-[12px] font-medium flex items-center justify-center gap-2 transition-colors"
+            className="w-full py-2.5 px-4 rounded-xl border border-red-500/30 text-red-500 dark:text-red-400 hover:bg-red-500/10 text-[12px] font-medium flex items-center justify-center gap-2 transition-colors"
           >
             <RotateCcw size={14} />
             <span>{t('resetData')}</span>
@@ -375,19 +356,19 @@ export const SettingsScreen: React.FC = () => {
 
       {/* Confirmation Dialog for Reset */}
       {showResetDialog && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white animate-pop-in">
-            <div className="flex items-center gap-2 text-red-400 font-semibold text-[15px] mb-2">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#1E1E1E] p-4 shadow-2xl text-[#111111] dark:text-white animate-pop-in">
+            <div className="flex items-center gap-2 text-red-500 dark:text-red-400 font-semibold text-[15px] mb-2">
               <AlertCircle size={18} />
               <span>{t('confirmReset')}</span>
             </div>
-            <p className="text-[12px] text-neutral-300 mb-4 leading-relaxed">
+            <p className="text-[12px] text-neutral-600 dark:text-neutral-300 mb-4 leading-relaxed">
               {t('resetWarning')}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => setShowResetDialog(false)}
-                className="px-3 py-1.5 text-[12px] text-neutral-400 hover:text-white"
+                className="px-3 py-1.5 text-[12px] text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
               >
                 {t('cancel')}
               </button>

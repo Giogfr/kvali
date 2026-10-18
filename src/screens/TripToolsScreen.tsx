@@ -2,7 +2,6 @@ import React from 'react';
 import { Footprints, Plus, Square, Download, Trash2, Gauge, Clock, Compass } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
-import { DemoChip } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
 import { formatDistance, formatSpeed } from '../lib/geo';
 import { RecordedTrack } from '../types';
@@ -46,7 +45,6 @@ export const TripToolsScreen: React.FC = () => {
               distanceKm: track.distanceKm,
               durationMinutes: track.durationMinutes,
               avgSpeedKmh: track.avgSpeedKmh,
-              demo: track.demo,
             },
             geometry: {
               type: 'LineString',
@@ -112,10 +110,9 @@ export const TripToolsScreen: React.FC = () => {
         {/* Track Records List */}
         <div>
           <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
+            <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
               {t('recordedTracks')} ({recordedTracks.length})
             </span>
-            {recordedTracks.some((track) => track.demo) && <DemoChip label={t('demoData')} />}
           </div>
 
           {recordedTracks.length > 0 ? (
@@ -127,20 +124,19 @@ export const TripToolsScreen: React.FC = () => {
                 return (
                   <div
                     key={track.id}
-                    className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:border-neutral-700 transition-colors"
+                    className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 flex-1 pr-2">
                         <div className="flex items-center gap-1.5">
                           <Footprints size={15} className="text-purple-400 shrink-0" />
-                          <span className="text-[13px] font-semibold text-neutral-100 truncate">
+                          <span className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100 truncate">
                             {track.title}
                           </span>
-                          {track.demo && <DemoChip label={t('demoData')} />}
                         </div>
 
                         {/* Metadata stats */}
-                        <div className="flex items-center gap-3 text-[11px] text-neutral-400 mt-2">
+                        <div className="flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400 mt-2">
                           <span className="flex items-center gap-1">
                             <Clock size={12} className="text-neutral-500" />
                             <span className="tabular-nums font-mono">{track.durationMinutes} min</span>
@@ -173,7 +169,7 @@ export const TripToolsScreen: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleExportTrack(track)}
-                          className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                          className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white transition-colors"
                           title={t('exportGeoJson')}
                         >
                           <Download size={14} />
@@ -183,7 +179,7 @@ export const TripToolsScreen: React.FC = () => {
                             deleteTrack(track.id);
                             showToast('Track deleted', 'info');
                           }}
-                          className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-red-400 transition-colors"
+                          className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors"
                           title={t('deleteTrack')}
                         >
                           <Trash2 size={14} />

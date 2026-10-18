@@ -54,27 +54,35 @@ export const RoadAlertsScreen: React.FC = () => {
 
   const myReports = roadAlerts.filter((a) => a.source === 'user');
 
+  const cardClass = 'p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50';
+  const mutedText = 'text-neutral-500 dark:text-neutral-400';
+  const strongText = 'text-neutral-800 dark:text-neutral-200';
+  const inputClass =
+    'w-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-[#111111] dark:text-white text-[12px] rounded-lg px-2.5 py-2 focus:outline-none focus:border-[#2F6FEB]';
+
   const handleReport = async () => {
-    if (!userLocation) {
+    let coords = userLocation
+      ? { latitude: userLocation.latitude, longitude: userLocation.longitude }
+      : null;
+
+    if (!coords) {
       setIsLocating(true);
-      const ok = await requestUserLocation();
+      coords = await requestUserLocation();
       setIsLocating(false);
-      if (!ok) {
+      if (!coords) {
         showToast(t('locationRequired'), 'warn');
         return;
       }
     }
-    const coords = userLocation;
-    const report = reportAlert({
+
+    reportAlert({
       category: reportCategory,
-      latitude: coords?.latitude ?? 0,
-      longitude: coords?.longitude ?? 0,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
       description: reportNote,
     });
-    if (report) {
-      setReportNote('');
-      showToast(t('reportSubmitted'), 'success');
-    }
+    setReportNote('');
+    showToast(t('reportSubmitted'), 'success');
   };
 
   const alertCategoriesList: {
@@ -113,16 +121,16 @@ export const RoadAlertsScreen: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Master Map Layer Switch */}
-        <div className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900/60 flex items-center justify-between">
+        <div className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/60 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#C9973F]/15 text-[#C9973F] flex items-center justify-center">
               <Layers size={17} />
             </div>
             <div>
-              <span className="text-[13px] font-semibold block leading-tight">
+              <span className={`text-[13px] font-semibold block leading-tight ${strongText}`}>
                 {t('layerCameras')}
               </span>
-              <span className="text-[11px] text-neutral-400">Camera markers on map</span>
+              <span className={`text-[11px] ${mutedText}`}>Alerts on the map</span>
             </div>
           </div>
           <ToggleSwitch
@@ -133,11 +141,11 @@ export const RoadAlertsScreen: React.FC = () => {
         </div>
 
         {/* Audio & Threshold Controls Card */}
-        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-900/40 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+        <div className={`${cardClass} space-y-4`}>
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-800">
             <div className="flex items-center gap-2">
-              <Sliders size={15} className="text-neutral-400" />
-              <span className="text-[13px] font-semibold text-neutral-200">
+              <Sliders size={15} className={mutedText} />
+              <span className={`text-[13px] font-semibold ${strongText}`}>
                 Notification Thresholds
               </span>
             </div>
@@ -153,7 +161,7 @@ export const RoadAlertsScreen: React.FC = () => {
           {/* Warning Distance Slider */}
           <div>
             <div className="flex justify-between text-[12px] mb-1.5">
-              <span className="text-neutral-300">{t('alertDistance')}</span>
+              <span className={strongText}>{t('alertDistance')}</span>
               <span className="font-mono font-semibold text-[#2F6FEB]">
                 {alertDistanceMeters} m
               </span>
@@ -171,12 +179,12 @@ export const RoadAlertsScreen: React.FC = () => {
           {/* Beep Volume Slider & Toggle */}
           <div>
             <div className="flex justify-between items-center text-[12px] mb-1.5">
-              <div className="flex items-center gap-1.5 text-neutral-300">
+              <div className={`flex items-center gap-1.5 ${strongText}`}>
                 {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
                 <span>{t('beepVolume')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-semibold text-neutral-400">
+                <span className={`font-mono font-semibold ${mutedText}`}>
                   {soundEnabled ? `${beepVolume}%` : 'Muted'}
                 </span>
                 <ToggleSwitch
@@ -197,20 +205,18 @@ export const RoadAlertsScreen: React.FC = () => {
             />
           </div>
 
-          <p className="text-[10px] text-neutral-500 italic">
-            {t('soundDisclaimer')}
-          </p>
+          <p className={`text-[10px] ${mutedText} italic`}>{t('soundDisclaimer')}</p>
         </div>
 
         {/* Categories Switches */}
         <div>
           <div className="mb-2 px-1">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
+            <span className={`text-[11px] uppercase tracking-wider ${mutedText} font-semibold`}>
               {t('alertCategoriesTitle')}
             </span>
           </div>
 
-          <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-900/40 stagger">
+          <div className="divide-y divide-neutral-200 dark:divide-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40 stagger">
             {alertCategoriesList.map((cat) => {
               const Icon = cat.icon;
               const isEnabled = enabledAlertCategories[cat.id];
@@ -218,11 +224,11 @@ export const RoadAlertsScreen: React.FC = () => {
               return (
                 <div
                   key={cat.id}
-                  className="p-3 flex items-center justify-between hover:bg-neutral-800/20 transition-colors"
+                  className="p-3 flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-800/30 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <Icon size={16} className="text-neutral-400 shrink-0" />
-                    <span className="text-[12px] font-medium truncate text-neutral-200">
+                    <Icon size={16} className={`${mutedText} shrink-0`} />
+                    <span className={`text-[12px] font-medium truncate ${strongText}`}>
                       {cat.label}
                     </span>
                   </div>
@@ -239,16 +245,16 @@ export const RoadAlertsScreen: React.FC = () => {
         </div>
 
         {/* Report a hazard */}
-        <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-900/40 space-y-3">
+        <div className={`${cardClass} space-y-3`}>
           <div className="flex items-center gap-2">
             <MapPin size={15} className="text-[#2F6FEB]" />
-            <span className="text-[13px] font-semibold text-neutral-200">{t('reportTitle')}</span>
+            <span className={`text-[13px] font-semibold ${strongText}`}>{t('reportTitle')}</span>
           </div>
 
           <select
             value={reportCategory}
             onChange={(e) => setReportCategory(e.target.value as AlertCategory)}
-            className="w-full bg-neutral-800 border border-neutral-700 text-white text-[12px] rounded-lg px-2.5 py-2 focus:outline-none"
+            className={inputClass}
           >
             {alertCategoriesList.map((cat) => (
               <option key={cat.id} value={cat.id}>
@@ -261,11 +267,11 @@ export const RoadAlertsScreen: React.FC = () => {
             value={reportNote}
             onChange={(e) => setReportNote(e.target.value)}
             placeholder={t('reportNotePlaceholder')}
-            className="w-full bg-neutral-800 border border-neutral-700 text-white text-[12px] rounded-lg px-2.5 py-2 focus:outline-none"
+            className={inputClass}
           />
 
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] text-neutral-500 font-mono truncate">
+            <span className={`text-[10px] ${mutedText} font-mono truncate`}>
               {userLocation
                 ? `${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)}`
                 : t('locationRequired')}
@@ -280,18 +286,15 @@ export const RoadAlertsScreen: React.FC = () => {
             </button>
           </div>
 
-          <p className="text-[10px] text-neutral-500 leading-relaxed">{t('reportHint')}</p>
+          <p className={`text-[10px] ${mutedText} leading-relaxed`}>{t('reportHint')}</p>
 
           {myReports.length > 0 && (
-            <div className="pt-2 border-t border-neutral-800 space-y-1.5 stagger">
-              <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
+            <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-1.5 stagger">
+              <span className={`text-[11px] uppercase tracking-wider ${mutedText} font-semibold`}>
                 {t('myReports')}
               </span>
               {myReports.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between text-[11px] text-neutral-300"
-                >
+                <div key={r.id} className={`flex items-center justify-between text-[11px] ${strongText}`}>
                   <span className="truncate pr-2">
                     {alertCategoriesList.find((c) => c.id === r.category)?.label ?? r.category}
                     {' · '}
@@ -299,7 +302,7 @@ export const RoadAlertsScreen: React.FC = () => {
                   </span>
                   <button
                     onClick={() => removeAlert(r.id)}
-                    className="p-1 rounded text-neutral-500 hover:text-red-400 transition-colors shrink-0"
+                    className={`p-1 rounded ${mutedText} hover:text-red-500 transition-colors shrink-0`}
                     title={t('remove')}
                   >
                     <Trash2 size={12} />
@@ -311,7 +314,7 @@ export const RoadAlertsScreen: React.FC = () => {
         </div>
 
         {/* Data Source */}
-        <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-400 space-y-1">
+        <div className="p-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-600 dark:text-neutral-400 space-y-1">
           <div className="flex items-center gap-1.5 font-semibold text-[#C9973F]">
             <Info size={14} />
             <span>Data source</span>

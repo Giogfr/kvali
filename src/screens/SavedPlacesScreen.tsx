@@ -47,6 +47,17 @@ export const SavedPlacesScreen: React.FC = () => {
     return p.collection === activeCollection;
   });
 
+  const modalWrap =
+    'w-full max-w-sm rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#1E1E1E] p-4 shadow-2xl text-[#111111] dark:text-white animate-pop-in';
+  const inputClass =
+    'w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-[#111111] dark:text-white focus:outline-none focus:border-[#2F6FEB]';
+  const labelClass =
+    'text-[11px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wider block mb-1';
+  const cancelClass = 'px-3 py-1.5 text-[12px] text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white';
+  const iconBtnClass = 'p-1.5 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors';
+  const tabInactiveClass =
+    'bg-neutral-100 dark:bg-neutral-800/80 border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300';
+
   const handleCreateCollection = () => {
     if (!newCollectionName.trim()) return;
     createCollection(newCollectionName.trim());
@@ -138,7 +149,7 @@ export const SavedPlacesScreen: React.FC = () => {
           <div className="flex items-center gap-1">
             <button
               onClick={handleExportBackup}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white transition-colors"
+              className={iconBtnClass}
               title={t('exportBackup')}
               aria-label={t('exportBackup')}
             >
@@ -146,7 +157,7 @@ export const SavedPlacesScreen: React.FC = () => {
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white transition-colors"
+              className={iconBtnClass}
               title={t('importBackup')}
               aria-label={t('importBackup')}
             >
@@ -164,14 +175,14 @@ export const SavedPlacesScreen: React.FC = () => {
       />
 
       {/* Collections Horizontal Tabs */}
-      <div className="p-3 border-b border-neutral-800/60 bg-neutral-900/30">
+      <div className="p-3 border-b border-neutral-200 dark:border-neutral-800/60 bg-neutral-50 dark:bg-neutral-900/30">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
             onClick={() => setActiveCollection('All')}
             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium shrink-0 border transition-all ${
               activeCollection === 'All'
                 ? 'bg-[#2F6FEB] border-[#2F6FEB] text-white'
-                : 'bg-neutral-800/80 border-neutral-700 text-neutral-300'
+                : tabInactiveClass
             }`}
           >
             {t('allSaved')} ({savedPlaces.length})
@@ -188,7 +199,7 @@ export const SavedPlacesScreen: React.FC = () => {
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-medium shrink-0 border transition-all ${
                   isSelected
                     ? 'bg-[#2F6FEB] border-[#2F6FEB] text-white'
-                    : 'bg-neutral-800/80 border-neutral-700 text-neutral-300'
+                    : tabInactiveClass
                 }`}
               >
                 {col} ({count})
@@ -198,7 +209,7 @@ export const SavedPlacesScreen: React.FC = () => {
 
           <button
             onClick={() => setShowNewCollectionModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium shrink-0 border border-dashed border-neutral-600 text-neutral-400 hover:text-white"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium shrink-0 border border-dashed border-neutral-400 dark:border-neutral-600 text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
           >
             <FolderPlus size={12} />
             <span>+</span>
@@ -212,7 +223,7 @@ export const SavedPlacesScreen: React.FC = () => {
           displayedPlaces.map((place) => (
             <div
               key={place.id}
-              className="p-3 rounded-xl border border-neutral-800 bg-neutral-900/40 hover:border-neutral-700 transition-colors"
+              className="p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div
@@ -221,17 +232,17 @@ export const SavedPlacesScreen: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Bookmark size={14} className="text-[#2F6FEB] shrink-0 fill-current" />
-                    <span className="text-[13px] font-semibold truncate text-neutral-100">
+                    <span className="text-[13px] font-semibold truncate text-neutral-900 dark:text-neutral-100">
                       {place.name}
                     </span>
                   </div>
 
-                  <p className="text-[10px] text-neutral-400 font-mono mt-0.5 ml-5">
+                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-mono mt-0.5 ml-5">
                     {place.latitude.toFixed(4)}, {place.longitude.toFixed(4)} · {place.collection}
                   </p>
 
                   {place.note && (
-                    <p className="text-[11px] text-neutral-400 italic mt-1 ml-5 line-clamp-2">
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 italic mt-1 ml-5 line-clamp-2">
                       "{place.note}"
                     </p>
                   )}
@@ -248,7 +259,7 @@ export const SavedPlacesScreen: React.FC = () => {
                   </button>
                   <button
                     onClick={() => startEdit(place)}
-                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors"
+                    className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
                     title="Edit"
                   >
                     <Edit2 size={13} />
@@ -258,7 +269,7 @@ export const SavedPlacesScreen: React.FC = () => {
                       deleteSavedPlace(place.id);
                       showToast('Place deleted', 'info');
                     }}
-                    className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-red-400 transition-colors"
+                    className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors"
                     title={t('deletePlace')}
                   >
                     <Trash2 size={13} />
@@ -268,11 +279,11 @@ export const SavedPlacesScreen: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="py-16 text-center text-neutral-500">
+          <div className="py-16 text-center text-neutral-500 dark:text-neutral-400">
             <Bookmark size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-[13px] font-medium">{t('noSavedPlaces')}</p>
-            <p className="text-[11px] mt-1 text-neutral-600">
-              Tap any location or POI on the map to bookmark it.
+            <p className="text-[11px] mt-1 text-neutral-500 dark:text-neutral-500">
+              Long-press the map or search a place to bookmark it.
             </p>
           </div>
         )}
@@ -280,13 +291,13 @@ export const SavedPlacesScreen: React.FC = () => {
 
       {/* Edit Place Sheet / Modal */}
       {editingPlace && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center p-3 animate-fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white animate-pop-in">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-700">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/75 z-50 flex items-end sm:items-center justify-center p-3 animate-fade-in">
+          <div className={modalWrap}>
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-700">
               <h3 className="text-[15px] font-semibold">{t('editPlace')}</h3>
               <button
                 onClick={() => setEditingPlace(null)}
-                className="text-neutral-400 hover:text-white"
+                className="text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
               >
                 <X size={16} />
               </button>
@@ -294,37 +305,31 @@ export const SavedPlacesScreen: React.FC = () => {
 
             <div className="space-y-3 mt-3">
               <div>
-                <label className="text-[11px] text-neutral-400 font-medium uppercase tracking-wider block mb-1">
-                  {t('placeName')}
-                </label>
+                <label className={labelClass}>{t('placeName')}</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-700 bg-neutral-800 text-white focus:outline-none focus:border-[#2F6FEB]"
+                  className={`${inputClass} text-[13px]`}
                 />
               </div>
 
               <div>
-                <label className="text-[11px] text-neutral-400 font-medium uppercase tracking-wider block mb-1">
-                  {t('notes')}
-                </label>
+                <label className={labelClass}>{t('notes')}</label>
                 <textarea
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 text-[12px] rounded-lg border border-neutral-700 bg-neutral-800 text-white focus:outline-none focus:border-[#2F6FEB]"
+                  className={`${inputClass} text-[12px]`}
                 />
               </div>
 
               <div>
-                <label className="text-[11px] text-neutral-400 font-medium uppercase tracking-wider block mb-1">
-                  {t('collections')}
-                </label>
+                <label className={labelClass}>{t('collections')}</label>
                 <select
                   value={editCollection}
                   onChange={(e) => setEditCollection(e.target.value)}
-                  className="w-full px-3 py-2 text-[12px] rounded-lg border border-neutral-700 bg-neutral-800 text-white focus:outline-none focus:border-[#2F6FEB]"
+                  className={`${inputClass} text-[12px]`}
                 >
                   {collections.map((col) => (
                     <option key={col} value={col}>
@@ -335,11 +340,8 @@ export const SavedPlacesScreen: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-neutral-700">
-              <button
-                onClick={() => setEditingPlace(null)}
-                className="px-3 py-1.5 text-[12px] text-neutral-400 hover:text-white"
-              >
+            <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+              <button onClick={() => setEditingPlace(null)} className={cancelClass}>
                 {t('cancel')}
               </button>
               <button
@@ -355,22 +357,19 @@ export const SavedPlacesScreen: React.FC = () => {
 
       {/* New Collection Modal */}
       {showNewCollectionModal && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white animate-pop-in">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/75 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className={modalWrap}>
             <h3 className="text-[15px] font-semibold mb-2">{t('newCollection')}</h3>
             <input
               type="text"
               value={newCollectionName}
               onChange={(e) => setNewCollectionName(e.target.value)}
               placeholder={t('collectionNamePlaceholder')}
-              className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-700 bg-neutral-800 text-white focus:outline-none focus:border-[#2F6FEB]"
+              className={`${inputClass} text-[13px]`}
               autoFocus
             />
             <div className="flex items-center justify-end gap-2 mt-4">
-              <button
-                onClick={() => setShowNewCollectionModal(false)}
-                className="px-3 py-1.5 text-[12px] text-neutral-400 hover:text-white"
-              >
+              <button onClick={() => setShowNewCollectionModal(false)} className={cancelClass}>
                 {t('cancel')}
               </button>
               <button
