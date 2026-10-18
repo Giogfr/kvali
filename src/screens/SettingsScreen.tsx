@@ -375,8 +375,8 @@ export const SettingsScreen: React.FC = () => {
 
       {/* Confirmation Dialog for Reset */}
       {showResetDialog && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white animate-pop-in">
             <div className="flex items-center gap-2 text-red-400 font-semibold text-[15px] mb-2">
               <AlertCircle size={18} />
               <span>{t('confirmReset')}</span>

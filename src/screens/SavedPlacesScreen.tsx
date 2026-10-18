@@ -207,7 +207,7 @@ export const SavedPlacesScreen: React.FC = () => {
       </div>
 
       {/* Main List */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5 stagger">
         {displayedPlaces.length > 0 ? (
           displayedPlaces.map((place) => (
             <div
@@ -280,8 +280,8 @@ export const SavedPlacesScreen: React.FC = () => {
 
       {/* Edit Place Sheet / Modal */}
       {editingPlace && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center p-3">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white">
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center p-3 animate-fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white animate-pop-in">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-700">
               <h3 className="text-[15px] font-semibold">{t('editPlace')}</h3>
               <button
@@ -355,8 +355,8 @@ export const SavedPlacesScreen: React.FC = () => {
 
       {/* New Collection Modal */}
       {showNewCollectionModal && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white">
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-sm rounded-2xl border border-neutral-700 bg-[#1E1E1E] p-4 shadow-2xl text-white animate-pop-in">
             <h3 className="text-[15px] font-semibold mb-2">{t('newCollection')}</h3>
             <input
               type="text"

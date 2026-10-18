@@ -119,7 +119,7 @@ export const TripToolsScreen: React.FC = () => {
           </div>
 
           {recordedTracks.length > 0 ? (
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 stagger">
               {recordedTracks.map((track) => {
                 const distStr = formatDistance(track.distanceKm, units);
                 const speedStr = formatSpeed(track.avgSpeedKmh, units);

@@ -210,7 +210,7 @@ export const RoadAlertsScreen: React.FC = () => {
             </span>
           </div>
 
-          <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-900/40">
+          <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-900/40 stagger">
             {alertCategoriesList.map((cat) => {
               const Icon = cat.icon;
               const isEnabled = enabledAlertCategories[cat.id];
@@ -283,7 +283,7 @@ export const RoadAlertsScreen: React.FC = () => {
           <p className="text-[10px] text-neutral-500 leading-relaxed">{t('reportHint')}</p>
 
           {myReports.length > 0 && (
-            <div className="pt-2 border-t border-neutral-800 space-y-1.5">
+            <div className="pt-2 border-t border-neutral-800 space-y-1.5 stagger">
               <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
                 {t('myReports')}
               </span>

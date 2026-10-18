@@ -238,7 +238,7 @@ export const OfflineMapsScreen: React.FC = () => {
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 stagger">
             {offlineRegions.map((region) => {
               const isDownloaded = region.status === 'downloaded';
               const isDownloading = region.status === 'downloading';
