@@ -180,6 +180,11 @@ export const MapScreen: React.FC = () => {
       {/* POI or Dropped Pin Callout */}
       {showCallout && (selectedPlace || temporaryPin) && (
         <PinCallout
+          key={
+            selectedPlace
+              ? `place-${selectedPlace.id}`
+              : `pin-${temporaryPin?.latitude},${temporaryPin?.longitude}`
+          }
           place={selectedPlace}
           temporaryPin={temporaryPin}
           onClose={() => {

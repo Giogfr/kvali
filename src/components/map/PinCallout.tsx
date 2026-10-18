@@ -77,7 +77,7 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
 
   return (
     <div
-      className={`absolute bottom-20 left-3 right-3 rounded-xl border shadow-xl z-30 p-3.5 transition-all ${
+      className={`absolute bottom-20 left-3 right-3 rounded-xl border shadow-xl z-30 p-3.5 transition-all animate-callout-in ${
         theme === 'dark'
           ? 'bg-[#1E1E1E]/95 border-neutral-700 text-white'
           : 'bg-white/95 border-neutral-200 text-[#111111]'
