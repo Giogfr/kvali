@@ -224,6 +224,135 @@ export async function fetchOsrmRoute(
   }
 }
 
+export interface OverpassPoi {
+  id: string;
+  name: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
+const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+
+const POI_FILTERS = [
+  'amenity=fuel',
+  'amenity=parking',
+  'amenity=restaurant',
+  'amenity=cafe',
+  'amenity=fast_food',
+  'amenity=pharmacy',
+  'amenity=hospital',
+  'amenity=clinic',
+  'amenity=bank',
+  'amenity=atm',
+  'amenity=toilets',
+  'amenity=drinking_water',
+  'amenity=bus_stop',
+  'shop=supermarket',
+  'shop=convenience',
+  'tourism=hotel',
+  'tourism=guest_house',
+  'tourism=attraction',
+  'tourism=viewpoint',
+  'tourism=museum',
+];
+
+function poiCategory(tags: Record<string, string>): string {
+  const a = tags.amenity;
+  if (a === 'fuel') return 'fuel';
+  if (a === 'parking') return 'parking';
+  if (a === 'restaurant' || a === 'cafe' || a === 'fast_food') return 'food';
+  if (a === 'pharmacy') return 'pharmacies';
+  if (a === 'hospital' || a === 'clinic') return 'hospital';
+  if (a === 'bank' || a === 'atm') return 'atm';
+  if (tags.shop === 'supermarket' || tags.shop === 'convenience') return 'groceries';
+  if (tags.tourism === 'viewpoint') return 'viewpoints';
+  if (tags.tourism === 'hotel' || tags.tourism === 'guest_house') return 'hotels';
+  if (tags.tourism === 'attraction' || tags.tourism === 'museum') return 'attractions';
+  return 'poi';
+}
+
+function poiFallbackLabel(tags: Record<string, string>): string {
+  const a = tags.amenity;
+  const labels: Record<string, string> = {
+    fuel: 'Fuel station',
+    parking: 'Parking',
+    restaurant: 'Restaurant',
+    cafe: 'Café',
+    fast_food: 'Fast food',
+    pharmacy: 'Pharmacy',
+    hospital: 'Hospital',
+    clinic: 'Clinic',
+    bank: 'Bank',
+    atm: 'ATM',
+    toilets: 'Public toilets',
+    drinking_water: 'Drinking water',
+    bus_stop: 'Bus stop',
+  };
+  if (a && labels[a]) return labels[a];
+  if (tags.shop === 'supermarket') return 'Supermarket';
+  if (tags.shop === 'convenience') return 'Convenience store';
+  if (tags.tourism === 'hotel') return 'Hotel';
+  if (tags.tourism === 'guest_house') return 'Guest house';
+  if (tags.tourism === 'viewpoint') return 'Viewpoint';
+  if (tags.tourism === 'museum') return 'Museum';
+  if (tags.tourism === 'attraction') return 'Attraction';
+  return '';
+}
+
+/**
+ * Fetches nearby points of interest from the OpenStreetMap Overpass API.
+ * Returns an empty list when the service is unreachable.
+ */
+export async function fetchOverpassPois(
+  latitude: number,
+  longitude: number,
+  radiusMeters = 4000,
+  signal?: AbortSignal
+): Promise<OverpassPoi[]> {
+  const filters = POI_FILTERS.map((f) => {
+    const [key, value] = f.split('=');
+    return `node["${key}"="${value}"](around:${radiusMeters},${latitude},${longitude});`;
+  }).join('\n');
+
+  const query = `[out:json][timeout:25];(\n${filters}\n);out body 80;`;
+  const url = `${OVERPASS_ENDPOINT}?data=${encodeURIComponent(query)}`;
+
+  try {
+    const response = await fetch(url, { signal });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data?.elements)) return [];
+
+    return data.elements
+      .map((el: any): OverpassPoi | null => {
+        const lat = el.lat ?? el.center?.lat;
+        const lon = el.lon ?? el.center?.lon;
+        if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+        const tags: Record<string, string> = el.tags || {};
+        const name =
+          tags.name || tags['name:en'] || tags.brand || poiFallbackLabel(tags) || '';
+        if (!name) return null;
+        const address = [tags['addr:street'], tags['addr:housenumber']]
+          .filter(Boolean)
+          .join(' ');
+        return {
+          id: `osm-${el.type}-${el.id}`,
+          name,
+          category: poiCategory(tags),
+          latitude: lat,
+          longitude: lon,
+          address: address || undefined,
+        };
+      })
+      .filter((p: OverpassPoi | null): p is OverpassPoi => p !== null);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') throw err;
+    return [];
+  }
+}
+
 function formatManeuverText(type: string, modifier: string, roadName: string): string {
   if (type === 'depart') return `Depart on ${roadName}`;
   if (type === 'arrive') return `Arrive at destination`;

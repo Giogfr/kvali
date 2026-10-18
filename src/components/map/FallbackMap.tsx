@@ -385,23 +385,8 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
           </g>
         )}
 
-        {/* Simulated GPS Location Indicator with Heading Cone */}
+        {/* Schematic centre marker (this fallback map is not GPS driven) */}
         <g>
-          {/* Heading Cone */}
-          <path
-            d={`M ${toSvgX(42.6946)} ${toSvgY(42.2679)} L ${toSvgX(42.6946) - 16 * zoom} ${toSvgY(42.2679) - 34 * zoom} A 36 36 0 0 1 ${toSvgX(42.6946) + 16 * zoom} ${toSvgY(42.2679) - 34 * zoom} Z`}
-            fill="#2F6FEB"
-            opacity="0.25"
-          />
-          {/* Outer Pulsing Ring */}
-          <circle
-            cx={toSvgX(42.6946)}
-            cy={toSvgY(42.2679)}
-            r={12 * zoom}
-            fill="#2F6FEB"
-            opacity="0.2"
-          />
-          {/* Inner Location Dot */}
           <circle
             cx={toSvgX(42.6946)}
             cy={toSvgY(42.2679)}

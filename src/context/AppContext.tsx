@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   AlertCategory,
   GeolocationStatus,
@@ -6,6 +6,7 @@ import {
   LayerVisibility,
   OfflineRegion,
   Place,
+  PlaceCategory,
   RecordedTrack,
   RoadAlert,
   RouteAlternative,
@@ -24,7 +25,7 @@ import { SEED_ALERTS } from '../data/seedAlerts';
 import { SEED_REGIONS } from '../data/seedRegions';
 import { SEED_TRACKS } from '../data/seedTracks';
 import { TRANSLATIONS } from '../lib/translations';
-import { fetchOsrmRoute, reverseGeocodeNominatim } from '../lib/services';
+import { fetchOsrmRoute, fetchOverpassPois, reverseGeocodeNominatim } from '../lib/services';
 import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
 import { computeProgress } from '../lib/navigation';
 import { generateRouteAlternatives } from '../lib/geo';
@@ -116,6 +117,14 @@ interface AppContextType {
   roadAlerts: RoadAlert[];
   enabledAlertCategories: Record<AlertCategory, boolean>;
   toggleAlertCategory: (cat: AlertCategory) => void;
+  reportAlert: (input: {
+    category: AlertCategory;
+    latitude: number;
+    longitude: number;
+    description?: string;
+    speedLimit?: number;
+  }) => RoadAlert;
+  removeAlert: (id: string) => void;
   alertDistanceMeters: number;
   setAlertDistanceMeters: (meters: number) => void;
   beepVolume: number;
@@ -314,7 +323,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [recenterTrigger, setRecenterTrigger] = useState<number>(0);
 
   // Places, Pins & Search
-  const [places] = useState<Place[]>(SEED_PLACES);
+  const [seedPlaces] = useState<Place[]>(SEED_PLACES);
+  const [nearbyPois, setNearbyPois] = useState<Place[]>([]);
+  const places = useMemo<Place[]>(() => [...seedPlaces, ...nearbyPois], [seedPlaces, nearbyPois]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [temporaryPin, setTemporaryPin] = useState<TemporaryPin | null>(null);
 
@@ -341,7 +352,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [routeError, setRouteError] = useState<string | null>(null);
 
   // Road Alerts
-  const [roadAlerts] = useState<RoadAlert[]>(SEED_ALERTS);
+  const [roadAlerts, setRoadAlerts] = useState<RoadAlert[]>(() => {
+    try {
+      const saved = localStorage.getItem('kvali_road_reports');
+      const mine: RoadAlert[] = saved ? JSON.parse(saved) : [];
+      return [...mine, ...SEED_ALERTS];
+    } catch {
+      return SEED_ALERTS;
+    }
+  });
   const [enabledAlertCategories, setEnabledAlertCategories] = useState<Record<AlertCategory, boolean>>(() => {
     try {
       const saved = localStorage.getItem('kvali_alert_cats');
@@ -514,6 +533,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       stopWatchRef.current = null;
     };
   }, [geolocationStatus]);
+
+  // Nearby points of interest from OpenStreetMap, refreshed for the current area.
+  const poiAnchor = userLocation
+    ? `${userLocation.latitude.toFixed(2)},${userLocation.longitude.toFixed(2)}`
+    : `${defaultCenter.latitude},${defaultCenter.longitude}`;
+
+  useEffect(() => {
+    if (!layers.pointsOfInterest) return;
+
+    const [latStr, lonStr] = poiAnchor.split(',');
+    const latitude = parseFloat(latStr);
+    const longitude = parseFloat(lonStr);
+    const controller = new AbortController();
+
+    fetchOverpassPois(latitude, longitude, 4000, controller.signal)
+      .then((pois) => {
+        const mapped: Place[] = pois.map((poi) => ({
+          id: poi.id,
+          name: poi.name,
+          nameKa: poi.name,
+          category: poi.category as PlaceCategory,
+          latitude: poi.latitude,
+          longitude: poi.longitude,
+          description: poi.address || 'OpenStreetMap place',
+          descriptionKa: poi.address || 'OpenStreetMap-ის ობიექტი',
+          aliases: [],
+          demo: false,
+          address: poi.address,
+        }));
+        setNearbyPois(mapped);
+      })
+      .catch((err) => {
+        if (err?.name === 'AbortError') return;
+        setNearbyPois([]);
+      });
+
+    return () => controller.abort();
+  }, [layers.pointsOfInterest, poiAnchor]);
 
   // Live Track Recording methods
   const startLiveTrackRecording = useCallback(() => {
@@ -758,6 +815,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleAlertCategory = (cat: AlertCategory) => {
     setEnabledAlertCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  const persistUserReports = (alerts: RoadAlert[]) => {
+    try {
+      localStorage.setItem(
+        'kvali_road_reports',
+        JSON.stringify(alerts.filter((a) => a.source === 'user'))
+      );
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  const reportAlert = (input: {
+    category: AlertCategory;
+    latitude: number;
+    longitude: number;
+    description?: string;
+    speedLimit?: number;
+  }) => {
+    const report: RoadAlert = {
+      id: `alert-user-${Date.now()}`,
+      category: input.category,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      roadName: 'Dropped location',
+      roadNameKa: 'მონიშნული ადგილი',
+      speedLimit: input.speedLimit,
+      warningDistanceMeters: 300,
+      source: 'user',
+      lastUpdatedText: new Date().toLocaleString(),
+      demo: false,
+      description: input.description?.trim() || 'Reported by you',
+      descriptionKa: input.description?.trim() || 'თქვენ მიერ მოხსენებული',
+    };
+    setRoadAlerts((prev) => {
+      const next = [report, ...prev];
+      persistUserReports(next);
+      return next;
+    });
+    return report;
+  };
+
+  const removeAlert = (id: string) => {
+    setRoadAlerts((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      persistUserReports(next);
+      return next;
+    });
   };
 
   const toggleLayer = (layer: keyof LayerVisibility) => {
@@ -1061,6 +1167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCollections(['Favorites', 'Home', 'Work']);
     setOfflineRegions(SEED_REGIONS);
     setRecordedTracks(SEED_TRACKS);
+    setRoadAlerts(SEED_ALERTS);
     setRecentSearches(['Colchis Fountain', 'Bagrati', 'Gelati Monastery']);
     setEnabledAlertCategories(DEFAULT_ALERT_CATEGORIES);
     setLayers(DEFAULT_LAYERS);
@@ -1129,6 +1236,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         roadAlerts,
         enabledAlertCategories,
         toggleAlertCategory,
+        reportAlert,
+        removeAlert,
         alertDistanceMeters,
         setAlertDistanceMeters,
         beepVolume,
