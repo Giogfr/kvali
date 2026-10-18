@@ -61,6 +61,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
 
   const [hasInitError, setHasInitError] = useState(false);
   const [styleNotice, setStyleNotice] = useState<string | null>(null);
@@ -186,6 +187,7 @@ export const MapView: React.FC<MapViewProps> = ({
     return () => {
       isSubscribed = false;
       clearTimeout(timeoutTimer);
+      gpsMarkerRef.current = null;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -252,27 +254,7 @@ export const MapView: React.FC<MapViewProps> = ({
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
-      // 1. Live location indicator
-      if (userLocation) {
-        const gpsEl = document.createElement('div');
-        gpsEl.className = 'relative flex items-center justify-center cursor-pointer pointer-events-auto';
-        gpsEl.innerHTML = `
-        <div class="absolute -top-6 w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-b-[20px] border-b-[#2F6FEB]/40"></div>
-        <div class="w-7 h-7 rounded-full bg-[#2F6FEB]/25 animate-ping absolute"></div>
-        <div class="w-5 h-5 rounded-full bg-[#2F6FEB] border-2 border-white shadow-md flex items-center justify-center">
-          <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
-        </div>
-        <div class="absolute -bottom-4 px-1.5 py-0.2 text-[9px] font-mono tracking-tight bg-black/75 text-white rounded whitespace-nowrap">
-          Your location
-        </div>
-      `;
-        const gpsMarker = new maplibregl.Marker({ element: gpsEl })
-          .setLngLat([userLocation.longitude, userLocation.latitude])
-          .addTo(map);
-        markersRef.current.push(gpsMarker);
-      }
-
-      // 2. POI Markers (if layer enabled)
+      // 1. POI Markers (if layer enabled)
       if (layers.pointsOfInterest) {
         places.forEach((place) => {
           const isSelected = selectedPlace?.id === place.id;
@@ -302,7 +284,7 @@ export const MapView: React.FC<MapViewProps> = ({
         });
       }
 
-      // 3. Saved Places Markers (if layer enabled)
+      // 2. Saved Places Markers (if layer enabled)
       if (layers.savedPlaces) {
         savedPlaces.forEach((sp) => {
           const el = document.createElement('div');
@@ -326,7 +308,7 @@ export const MapView: React.FC<MapViewProps> = ({
         });
       }
 
-      // 4. Road Alerts & Camera Markers (if layer enabled)
+      // 3. Road Alerts & Camera Markers (if layer enabled)
       if (layers.speedCameras) {
         roadAlerts.forEach((alert) => {
           if (!enabledAlertCategories[alert.category]) return;
@@ -352,7 +334,7 @@ export const MapView: React.FC<MapViewProps> = ({
         });
       }
 
-      // 5. Temporary Dropped Pin
+      // 4. Temporary Dropped Pin
       if (temporaryPin) {
         const pinEl = document.createElement('div');
         pinEl.className = 'text-red-500 drop-shadow-lg cursor-pointer transform -translate-y-4';
@@ -371,8 +353,6 @@ export const MapView: React.FC<MapViewProps> = ({
       // ignore
     }
   }, [
-    effectiveCenter,
-    userLocation,
     layers,
     places,
     savedPlaces,
@@ -390,6 +370,41 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     updateMarkers();
   }, [updateMarkers]);
+
+  // Live location dot, updated in place on every GPS fix (kept out of the heavy marker pass)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || hasInitError) {
+      gpsMarkerRef.current = null;
+      return;
+    }
+
+    if (!userLocation) {
+      gpsMarkerRef.current?.remove();
+      gpsMarkerRef.current = null;
+      return;
+    }
+
+    if (!gpsMarkerRef.current) {
+      const gpsEl = document.createElement('div');
+      gpsEl.className = 'relative flex items-center justify-center cursor-pointer pointer-events-auto';
+      gpsEl.innerHTML = `
+        <div class="absolute -top-6 w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-b-[20px] border-b-[#2F6FEB]/40"></div>
+        <div class="w-7 h-7 rounded-full bg-[#2F6FEB]/25 animate-ping absolute"></div>
+        <div class="w-5 h-5 rounded-full bg-[#2F6FEB] border-2 border-white shadow-md flex items-center justify-center">
+          <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+        </div>
+        <div class="absolute -bottom-4 px-1.5 py-0.2 text-[9px] font-mono tracking-tight bg-black/75 text-white rounded whitespace-nowrap">
+          Your location
+        </div>
+      `;
+      gpsMarkerRef.current = new maplibregl.Marker({ element: gpsEl })
+        .setLngLat([userLocation.longitude, userLocation.latitude])
+        .addTo(map);
+    } else {
+      gpsMarkerRef.current.setLngLat([userLocation.longitude, userLocation.latitude]);
+    }
+  }, [userLocation, hasInitError]);
 
   // Draw active route polyline on MapLibre
   useEffect(() => {
