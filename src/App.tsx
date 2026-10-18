@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { PhoneShell } from './components/layout/PhoneShell';
 import { BottomNav } from './components/layout/BottomNav';
+import { useWakeLock } from './lib/wakeLock';
 
 // 11 Screens
 import { MapScreen } from './screens/MapScreen';
@@ -18,7 +19,10 @@ import { TripToolsScreen } from './screens/TripToolsScreen';
 import { AboutScreen } from './screens/AboutScreen';
 
 const MainScreenRouter: React.FC = () => {
-  const { currentScreen, goBack, canGoBack } = useApp();
+  const { currentScreen, goBack, canGoBack, activeNav, isRecordingLiveTrack } = useApp();
+
+  // Keep the screen on while driving or recording a track.
+  useWakeLock(activeNav.isActive || isRecordingLiveTrack);
 
   // Browser back button support
   useEffect(() => {
