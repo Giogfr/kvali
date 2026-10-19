@@ -148,7 +148,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       if (isSubscribed && !mapInstanceRef.current?.loaded()) {
         setHasInitError(true);
       }
-    }, 6000);
+    }, 15000);
 
     try {
       const map = new maplibregl.Map({
@@ -201,6 +201,12 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
         if (!isSubscribed) return;
         setIsStyleLoaded(true);
         clearTimeout(timeoutTimer);
+        if (mapContainerRef.current) mapContainerRef.current.dataset.mapReady = 'true';
+      });
+
+      map.on('idle', () => {
+        if (!isSubscribed) return;
+        if (mapContainerRef.current) mapContainerRef.current.dataset.mapIdle = 'true';
       });
 
       // Long-press drops a pin; a plain tap does nothing.
@@ -233,6 +239,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       });
 
       mapInstanceRef.current = map;
+      if (import.meta.env.DEV) {
+        (window as unknown as { __kvaliMap?: maplibregl.Map }).__kvaliMap = map;
+      }
 
       // Keep the canvas sized to its container (sidebar toggles, orientation changes, etc.)
       if (mapContainerRef.current && typeof ResizeObserver !== 'undefined') {
@@ -257,6 +266,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
+      }
+      if (import.meta.env.DEV) {
+        delete (window as unknown as { __kvaliMap?: maplibregl.Map }).__kvaliMap;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -675,16 +687,18 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     } catch {}
   }, [activeRouteCoordinates, isStyleLoaded, theme, hasInitError]);
 
-  // Fit the map to a newly computed route
+  // Fit the map to a newly computed route. During active navigation the
+  // follow camera owns the viewport, so fitting here would fight it.
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !activeRouteCoordinates || activeRouteCoordinates.length < 2) return;
+    if (!map || activeNav.isActive) return;
+    if (!activeRouteCoordinates || activeRouteCoordinates.length < 2) return;
     try {
       const bounds = new maplibregl.LngLatBounds();
       activeRouteCoordinates.forEach((coord) => bounds.extend(coord));
       map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 800 });
     } catch {}
-  }, [activeRouteCoordinates]);
+  }, [activeRouteCoordinates, activeNav.isActive]);
 
   if (hasInitError) {
     return (
