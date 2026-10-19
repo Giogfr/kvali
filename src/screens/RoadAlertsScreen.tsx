@@ -17,12 +17,14 @@ import {
   MapPin,
   Send,
   Trash2,
+  Shield,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { ToggleSwitch, CustomSlider } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
-import { AlertCategory } from '../types';
+import { AlertCategory, RoadAlert } from '../types';
+import { calculateDistanceKm, formatDistance } from '../lib/geo';
 
 export const RoadAlertsScreen: React.FC = () => {
   const {
@@ -42,6 +44,8 @@ export const RoadAlertsScreen: React.FC = () => {
     toggleLayer,
     roadAlerts,
     userLocation,
+    effectiveCenter,
+    units,
     requestUserLocation,
     reportAlert,
     removeAlert,
@@ -104,7 +108,28 @@ export const RoadAlertsScreen: React.FC = () => {
     { id: 'lane_restrictions', label: t('laneRestrictions'), icon: Activity },
     { id: 'community_reports', label: t('communityReports'), icon: Info },
     { id: 'mobile_police', label: t('mobilePolice'), icon: ShieldAlert },
+    { id: 'police_station', label: t('policeStation'), icon: Shield },
   ];
+
+  const sourceLabel = (source: RoadAlert['source']) => {
+    if (source === 'mapped') return t('sourceMapped');
+    if (source === 'user') return t('sourceUser');
+    return t('sourceUnverified');
+  };
+
+  const nearbyAlerts = roadAlerts
+    .filter((a) => a.source !== 'user')
+    .map((alert) => ({
+      alert,
+      distanceKm: calculateDistanceKm(
+        effectiveCenter.latitude,
+        effectiveCenter.longitude,
+        alert.latitude,
+        alert.longitude
+      ),
+    }))
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, 20);
 
   const handleTestAudio = () => {
     playTestBeep();
@@ -241,6 +266,45 @@ export const RoadAlertsScreen: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Nearby mapped alerts */}
+        <div>
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className={`text-[11px] uppercase tracking-wider ${mutedText} font-semibold`}>
+              {t('nearbyAlerts')}
+            </span>
+            <span className={`text-[10px] font-mono ${mutedText}`}>{nearbyAlerts.length}</span>
+          </div>
+
+          <div className="divide-y divide-neutral-200 dark:divide-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40">
+            {nearbyAlerts.length === 0 ? (
+              <div className={`p-4 text-[11px] leading-relaxed ${mutedText}`}>
+                {t('noNearbyAlerts')}
+              </div>
+            ) : (
+              nearbyAlerts.map(({ alert, distanceKm }) => {
+                const cat = alertCategoriesList.find((c) => c.id === alert.category);
+                const Icon = cat?.icon ?? ShieldAlert;
+                return (
+                  <div key={alert.id} className="p-3 flex items-center gap-3">
+                    <Icon size={16} className="text-[#C9973F] shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className={`text-[12px] font-medium block truncate ${strongText}`}>
+                        {cat?.label ?? alert.category}
+                      </span>
+                      <span className={`text-[10px] block truncate ${mutedText}`}>
+                        {alert.description} · {sourceLabel(alert.source)}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-mono shrink-0 ${mutedText}`}>
+                      {formatDistance(distanceKm, units)}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

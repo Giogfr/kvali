@@ -62,7 +62,8 @@ export type AlertCategory =
   | 'dangerous_conditions'
   | 'lane_restrictions'
   | 'community_reports'
-  | 'mobile_police';
+  | 'mobile_police'
+  | 'police_station';
 
 export interface RoadAlert {
   id: string;

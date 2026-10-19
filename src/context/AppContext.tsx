@@ -21,8 +21,14 @@ import {
   VoiceMode,
 } from '../types';
 import { TRANSLATIONS } from '../lib/translations';
-import { fetchOsrmRoute, fetchOverpassPois, reverseGeocodeNominatim } from '../lib/services';
+import {
+  fetchOsrmRoute,
+  fetchOverpassPois,
+  fetchOverpassAlerts,
+  reverseGeocodeNominatim,
+} from '../lib/services';
 import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
+import { speakText, stopSpeaking } from '../lib/speech';
 import { computeProgress } from '../lib/navigation';
 import { calculateDistanceKm } from '../lib/geo';
 
@@ -182,6 +188,7 @@ const DEFAULT_ALERT_CATEGORIES: Record<AlertCategory, boolean> = {
   lane_restrictions: true,
   community_reports: true,
   mobile_police: false,
+  police_station: true,
 };
 
 const DEFAULT_LAYERS: LayerVisibility = {
@@ -360,10 +367,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [];
     }
   });
+  // Real enforcement / hazard features read from OpenStreetMap (not persisted).
+  const [mappedAlerts, setMappedAlerts] = useState<RoadAlert[]>([]);
   const [enabledAlertCategories, setEnabledAlertCategories] = useState<Record<AlertCategory, boolean>>(() => {
     try {
       const saved = localStorage.getItem('kvali_alert_cats');
-      return saved ? JSON.parse(saved) : DEFAULT_ALERT_CATEGORIES;
+      return saved ? { ...DEFAULT_ALERT_CATEGORIES, ...JSON.parse(saved) } : DEFAULT_ALERT_CATEGORIES;
     } catch {
       return DEFAULT_ALERT_CATEGORIES;
     }
@@ -578,6 +587,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => controller.abort();
   }, [layers.pointsOfInterest, poiAnchor, airplaneOfflineMode]);
+
+  // Real mapped enforcement and hazards from OpenStreetMap, refreshed per area.
+  useEffect(() => {
+    if (airplaneOfflineMode) return;
+
+    const [latStr, lonStr] = poiAnchor.split(',');
+    const latitude = parseFloat(latStr);
+    const longitude = parseFloat(lonStr);
+    const controller = new AbortController();
+
+    fetchOverpassAlerts(latitude, longitude, 6000, controller.signal)
+      .then((rows) => {
+        setMappedAlerts(
+          rows.map((row) => ({
+            id: row.id,
+            category: row.category,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            roadName: row.roadName,
+            roadNameKa: row.roadName,
+            speedLimit: row.speedLimit,
+            warningDistanceMeters: 400,
+            source: 'mapped' as const,
+            lastUpdatedText: row.lastUpdatedText,
+            description: row.description,
+            descriptionKa: row.descriptionKa,
+          }))
+        );
+      })
+      .catch((err) => {
+        if (err?.name === 'AbortError') return;
+        setMappedAlerts([]);
+      });
+
+    return () => controller.abort();
+  }, [poiAnchor, airplaneOfflineMode]);
+
+  const allAlerts = useMemo<RoadAlert[]>(() => {
+    const userIds = new Set(roadAlerts.map((a) => a.id));
+    return [...mappedAlerts.filter((a) => !userIds.has(a.id)), ...roadAlerts];
+  }, [mappedAlerts, roadAlerts]);
 
   // Live Track Recording methods
   const startLiveTrackRecording = useCallback(() => {
@@ -1028,18 +1078,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecordedTracks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Spoken guidance using the Web Speech API (available in the browser and the Android WebView)
+  // Spoken guidance: native Android TTS (with a selected Georgian voice) on
+  // device, browser speechSynthesis on the web.
   const speak = useCallback(
     (text: string) => {
-      try {
-        const synth = window.speechSynthesis;
-        if (!synth) return;
-        synth.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = language === 'ka' ? 'ka-GE' : 'en-US';
-        utterance.rate = 1;
-        synth.speak(utterance);
-      } catch {}
+      void speakText(text, language);
     },
     [language]
   );
@@ -1075,7 +1118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     (loc: { latitude: number; longitude: number }): RoadAlert | null => {
       let nearest: RoadAlert | null = null;
       let bestMeters = Infinity;
-      for (const alert of roadAlerts) {
+      for (const alert of allAlerts) {
         if (!enabledAlertCategories[alert.category]) continue;
         const meters =
           calculateDistanceKm(loc.latitude, loc.longitude, alert.latitude, alert.longitude) * 1000;
@@ -1086,7 +1129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return nearest;
     },
-    [roadAlerts, enabledAlertCategories, alertDistanceMeters]
+    [allAlerts, enabledAlertCategories, alertDistanceMeters]
   );
 
   // Start live navigation. Progress is driven by GPS fixes, not a timer.
@@ -1118,10 +1161,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       upcomingAlert: initialAlert,
     });
     lastRerouteRef.current = 0;
+    setRecenterTrigger((prev) => prev + 1);
     navigateTo('active-navigation');
   };
 
   const endNavigation = () => {
+    void stopSpeaking();
     setActiveNav((prev) => ({ ...prev, isActive: false, route: null, gpsActive: false, offRouteM: 0 }));
     navigateTo('map');
   };
@@ -1282,7 +1327,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeNav,
         startNavigation,
         endNavigation,
-        roadAlerts,
+        roadAlerts: allAlerts,
         enabledAlertCategories,
         toggleAlertCategory,
         reportAlert,

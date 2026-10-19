@@ -2,7 +2,10 @@
  * Online services used by Kvali:
  * - OpenStreetMap Nominatim reverse geocoding
  * - OSRM (Open Source Routing Machine) routing
+ * - OpenStreetMap Overpass (POIs and mapped road alerts)
  */
+
+import type { AlertCategory } from '../types';
 
 export interface RouteStep {
   instruction: string;
@@ -347,6 +350,136 @@ export async function fetchOverpassPois(
         };
       })
       .filter((p: OverpassPoi | null): p is OverpassPoi => p !== null);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') throw err;
+    return [];
+  }
+}
+
+export interface OverpassAlert {
+  id: string;
+  category: AlertCategory;
+  latitude: number;
+  longitude: number;
+  roadName: string;
+  speedLimit?: number;
+  description: string;
+  descriptionKa: string;
+  lastUpdatedText: string;
+}
+
+const ALERT_FILTERS = [
+  'node["highway"="speed_camera"]',
+  'node["enforcement"="maxspeed"]',
+  'node["enforcement"="red_light"]',
+  'node["enforcement"="average_speed"]',
+  'node["man_made"="surveillance"]["surveillance:type"="ALPR"]',
+  'node["man_made"="surveillance"]["surveillance:type"="ANPR"]',
+  'node["amenity"="police"]',
+  'way["amenity"="police"]',
+  'way["highway"="construction"]',
+  'way["construction"]',
+  'way["access"="no"]["highway"]',
+  'node["barrier"="gate"]["access"="no"]',
+];
+
+function alertCategoryFromTags(tags: Record<string, string>): AlertCategory | null {
+  if (tags.highway === 'speed_camera') return 'fixed_speed_camera';
+  if (tags.enforcement === 'maxspeed') return 'fixed_speed_camera';
+  if (tags.enforcement === 'red_light') return 'red_light_camera';
+  if (tags.enforcement === 'average_speed') return 'average_speed_zone';
+  if (tags['man_made'] === 'surveillance') {
+    const type = tags['surveillance:type'];
+    if (type === 'ALPR' || type === 'ANPR') return 'enforcement_other';
+  }
+  if (tags.enforcement) return 'enforcement_other';
+  if (tags.amenity === 'police') return 'police_station';
+  if (tags.highway === 'construction' || tags.construction) return 'roadworks';
+  if (tags.access === 'no' && tags.highway) return 'road_closures';
+  return null;
+}
+
+function alertLabels(category: AlertCategory): { en: string; ka: string } {
+  switch (category) {
+    case 'fixed_speed_camera':
+      return { en: 'Fixed speed camera', ka: 'ფიქსირებული რადარი' };
+    case 'average_speed_zone':
+      return { en: 'Average-speed camera zone', ka: 'საშუალო სიჩქარის კამერა' };
+    case 'red_light_camera':
+      return { en: 'Red-light camera', ka: 'შუქნიშნის კამერა' };
+    case 'enforcement_other':
+      return { en: 'Mapped enforcement', ka: 'საგზაო კონტროლი' };
+    case 'police_station':
+      return { en: 'Police station', ka: 'პოლიციის განყოფილება' };
+    case 'roadworks':
+      return { en: 'Roadworks / construction', ka: 'საგზაო სამუშაოები' };
+    case 'road_closures':
+      return { en: 'Road closure', ka: 'ჩაკეტილი გზა' };
+    default:
+      return { en: 'Road alert', ka: 'საგზაო გაფრთხილება' };
+  }
+}
+
+function parseSpeedLimit(value?: string): number | undefined {
+  if (!value) return undefined;
+  const match = value.match(/\d+/);
+  if (!match) return undefined;
+  const speed = parseInt(match[0], 10);
+  return Number.isFinite(speed) && speed > 0 && speed < 200 ? speed : undefined;
+}
+
+/**
+ * Fetches real mapped enforcement and hazard features from OpenStreetMap.
+ * Only returns what is actually present in OSM; missing coverage stays empty.
+ */
+export async function fetchOverpassAlerts(
+  latitude: number,
+  longitude: number,
+  radiusMeters = 6000,
+  signal?: AbortSignal
+): Promise<OverpassAlert[]> {
+  const filters = ALERT_FILTERS.map(
+    (filter) => `${filter}(around:${radiusMeters},${latitude},${longitude});`
+  ).join('\n');
+
+  const query = `[out:json][timeout:25];(\n${filters}\n);out center tags 200;`;
+  const url = `${OVERPASS_ENDPOINT}?data=${encodeURIComponent(query)}`;
+
+  try {
+    const response = await fetch(url, { signal });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data?.elements)) return [];
+
+    return data.elements
+      .map((el: any): OverpassAlert | null => {
+        const lat = el.lat ?? el.center?.lat;
+        const lon = el.lon ?? el.center?.lon;
+        if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+
+        const tags: Record<string, string> = el.tags || {};
+        const category = alertCategoryFromTags(tags);
+        if (!category) return null;
+
+        const labels = alertLabels(category);
+        const roadName = tags.name || tags['name:en'] || tags['addr:street'] || '';
+        const direction = tags.direction || tags['camera:direction'] || tags['traffic_sign'];
+        const enDetail = [labels.en, direction].filter(Boolean).join(' · ');
+        const kaDetail = [labels.ka, direction].filter(Boolean).join(' · ');
+
+        return {
+          id: `osm-alert-${el.type}-${el.id}`,
+          category,
+          latitude: lat,
+          longitude: lon,
+          roadName: roadName || labels.en,
+          speedLimit: parseSpeedLimit(tags.maxspeed),
+          description: enDetail,
+          descriptionKa: kaDetail,
+          lastUpdatedText: tags.check_date || tags['survey:date'] || 'OpenStreetMap',
+        };
+      })
+      .filter((a: OverpassAlert | null): a is OverpassAlert => a !== null);
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') throw err;
     return [];

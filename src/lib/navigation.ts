@@ -111,6 +111,79 @@ export function projectOnRoute(
   return best;
 }
 
+export interface SnappedPosition {
+  longitude: number;
+  latitude: number;
+  bearingDegrees: number;
+  offRouteM: number;
+}
+
+/**
+ * Returns the closest point on the route polyline, plus the segment bearing.
+ * Used to keep the vehicle marker on the drawn road instead of floating beside it.
+ */
+export function snapToRoute(
+  coords: [number, number][],
+  point: { latitude: number; longitude: number }
+): SnappedPosition | null {
+  if (coords.length === 0) return null;
+
+  const latRef = point.latitude;
+  const p = toLocalMeters(point.longitude, point.latitude, latRef);
+
+  if (coords.length === 1) {
+    return {
+      longitude: coords[0][0],
+      latitude: coords[0][1],
+      bearingDegrees: 0,
+      offRouteM: segmentLengthKm(coords[0], [point.longitude, point.latitude]) * 1000,
+    };
+  }
+
+  let best: SnappedPosition = {
+    longitude: coords[0][0],
+    latitude: coords[0][1],
+    bearingDegrees: 0,
+    offRouteM: Infinity,
+  };
+
+  for (let i = 1; i < coords.length; i++) {
+    const a = coords[i - 1];
+    const b = coords[i];
+    const la = toLocalMeters(a[0], a[1], latRef);
+    const lb = toLocalMeters(b[0], b[1], latRef);
+    const dx = lb.x - la.x;
+    const dy = lb.y - la.y;
+    const lenSq = dx * dx + dy * dy;
+
+    let t = 0;
+    if (lenSq > 0) {
+      t = ((p.x - la.x) * dx + (p.y - la.y) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+    }
+
+    const projX = la.x + dx * t;
+    const projY = la.y + dy * t;
+    const offM = Math.hypot(p.x - projX, p.y - projY);
+
+    if (offM < best.offRouteM) {
+      const lng = a[0] + (b[0] - a[0]) * t;
+      const lat = a[1] + (b[1] - a[1]) * t;
+      const bearing =
+        (Math.atan2((b[0] - a[0]) * Math.cos((latRef * Math.PI) / 180), b[1] - a[1]) * 180) /
+        Math.PI;
+      best = {
+        longitude: lng,
+        latitude: lat,
+        bearingDegrees: (bearing + 360) % 360,
+        offRouteM: offM,
+      };
+    }
+  }
+
+  return best;
+}
+
 /**
  * Works out the next maneuver by seeing where each step's location falls along
  * the route and picking the first one that is still ahead of the user.

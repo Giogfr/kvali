@@ -4,6 +4,7 @@ import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&
 import { useApp } from '../../context/AppContext';
 import { FallbackMap } from './FallbackMap';
 import { MAP_STYLES } from '../../lib/offline';
+import { snapToRoute } from '../../lib/navigation';
 import { Place } from '../../types';
 
 // Configure MapLibre Web Worker URL via Vite asset bundler
@@ -63,6 +64,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     places,
     layers,
     enabledAlertCategories,
+    activeNav,
   } = useApp();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -70,6 +72,8 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
   const manualMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const vehicleMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const followRef = useRef(true);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const appliedStyleRef = useRef<string | null>(null);
@@ -188,6 +192,11 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       map.keyboard.enable();
       if (map.touchZoomRotate) map.touchZoomRotate.enable();
 
+      // Let the driver pan freely; following resumes when they tap recenter.
+      map.on('dragstart', () => {
+        followRef.current = false;
+      });
+
       map.on('load', () => {
         if (!isSubscribed) return;
         setIsStyleLoaded(true);
@@ -269,15 +278,21 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
 
   // Recenter map animation — only when the user explicitly asks, not on every GPS fix
   useEffect(() => {
-    if (!mapInstanceRef.current || recenterTrigger === 0 || hasInitError) return;
+    const map = mapInstanceRef.current;
+    if (!map || recenterTrigger === 0 || hasInitError) return;
+    followRef.current = true;
+    const navigating = activeNav.isActive && !!userLocation;
     try {
-      mapInstanceRef.current.flyTo({
+      map.flyTo({
         center: [centerRef.current.longitude, centerRef.current.latitude],
-        zoom: 14.5,
+        zoom: navigating ? 17 : 14.5,
+        pitch: navigating ? 50 : 0,
+        bearing: navigating ? userLocation?.headingDegrees ?? 0 : 0,
         essential: true,
-        duration: 1200,
+        duration: 1000,
       });
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterTrigger, hasInitError]);
 
   // Focus map on selected place
@@ -429,7 +444,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       return;
     }
 
-    if (!userLocation) {
+    const hasRoute = !!activeRouteCoordinates && activeRouteCoordinates.length > 0;
+
+    if (!userLocation || hasRoute) {
       gpsMarkerRef.current?.remove();
       gpsMarkerRef.current = null;
       return;
@@ -451,7 +468,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     } else {
       gpsMarkerRef.current.setLngLat([userLocation.longitude, userLocation.latitude]);
     }
-  }, [userLocation, hasInitError]);
+  }, [userLocation, activeRouteCoordinates, hasInitError]);
 
   // Manual position marker (used only when there is no live GPS fix)
   useEffect(() => {
@@ -461,7 +478,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       return;
     }
 
-    if (userLocation || !manualLocation) {
+    const hasRoute = !!activeRouteCoordinates && activeRouteCoordinates.length > 0;
+
+    if (userLocation || !manualLocation || hasRoute) {
       manualMarkerRef.current?.remove();
       manualMarkerRef.current = null;
       return;
@@ -480,7 +499,86 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     } else {
       manualMarkerRef.current.setLngLat([manualLocation.longitude, manualLocation.latitude]);
     }
-  }, [userLocation, manualLocation, hasInitError]);
+  }, [userLocation, manualLocation, activeRouteCoordinates, hasInitError]);
+
+  // Vehicle marker that sits on the route line (preview and turn-by-turn).
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const hasRoute = !!activeRouteCoordinates && activeRouteCoordinates.length > 0;
+
+    if (!map || hasInitError || !hasRoute) {
+      vehicleMarkerRef.current?.remove();
+      vehicleMarkerRef.current = null;
+      return;
+    }
+
+    const route = activeRouteCoordinates!;
+    let position: [number, number] = route[0];
+    let bearing = route.length > 1 ? bearingBetween(route[0], route[1]) : 0;
+
+    if (userLocation) {
+      const snapped = snapToRoute(route, userLocation);
+      if (snapped) {
+        position = [snapped.longitude, snapped.latitude];
+        bearing = snapped.bearingDegrees;
+      }
+    }
+
+    if (!vehicleMarkerRef.current) {
+      const el = document.createElement('div');
+      el.className = 'pointer-events-none';
+      el.innerHTML = `
+        <div class="w-9 h-9 rounded-full bg-[#2F6FEB] border-2 border-white shadow-lg flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2l7 19-7-4-7 4 7-19z"/></svg>
+        </div>
+      `;
+      vehicleMarkerRef.current = new maplibregl.Marker({
+        element: el,
+        rotationAlignment: 'map',
+      })
+        .setLngLat(position)
+        .setRotation(bearing)
+        .addTo(map);
+    } else {
+      vehicleMarkerRef.current.setLngLat(position);
+      vehicleMarkerRef.current.setRotation(bearing);
+    }
+  }, [activeRouteCoordinates, userLocation, hasInitError]);
+
+  // Turn-by-turn camera: follow the position, tilt and rotate to the heading.
+  // Panning pauses following until the driver taps recenter.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || hasInitError || !activeNav.isActive) return;
+    followRef.current = true;
+  }, [activeNav.isActive, hasInitError]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || hasInitError || !activeNav.isActive || !userLocation || !followRef.current) return;
+    try {
+      const heading = userLocation.headingDegrees;
+      map.easeTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: Math.max(map.getZoom(), 16),
+        pitch: 50,
+        bearing: typeof heading === 'number' ? heading : map.getBearing(),
+        duration: 800,
+      });
+    } catch {}
+  }, [userLocation, activeNav.isActive, hasInitError]);
+
+  // Flatten the camera again after navigation ends.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || hasInitError) return;
+    if (!activeNav.isActive) {
+      followRef.current = true;
+      try {
+        map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+      } catch {}
+    }
+  }, [activeNav.isActive, hasInitError]);
 
   // 3D buildings (fill-extrusion from the OpenMapTiles building layer)
   useEffect(() => {
@@ -602,6 +700,15 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     </div>
   );
 });
+
+function bearingBetween(a: [number, number], b: [number, number]): number {
+  const dLon = ((b[0] - a[0]) * Math.PI) / 180;
+  const lat1 = (a[1] * Math.PI) / 180;
+  const lat2 = (b[1] * Math.PI) / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
 
 function cancelPressSafe(ref: React.MutableRefObject<number | null>) {
   if (ref.current !== null) {

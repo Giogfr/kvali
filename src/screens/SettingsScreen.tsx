@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Moon,
   Sun,
@@ -13,11 +13,19 @@ import {
   Check,
   AlertCircle,
   HelpCircle,
+  Volume2,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { NativeBadge } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
+import {
+  isLanguageSupported,
+  openVoiceInstall,
+  speakText,
+  speechLang,
+} from '../lib/speech';
 import { TravelMode, VoiceMode } from '../types';
 
 export const SettingsScreen: React.FC = () => {
@@ -39,6 +47,28 @@ export const SettingsScreen: React.FC = () => {
 
   const { showToast } = useToast();
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState<boolean | null>(null);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    isLanguageSupported(speechLang(language)).then((supported) => {
+      if (!cancelled) setVoiceSupported(supported);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  const handleTestVoice = async () => {
+    setIsTestingVoice(true);
+    await speakText(
+      language === 'ka' ? 'ორას მეტრში შეუხვიეთ მარცხნივ' : 'In two hundred metres, turn left',
+      language
+    );
+    setIsTestingVoice(false);
+    showToast(t('voiceTestStarted'), 'info');
+  };
 
   const handleResetConfirm = () => {
     resetPrototypeData();
@@ -222,20 +252,47 @@ export const SettingsScreen: React.FC = () => {
             </div>
 
             {/* Voice Guidance */}
-            <div className="p-3.5 flex items-center justify-between">
-              <div>
-                <span className={rowTitle}>{t('voiceGuidance')}</span>
-                <span className={`${rowHint} capitalize`}>{voiceMode}</span>
+            <div className="p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className={rowTitle}>{t('voiceGuidance')}</span>
+                  <span className={`${rowHint} capitalize`}>{voiceMode}</span>
+                </div>
+                <select
+                  value={voiceMode}
+                  onChange={(e) => setVoiceMode(e.target.value as VoiceMode)}
+                  className="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none"
+                >
+                  <option value="chime">{t('voiceChime')}</option>
+                  <option value="spoken">{t('voiceFull')}</option>
+                  <option value="muted">{t('voiceMuted')}</option>
+                </select>
               </div>
-              <select
-                value={voiceMode}
-                onChange={(e) => setVoiceMode(e.target.value as VoiceMode)}
-                className="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none"
-              >
-                <option value="chime">{t('voiceChime')}</option>
-                <option value="spoken">{t('voiceFull')}</option>
-                <option value="muted">{t('voiceMuted')}</option>
-              </select>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleTestVoice}
+                  disabled={isTestingVoice}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB]/15 hover:bg-[#2F6FEB]/25 disabled:opacity-60 text-[#2F6FEB] text-[11px] font-medium transition-colors"
+                >
+                  <Volume2 size={12} />
+                  <span>{t('testVoice')}</span>
+                </button>
+
+                {language === 'ka' && voiceSupported === false && (
+                  <button
+                    onClick={() => openVoiceInstall()}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C9973F]/15 hover:bg-[#C9973F]/25 text-[#C9973F] text-[11px] font-medium transition-colors"
+                  >
+                    <Download size={12} />
+                    <span>{t('installVoice')}</span>
+                  </button>
+                )}
+              </div>
+
+              {language === 'ka' && voiceSupported === false && (
+                <p className="text-[10px] text-[#C9973F] leading-snug">{t('georgianVoiceMissing')}</p>
+              )}
             </div>
           </div>
         </div>
