@@ -8,6 +8,7 @@ import {
   Users,
   Bookmark,
   Footprints,
+  Box,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
@@ -123,6 +124,24 @@ export const MapLayersScreen: React.FC = () => {
           <span className={sectionLabel}>Overlays</span>
 
           <div className={panel}>
+            {/* 3D buildings */}
+            <div className="p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Box size={16} className="text-[#2F6FEB]" />
+                <div>
+                  <span className={rowTitle}>3D buildings</span>
+                  <span className="text-[11px] text-neutral-500">
+                    Extruded buildings at street level
+                  </span>
+                </div>
+              </div>
+              <ToggleSwitch
+                checked={layers.buildings3d}
+                onChange={() => toggleLayer('buildings3d')}
+                label="3D buildings"
+              />
+            </div>
+
             {/* POIs */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">

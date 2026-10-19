@@ -140,6 +140,7 @@ export interface LayerVisibility {
   communityReports: boolean;
   savedPlaces: boolean;
   recordedTracks: boolean;
+  buildings3d: boolean;
   terrainNotice: boolean;
 }
 

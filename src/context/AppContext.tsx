@@ -24,7 +24,7 @@ import { TRANSLATIONS } from '../lib/translations';
 import { fetchOsrmRoute, fetchOverpassPois, reverseGeocodeNominatim } from '../lib/services';
 import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
 import { computeProgress } from '../lib/navigation';
-import { calculateDistanceKm, generateRouteAlternatives } from '../lib/geo';
+import { calculateDistanceKm } from '../lib/geo';
 
 interface ActiveNavState {
   isActive: boolean;
@@ -76,6 +76,8 @@ interface AppContextType {
   geolocationStatus: GeolocationStatus;
   requestUserLocation: () => Promise<{ latitude: number; longitude: number } | null>;
   effectiveCenter: { latitude: number; longitude: number };
+  manualLocation: { latitude: number; longitude: number; name: string } | null;
+  setManualLocation: (loc: { latitude: number; longitude: number; name: string } | null) => void;
 
   // Places, Map Pins & Search
   places: Place[];
@@ -189,6 +191,7 @@ const DEFAULT_LAYERS: LayerVisibility = {
   communityReports: true,
   savedPlaces: true,
   recordedTracks: true,
+  buildings3d: true,
   terrainNotice: false,
 };
 
@@ -260,6 +263,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [geolocationStatus, setGeolocationStatus] = useState<GeolocationStatus>('idle');
   const stopWatchRef = useRef<(() => void) | null>(null);
+  const didAutoLocateRef = useRef(false);
+
+  // Manual location for devices without GPS (or when permission is denied).
+  // This is always labelled as manual — it is never presented as a GPS fix.
+  const [manualLocation, setManualLocationState] = useState<{
+    latitude: number;
+    longitude: number;
+    name: string;
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem('kvali_manual_location');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setManualLocation = useCallback(
+    (loc: { latitude: number; longitude: number; name: string } | null) => {
+      setManualLocationState(loc);
+      try {
+        if (loc) localStorage.setItem('kvali_manual_location', JSON.stringify(loc));
+        else localStorage.removeItem('kvali_manual_location');
+      } catch {}
+    },
+    []
+  );
 
   // Live Track Recording
   const [isRecordingLiveTrack, setIsRecordingLiveTrack] = useState(false);
@@ -287,10 +317,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Default Kutaisi Center: 42.2679, 42.6946
+  // Default Kutaisi Center: 42.2679, 42.6946 (used only until a real or manual position exists)
   const defaultCenter = { latitude: 42.2679, longitude: 42.6946 };
   const effectiveCenter = userLocation
     ? { latitude: userLocation.latitude, longitude: userLocation.longitude }
+    : manualLocation
+    ? { latitude: manualLocation.latitude, longitude: manualLocation.longitude }
     : defaultCenter;
 
   const [recenterTrigger, setRecenterTrigger] = useState<number>(0);
@@ -365,7 +397,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [layers, setLayers] = useState<LayerVisibility>(() => {
     try {
       const saved = localStorage.getItem('kvali_layers');
-      return saved ? JSON.parse(saved) : DEFAULT_LAYERS;
+      return saved ? { ...DEFAULT_LAYERS, ...JSON.parse(saved) } : DEFAULT_LAYERS;
     } catch {
       return DEFAULT_LAYERS;
     }
@@ -453,6 +485,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const loc = await getCurrentLocation();
       applyLocation(loc);
+      setManualLocation(null);
       setRouteOrigin({
         name: 'My Location (GPS)',
         latitude: loc.latitude,
@@ -501,13 +534,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [geolocationStatus]);
 
+  // Ask for the device position once on launch so GPS actually activates.
+  // If the user already chose a manual location we leave it untouched.
+  useEffect(() => {
+    if (didAutoLocateRef.current) return;
+    didAutoLocateRef.current = true;
+    if (!manualLocation) requestUserLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Nearby points of interest from OpenStreetMap, refreshed for the current area.
-  const poiAnchor = userLocation
-    ? `${userLocation.latitude.toFixed(2)},${userLocation.longitude.toFixed(2)}`
-    : `${defaultCenter.latitude},${defaultCenter.longitude}`;
+  const poiAnchor = `${effectiveCenter.latitude.toFixed(2)},${effectiveCenter.longitude.toFixed(2)}`;
 
   useEffect(() => {
     if (!layers.pointsOfInterest) return;
+    if (airplaneOfflineMode) return;
 
     const [latStr, lonStr] = poiAnchor.split(',');
     const latitude = parseFloat(latStr);
@@ -536,7 +577,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
     return () => controller.abort();
-  }, [layers.pointsOfInterest, poiAnchor]);
+  }, [layers.pointsOfInterest, poiAnchor, airplaneOfflineMode]);
 
   // Live Track Recording methods
   const startLiveTrackRecording = useCallback(() => {
@@ -624,12 +665,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
 
-  // Real OSRM Route Calculation
+  // Real OSRM route calculation. If no real origin is known we refuse to
+  // calculate instead of inventing a start point from the default map centre.
   const calculateRoutes = useCallback(async (originOverride?: { latitude: number; longitude: number }) => {
     if (!routeDestination) return;
 
-    const origLat = originOverride ? originOverride.latitude : routeOrigin ? routeOrigin.latitude : effectiveCenter.latitude;
-    const origLon = originOverride ? originOverride.longitude : routeOrigin ? routeOrigin.longitude : effectiveCenter.longitude;
+    const origin =
+      originOverride ??
+      (routeOrigin ? { latitude: routeOrigin.latitude, longitude: routeOrigin.longitude } : null) ??
+      (userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : null) ??
+      (manualLocation ? { latitude: manualLocation.latitude, longitude: manualLocation.longitude } : null);
+
+    if (!origin) {
+      setRouteAlternatives([]);
+      setSelectedRouteAlternative(null);
+      setRouteError(
+        language === 'ka'
+          ? 'დასაწყისი წერტილი არ არის მითითებული. ჩართეთ მდებარეობა ან აირჩიეთ ის ხელით.'
+          : 'No starting point. Enable location or set your position manually.'
+      );
+      return;
+    }
 
     const destLat = routeDestination.latitude;
     const destLon = routeDestination.longitude;
@@ -643,9 +699,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     try {
-      // 1. Try real online OSRM routing first
       const osrmRoutes = await fetchOsrmRoute(
-        { latitude: origLat, longitude: origLon },
+        origin,
         { latitude: destLat, longitude: destLon },
         waypoints,
         travelMode
@@ -654,38 +709,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (osrmRoutes.length > 0) {
         setRouteAlternatives(osrmRoutes);
         setSelectedRouteAlternative(osrmRoutes[0]);
-        setIsCalculatingRoute(false);
         return;
       }
-    } catch (err) {
-      console.warn('Real OSRM route fetch failed, falling back to local geometric route:', err);
-    }
 
-    // 2. Fallback to deterministic local route if network is offline
-    try {
-      const fallbackRoutes = generateRouteAlternatives(
-        origLat,
-        origLon,
-        destLat,
-        destLon,
-        travelMode,
-        routePreferences
+      setRouteAlternatives([]);
+      setSelectedRouteAlternative(null);
+      setRouteError(
+        language === 'ka' ? 'ამ მოგზაურობისთვის მარშრუტი ვერ მოიძებნა.' : 'No route found for this trip.'
       );
-      setRouteAlternatives(fallbackRoutes);
-      setSelectedRouteAlternative(fallbackRoutes[0]);
-    } catch {
-      setRouteError('Could not calculate route path.');
+    } catch (err) {
+      console.warn('OSRM route request failed:', err);
+      setRouteAlternatives([]);
+      setSelectedRouteAlternative(null);
+      setRouteError(
+        language === 'ka'
+          ? 'მარშრუტის სერვისი მიუწვდომელია. შეამოწმეთ კავშირი და სცადეთ თავიდან.'
+          : 'Routing service unavailable. Check your connection and try again.'
+      );
     } finally {
       setIsCalculatingRoute(false);
     }
-  }, [routeOrigin, routeDestination, intermediateStops, travelMode, routePreferences, effectiveCenter]);
+  }, [routeOrigin, routeDestination, intermediateStops, travelMode, userLocation, manualLocation, language]);
 
   // Recalculate route whenever destination, origin, mode, preferences or stops change
   useEffect(() => {
     if (routeDestination) {
       calculateRoutes();
     }
-  }, [routeDestination, routeOrigin, travelMode, routePreferences, intermediateStops.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeDestination, routeOrigin, travelMode, routePreferences, intermediateStops.length, manualLocation]);
 
   // Check URL parameters for shareable route links on initial load
   useEffect(() => {
@@ -834,7 +886,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
   };
 
-  const triggerRecenter = () => {
+  const triggerRecenter = async () => {
+    // If we have no position yet, ask for one before centring on it.
+    if (!userLocation && !manualLocation) {
+      const loc = await requestUserLocation();
+      if (!loc) return;
+    }
     setRecenterTrigger((prev) => prev + 1);
   };
 
@@ -1166,6 +1223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setVoiceModeState('chime');
     setAirplaneOfflineModeState(false);
     setUserLocation(null);
+    setManualLocation(null);
     setGeolocationStatus('idle');
     setCurrentScreen('map');
     setNavHistory(['map']);
@@ -1196,6 +1254,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         geolocationStatus,
         requestUserLocation,
         effectiveCenter,
+        manualLocation,
+        setManualLocation,
         places,
         selectedPlace,
         setSelectedPlace,

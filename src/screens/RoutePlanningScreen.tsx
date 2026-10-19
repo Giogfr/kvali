@@ -41,6 +41,7 @@ export const RoutePlanningScreen: React.FC = () => {
     navigateTo,
     effectiveCenter,
     userLocation,
+    manualLocation,
   } = useApp();
 
   const destCoords = useMemo(() => {
@@ -56,11 +57,18 @@ export const RoutePlanningScreen: React.FC = () => {
 
   const originCoords = useMemo(() => {
     if (routeOrigin) return { lat: routeOrigin.latitude, lon: routeOrigin.longitude, name: routeOrigin.name };
-    return { lat: effectiveCenter.latitude, lon: effectiveCenter.longitude, name: t('chooseOrigin') };
-  }, [routeOrigin, effectiveCenter, t]);
+    if (userLocation)
+      return { lat: userLocation.latitude, lon: userLocation.longitude, name: t('gpsLive') };
+    if (manualLocation)
+      return {
+        lat: manualLocation.latitude,
+        lon: manualLocation.longitude,
+        name: manualLocation.name || t('manualLocationLabel'),
+      };
+    return null;
+  }, [routeOrigin, userLocation, manualLocation, t]);
 
-  // Routes come from the shared context, which fetches them from OSRM and
-  // falls back to an approximate path when the service is unreachable.
+  // Routes come from the shared context; they are real OSRM results only.
   const alternatives = routeAlternatives;
 
   // Keep the selected alternative valid whenever the route list changes.
@@ -71,7 +79,7 @@ export const RoutePlanningScreen: React.FC = () => {
   }, [alternatives, selectedRouteAlternative, setSelectedRouteAlternative]);
 
   const handleSwap = () => {
-    if (!routeDestination) return;
+    if (!routeDestination || !originCoords) return;
     const oldOrigin = originCoords;
     const oldDest = destCoords;
 
@@ -106,7 +114,7 @@ export const RoutePlanningScreen: React.FC = () => {
       <HeaderBar
         title={t('routePlanningTitle')}
         onBack={() => navigateTo('map')}
-        subtitle={userLocation ? t('gpsLive') : t('gpsWaiting')}
+        subtitle={userLocation ? t('gpsLive') : manualLocation ? t('manualLocationLabel') : t('gpsWaiting')}
       />
 
       {/* Origin, Destination & Swap Block */}
@@ -124,10 +132,12 @@ export const RoutePlanningScreen: React.FC = () => {
             {/* Origin */}
             <div className={`${fieldClass} py-2`}>
               <span className="truncate text-neutral-700 dark:text-neutral-300 font-medium">
-                {originCoords.name}
+                {originCoords ? originCoords.name : t('locationOffTitle')}
               </span>
               <span className="text-[10px] text-neutral-500 shrink-0 font-mono">
-                {originCoords.lat.toFixed(3)}, {originCoords.lon.toFixed(3)}
+                {originCoords
+                  ? `${originCoords.lat.toFixed(3)}, ${originCoords.lon.toFixed(3)}`
+                  : t('setLocationManually')}
               </span>
             </div>
 

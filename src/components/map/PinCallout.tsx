@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigation, Bookmark, Trash2, X } from 'lucide-react';
+import { Navigation, Bookmark, Trash2, X, LocateFixed } from 'lucide-react';
 import { Place, TemporaryPin } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
@@ -25,6 +25,7 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
     setTemporaryPin,
     setSelectedPlace,
     collections,
+    setManualLocation,
   } = useApp();
   const { showToast } = useToast();
 
@@ -72,6 +73,11 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
     setTemporaryPin(null);
     setSelectedPlace(null);
     onClose();
+  };
+
+  const handleUseAsMyLocation = () => {
+    setManualLocation({ latitude: lat, longitude: lng, name: title });
+    showToast(t('useAsMyLocation'), 'success');
   };
 
   return (
@@ -156,8 +162,17 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
           </div>
         </div>
       ) : (
-        /* Action buttons row */
-        <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-neutral-200 dark:border-neutral-700/40">
+        <>
+          <button
+            onClick={handleUseAsMyLocation}
+            className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-neutral-100 dark:bg-[#282828] hover:bg-neutral-200 dark:hover:bg-[#333333] text-[11px] font-medium text-neutral-600 dark:text-neutral-300 transition-colors"
+          >
+            <LocateFixed size={13} />
+            <span>{t('useAsMyLocation')}</span>
+          </button>
+
+          {/* Action buttons row */}
+          <div className="flex items-center gap-2 mt-2 pt-2.5 border-t border-neutral-200 dark:border-neutral-700/40">
           <button
             onClick={handleDirections}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[12px] font-medium shadow-sm press"
@@ -182,7 +197,8 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
           >
             <Trash2 size={15} />
           </button>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

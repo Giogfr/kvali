@@ -10,6 +10,10 @@ import {
   ArrowRight,
   Plus,
   Minus,
+  LocateFixed,
+  MapPin,
+  X,
+  Box,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MapView, type MapViewHandle } from '../components/map/MapView';
@@ -33,11 +37,15 @@ export const MapScreen: React.FC = () => {
     routeDestination,
     selectedRouteAlternative,
     userLocation,
+    geolocationStatus,
+    requestUserLocation,
+    manualLocation,
     handleMapTapCoords,
   } = useApp();
 
   const { showToast } = useToast();
   const [showCallout, setShowCallout] = useState(true);
+  const [showLocationBanner, setShowLocationBanner] = useState(true);
   const mapRef = useRef<MapViewHandle>(null);
 
   const controlButtonClass = `w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
@@ -125,6 +133,62 @@ export const MapScreen: React.FC = () => {
         </button>
       </div>
 
+      {/* Location setup: shown until a GPS fix or a manual position exists */}
+      {!userLocation && !manualLocation && showLocationBanner && (
+        <div
+          className={`absolute top-16 left-3 right-16 z-10 rounded-xl border shadow-lg p-3 ${
+            theme === 'dark'
+              ? 'bg-[#1E1E1E]/95 border-neutral-700 text-white'
+              : 'bg-white/95 border-neutral-200 text-[#111111]'
+          } backdrop-blur-md`}
+        >
+          <div className="flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#2F6FEB]/15 text-[#2F6FEB] flex items-center justify-center shrink-0">
+              <LocateFixed size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold leading-tight">{t('locationOffTitle')}</p>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-snug">
+                {t('locationOffDesc')}
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => requestUserLocation()}
+                  disabled={geolocationStatus === 'requesting'}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] hover:bg-[#2563EB] disabled:opacity-60 text-white text-[11px] font-medium press"
+                >
+                  <LocateFixed size={12} />
+                  <span>
+                    {geolocationStatus === 'requesting' ? t('locating') : t('enableLocation')}
+                  </span>
+                </button>
+                <button
+                  onClick={() => showToast(t('manualLocationHint'), 'info')}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-200 dark:bg-[#282828] hover:bg-neutral-300 dark:hover:bg-[#333333] text-[11px] font-medium text-current transition-colors"
+                >
+                  <MapPin size={12} />
+                  <span>{t('setLocationManually')}</span>
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowLocationBanner(false)}
+              className="p-1 -mr-1 -mt-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              aria-label={t('close')}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {airplaneOfflineMode && (userLocation || manualLocation || !showLocationBanner) && (
+        <div className="absolute top-16 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C9973F] text-black text-[11px] font-semibold shadow-md">
+          <WifiOff size={13} />
+          <span>{t('offlineStatus')}</span>
+        </div>
+      )}
+
       {/* Map controls */}
       <div className="absolute right-3 top-16 z-20 flex flex-col gap-2">
         {/* Zoom */}
@@ -147,6 +211,16 @@ export const MapScreen: React.FC = () => {
             <Minus size={18} />
           </button>
         </div>
+
+        {/* Tilt / 3D view */}
+        <button
+          onClick={() => mapRef.current?.toggle3D()}
+          className={controlButtonClass}
+          aria-label={t('toggle3d')}
+          title={t('toggle3d')}
+        >
+          <Box size={18} />
+        </button>
 
         {/* Map layers */}
         <button

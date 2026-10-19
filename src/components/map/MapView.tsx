@@ -41,6 +41,7 @@ function checkWebGL(): boolean {
 export interface MapViewHandle {
   zoomIn: () => void;
   zoomOut: () => void;
+  toggle3D: () => void;
 }
 
 export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function MapView(
@@ -49,9 +50,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
 ) {
   const {
     theme,
-    airplaneOfflineMode,
     effectiveCenter,
     userLocation,
+    manualLocation,
     recenterTrigger,
     selectedPlace,
     setSelectedPlace,
@@ -68,6 +69,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const gpsMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const manualMarkerRef = useRef<maplibregl.Marker | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const appliedStyleRef = useRef<string | null>(null);
@@ -90,6 +92,14 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       zoomOut: () => {
         try {
           mapInstanceRef.current?.zoomOut({ duration: 250 });
+        } catch {}
+      },
+      toggle3D: () => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        try {
+          const pitched = map.getPitch() > 10;
+          map.easeTo({ pitch: pitched ? 0 : 55, duration: 500 });
         } catch {}
       },
     }),
@@ -116,16 +126,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     [setTemporaryPin, setSelectedPlace]
   );
 
-  // Initialize MapLibre
+  // Initialize MapLibre. Offline mode keeps the same map instance; cached
+  // tiles are served by the service worker instead of swapping to a schematic.
   useEffect(() => {
-    if (airplaneOfflineMode) {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-      return;
-    }
-
     if (!checkWebGL()) {
       setHasInitError(true);
       return;
@@ -247,12 +250,13 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
         mapInstanceRef.current = null;
       }
     };
-  }, [airplaneOfflineMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Swap the style only when the theme actually changed (avoids a mount-time reload flash)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || airplaneOfflineMode || hasInitError) return;
+    if (!map || hasInitError) return;
     const target = getTargetStyle();
     if (appliedStyleRef.current === target) return;
     appliedStyleRef.current = target;
@@ -261,7 +265,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       map.setStyle(target);
       map.once('style.load', () => setIsStyleLoaded(true));
     } catch {}
-  }, [theme, getTargetStyle, airplaneOfflineMode, hasInitError]);
+  }, [theme, getTargetStyle, hasInitError]);
 
   // Recenter map animation — only when the user explicitly asks, not on every GPS fix
   useEffect(() => {
@@ -449,6 +453,83 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     }
   }, [userLocation, hasInitError]);
 
+  // Manual position marker (used only when there is no live GPS fix)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || hasInitError) {
+      manualMarkerRef.current = null;
+      return;
+    }
+
+    if (userLocation || !manualLocation) {
+      manualMarkerRef.current?.remove();
+      manualMarkerRef.current = null;
+      return;
+    }
+
+    if (!manualMarkerRef.current) {
+      const el = document.createElement('div');
+      el.className = 'relative flex items-center justify-center pointer-events-none';
+      el.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-[#C9973F]/25 absolute"></div>
+        <div class="w-4 h-4 rounded-full bg-[#C9973F] border-2 border-white shadow-md"></div>
+      `;
+      manualMarkerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat([manualLocation.longitude, manualLocation.latitude])
+        .addTo(map);
+    } else {
+      manualMarkerRef.current.setLngLat([manualLocation.longitude, manualLocation.latitude]);
+    }
+  }, [userLocation, manualLocation, hasInitError]);
+
+  // 3D buildings (fill-extrusion from the OpenMapTiles building layer)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !isStyleLoaded || hasInitError || !layers.buildings3d) {
+      try {
+        if (map?.getLayer('kvali-3d-buildings')) map.removeLayer('kvali-3d-buildings');
+      } catch {}
+      return;
+    }
+
+    const addExtrusion = () => {
+      try {
+        if (map.getLayer('kvali-3d-buildings')) return;
+        const style = map.getStyle();
+        if (!style?.layers?.some((l: any) => l['source-layer'] === 'building')) return;
+        const firstSymbol = style.layers.find((l) => l.type === 'symbol');
+        map.addLayer(
+          {
+            id: 'kvali-3d-buildings',
+            type: 'fill-extrusion',
+            source: 'openmaptiles',
+            'source-layer': 'building',
+            minzoom: 14,
+            filter: ['!=', ['coalesce', ['get', 'hide_3d'], false], true],
+            paint: {
+              'fill-extrusion-color': theme === 'dark' ? '#34343a' : '#d8d4cd',
+              'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+              'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+              'fill-extrusion-opacity': 0.85,
+            },
+          } as maplibregl.LayerSpecification,
+          firstSymbol?.id
+        );
+        map.setMaxPitch(60);
+      } catch {
+        /* style may not include the building layer */
+      }
+    };
+
+    addExtrusion();
+    map.on('style.load', addExtrusion);
+    return () => {
+      try {
+        map.off('style.load', addExtrusion);
+      } catch {}
+    };
+  }, [isStyleLoaded, layers.buildings3d, theme, hasInitError]);
+
   // Draw active route polyline on MapLibre
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -494,7 +575,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     } catch {}
   }, [activeRouteCoordinates]);
 
-  if (hasInitError || airplaneOfflineMode) {
+  if (hasInitError) {
     return (
       <FallbackMap
         onTapLocation={(c) => {
