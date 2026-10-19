@@ -136,7 +136,12 @@ export async function reverseGeocodeNominatim(
 }
 
 /**
- * Calculates real route using Open Source Routing Machine (OSRM)
+ * Calculates a real route.
+ *
+ * Car and bicycle routes use the FOSSGIS OSRM servers. The public OSRM demo
+ * silently answers every profile with a car route, so it must not be used for
+ * walking. Walking therefore goes through the public Valhalla instance, which
+ * has a real pedestrian costing profile.
  */
 export async function fetchOsrmRoute(
   origin: { latitude: number; longitude: number },
@@ -145,14 +150,20 @@ export async function fetchOsrmRoute(
   mode: 'car' | 'walking' | 'cycling' = 'car',
   signal?: AbortSignal
 ): Promise<RealRouteResult[]> {
-  // Map travel mode to OSRM profile
-  const profile = mode === 'walking' ? 'walking' : mode === 'cycling' ? 'cycling' : 'driving';
+  if (mode === 'walking') {
+    return fetchValhallaWalkingRoute(origin, destination, waypoints, signal);
+  }
 
   // Construct coordinates list: origin; intermediate...; destination
   const allPoints = [origin, ...waypoints, destination];
   const coordString = allPoints.map((p) => `${p.longitude},${p.latitude}`).join(';');
 
-  const url = `https://router.project-osrm.org/route/v1/${profile}/${coordString}?overview=full&geometries=geojson&steps=true&alternatives=true`;
+  const endpoint =
+    mode === 'cycling'
+      ? 'https://routing.openstreetmap.de/routed-bike/route/v1/bike'
+      : 'https://routing.openstreetmap.de/routed-car/route/v1/driving';
+
+  const url = `${endpoint}/${coordString}?overview=full&geometries=geojson&steps=true&alternatives=true`;
 
   try {
     const response = await fetch(url, { signal });
@@ -227,6 +238,182 @@ export async function fetchOsrmRoute(
   }
 }
 
+const VALHALLA_ENDPOINT = 'https://valhalla1.openstreetmap.de/route';
+
+/** Decodes a Valhalla polyline with 1e6 precision into [lng, lat] pairs. */
+export function decodePolyline6(encoded: string): [number, number][] {
+  const coordinates: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte: number;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    shift = 0;
+    result = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    coordinates.push([lng / 1e6, lat / 1e6]);
+  }
+
+  return coordinates;
+}
+
+function valhallaManeuver(type: number): { type: string; modifier: string } {
+  switch (type) {
+    case 1:
+    case 2:
+    case 3:
+      return { type: 'depart', modifier: '' };
+    case 4:
+    case 5:
+    case 6:
+      return { type: 'arrive', modifier: '' };
+    case 9:
+      return { type: 'turn', modifier: 'slight right' };
+    case 10:
+      return { type: 'turn', modifier: 'right' };
+    case 11:
+      return { type: 'turn', modifier: 'sharp right' };
+    case 12:
+    case 13:
+      return { type: 'uturn', modifier: '' };
+    case 14:
+      return { type: 'turn', modifier: 'sharp left' };
+    case 15:
+      return { type: 'turn', modifier: 'left' };
+    case 16:
+      return { type: 'turn', modifier: 'slight left' };
+    case 17:
+      return { type: 'fork', modifier: 'straight' };
+    case 18:
+    case 20:
+    case 23:
+      return { type: 'fork', modifier: 'right' };
+    case 19:
+    case 21:
+    case 24:
+      return { type: 'fork', modifier: 'left' };
+    case 22:
+      return { type: 'turn', modifier: 'straight' };
+    case 25:
+    case 37:
+    case 38:
+      return { type: 'merge', modifier: '' };
+    case 26:
+    case 27:
+      return { type: 'roundabout', modifier: '' };
+    default:
+      return { type: 'turn', modifier: '' };
+  }
+}
+
+async function fetchValhallaWalkingRoute(
+  origin: { latitude: number; longitude: number },
+  destination: { latitude: number; longitude: number },
+  waypoints: { latitude: number; longitude: number }[],
+  signal?: AbortSignal
+): Promise<RealRouteResult[]> {
+  const locations = [origin, ...waypoints, destination].map((point) => ({
+    lat: point.latitude,
+    lon: point.longitude,
+  }));
+
+  const response = await fetch(VALHALLA_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      locations,
+      costing: 'pedestrian',
+      directions_options: { units: 'kilometers', language: 'en-US' },
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Valhalla routing failed: status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const trip = data?.trip;
+  if (!trip || !Array.isArray(trip.legs) || trip.legs.length === 0) {
+    throw new Error(data?.error || 'No walking route found');
+  }
+
+  const coordinates: [number, number][] = [];
+  const steps: RouteStep[] = [];
+
+  for (const leg of trip.legs) {
+    const legShape = decodePolyline6(String(leg.shape || ''));
+    if (legShape.length > 0) {
+      const last = coordinates[coordinates.length - 1];
+      const first = legShape[0];
+      if (!last || last[0] !== first[0] || last[1] !== first[1]) {
+        coordinates.push(...legShape);
+      } else {
+        coordinates.push(...legShape.slice(1));
+      }
+    }
+
+    for (const maneuver of leg.maneuvers || []) {
+      const mapped = valhallaManeuver(Number(maneuver.type));
+      const name: string = maneuver.street_names?.[0] || 'Road';
+      const shapeIndex = Math.max(
+        0,
+        Math.min(Number(maneuver.begin_shape_index) || 0, legShape.length - 1)
+      );
+      const location = legShape[shapeIndex] || [destination.longitude, destination.latitude];
+
+      steps.push({
+        instruction:
+          maneuver.instruction || formatManeuverText(mapped.type, mapped.modifier, name),
+        instructionKa: formatManeuverTextKa(mapped.type, mapped.modifier, name),
+        name,
+        distanceMeters: Math.round((Number(maneuver.length) || 0) * 1000),
+        durationSeconds: Math.round(Number(maneuver.time) || 0),
+        maneuverType: mapped.type,
+        maneuverModifier: mapped.modifier,
+        location,
+      });
+    }
+  }
+
+  const distanceKm = parseFloat((Number(trip.summary?.length) || 0).toFixed(1));
+  const durationMinutes = Math.max(1, Math.round((Number(trip.summary?.time) || 0) / 60));
+  const mainRoad = steps.find(
+    (step) => step.name && step.name !== 'Road' && step.distanceMeters > 300
+  )?.name;
+
+  return [
+    {
+      id: 'valhalla-walk-0',
+      name: 'Walking Route',
+      nameKa: 'საფეხმავლო მარშრუტი',
+      distanceKm,
+      durationMinutes,
+      coordinates,
+      steps,
+      via: mainRoad ? `via ${mainRoad}` : 'on foot',
+      viaKa: mainRoad ? `${mainRoad}-ით` : 'ფეხით',
+      isRealService: true,
+    },
+  ];
+}
+
 export interface OverpassPoi {
   id: string;
   name: string;
@@ -236,30 +423,61 @@ export interface OverpassPoi {
   address?: string;
 }
 
-const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
-
-const POI_FILTERS = [
-  'amenity=fuel',
-  'amenity=parking',
-  'amenity=restaurant',
-  'amenity=cafe',
-  'amenity=fast_food',
-  'amenity=pharmacy',
-  'amenity=hospital',
-  'amenity=clinic',
-  'amenity=bank',
-  'amenity=atm',
-  'amenity=toilets',
-  'amenity=drinking_water',
-  'amenity=bus_stop',
-  'shop=supermarket',
-  'shop=convenience',
-  'tourism=hotel',
-  'tourism=guest_house',
-  'tourism=attraction',
-  'tourism=viewpoint',
-  'tourism=museum',
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  // Mirrors used when the main instance is overloaded or missing CORS headers.
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Runs an Overpass query against the main instance and falls back to mirrors.
+ * Overpass is a volunteer service and is regularly overloaded, so each
+ * endpoint is tried twice with a short backoff before giving up.
+ */
+async function overpassQuery(query: string, signal?: AbortSignal): Promise<any> {
+  let lastError: unknown = null;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+          },
+          body: new URLSearchParams({ data: query }).toString(),
+          signal,
+        });
+        if (!response.ok) {
+          lastError = new Error(`Overpass ${endpoint} returned ${response.status}`);
+        } else {
+          return await response.json();
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') throw err;
+        lastError = err;
+      }
+      await delay(500 * (attempt + 1));
+    }
+  }
+
+  throw lastError || new Error('Overpass is unavailable');
+}
+
+const POI_QUERY = `[out:json][timeout:25];
+(
+  nwr["amenity"~"^(fuel|parking|restaurant|cafe|fast_food|pharmacy|hospital|clinic|bank|atm|toilets|drinking_water|bus_stop)$"](around:RADIUS,LAT,LON);
+  nwr["shop"~"^(supermarket|convenience)$"](around:RADIUS,LAT,LON);
+  nwr["tourism"~"^(hotel|guest_house|attraction|viewpoint|museum)$"](around:RADIUS,LAT,LON);
+);
+out center tags 120;`;
 
 function poiCategory(tags: Record<string, string>): string {
   const a = tags.amenity;
@@ -314,18 +532,12 @@ export async function fetchOverpassPois(
   radiusMeters = 4000,
   signal?: AbortSignal
 ): Promise<OverpassPoi[]> {
-  const filters = POI_FILTERS.map((f) => {
-    const [key, value] = f.split('=');
-    return `node["${key}"="${value}"](around:${radiusMeters},${latitude},${longitude});`;
-  }).join('\n');
-
-  const query = `[out:json][timeout:25];(\n${filters}\n);out body 80;`;
-  const url = `${OVERPASS_ENDPOINT}?data=${encodeURIComponent(query)}`;
+  const query = POI_QUERY.replace('RADIUS', String(radiusMeters))
+    .replace('LAT', String(latitude))
+    .replace('LON', String(longitude));
 
   try {
-    const response = await fetch(url, { signal });
-    if (!response.ok) return [];
-    const data = await response.json();
+    const data = await overpassQuery(query, signal);
     if (!Array.isArray(data?.elements)) return [];
 
     return data.elements
@@ -368,20 +580,18 @@ export interface OverpassAlert {
   lastUpdatedText: string;
 }
 
-const ALERT_FILTERS = [
-  'node["highway"="speed_camera"]',
-  'node["enforcement"="maxspeed"]',
-  'node["enforcement"="red_light"]',
-  'node["enforcement"="average_speed"]',
-  'node["man_made"="surveillance"]["surveillance:type"="ALPR"]',
-  'node["man_made"="surveillance"]["surveillance:type"="ANPR"]',
-  'node["amenity"="police"]',
-  'way["amenity"="police"]',
-  'way["highway"="construction"]',
-  'way["construction"]',
-  'way["access"="no"]["highway"]',
-  'node["barrier"="gate"]["access"="no"]',
-];
+// Only features that really are enforcement or road hazards in OSM. Generic
+// access=no segments and gates are deliberately excluded: they are mostly
+// driveways and private service roads, not closures.
+const ALERT_QUERY = `[out:json][timeout:25];
+(
+  nwr["highway"="speed_camera"](around:RADIUS,LAT,LON);
+  nwr["enforcement"~"^(maxspeed|red_light|average_speed)$"](around:RADIUS,LAT,LON);
+  nwr["man_made"="surveillance"]["surveillance:type"~"^(ALPR|ANPR)$"](around:RADIUS,LAT,LON);
+  nwr["amenity"="police"](around:RADIUS,LAT,LON);
+  nwr["highway"="construction"](around:RADIUS,LAT,LON);
+);
+out center tags 200;`;
 
 function alertCategoryFromTags(tags: Record<string, string>): AlertCategory | null {
   if (tags.highway === 'speed_camera') return 'fixed_speed_camera';
@@ -438,17 +648,12 @@ export async function fetchOverpassAlerts(
   radiusMeters = 6000,
   signal?: AbortSignal
 ): Promise<OverpassAlert[]> {
-  const filters = ALERT_FILTERS.map(
-    (filter) => `${filter}(around:${radiusMeters},${latitude},${longitude});`
-  ).join('\n');
-
-  const query = `[out:json][timeout:25];(\n${filters}\n);out center tags 200;`;
-  const url = `${OVERPASS_ENDPOINT}?data=${encodeURIComponent(query)}`;
+  const query = ALERT_QUERY.replace('RADIUS', String(radiusMeters))
+    .replace('LAT', String(latitude))
+    .replace('LON', String(longitude));
 
   try {
-    const response = await fetch(url, { signal });
-    if (!response.ok) return [];
-    const data = await response.json();
+    const data = await overpassQuery(query, signal);
     if (!Array.isArray(data?.elements)) return [];
 
     return data.elements
@@ -489,6 +694,7 @@ export async function fetchOverpassAlerts(
 function formatManeuverText(type: string, modifier: string, roadName: string): string {
   if (type === 'depart') return `Depart on ${roadName}`;
   if (type === 'arrive') return `Arrive at destination`;
+  if (type === 'uturn') return `Make a U-turn onto ${roadName}`;
   if (type === 'roundabout') return `At roundabout, continue onto ${roadName}`;
   if (type === 'merge') return `Merge onto ${roadName}`;
   if (type === 'fork') return `Keep ${modifier || 'left'} onto ${roadName}`;
@@ -508,6 +714,7 @@ function formatManeuverText(type: string, modifier: string, roadName: string): s
 function formatManeuverTextKa(type: string, modifier: string, roadName: string): string {
   if (type === 'depart') return `გაემართეთ: ${roadName}`;
   if (type === 'arrive') return `მიხვედით დანიშნულების ადგილზე`;
+  if (type === 'uturn') return `შეასრულეთ U-მობრუნება: ${roadName}`;
   if (type === 'roundabout') return `წრიულ მოძრაობაზე გადადით: ${roadName}`;
 
   if (modifier?.includes('left')) {
