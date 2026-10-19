@@ -165,6 +165,94 @@ try {
     check(`${tab} tab opens`, true);
   }
 
+  // Preferences: theme, language and units should apply immediately and persist.
+  await clickText(page, 'nav button', 'Settings');
+  await clickText(page, 'button', 'Dark');
+  const darkTheme = await page.evaluate(() =>
+    document.documentElement.classList.contains('dark')
+  );
+  check('dark theme applies', darkTheme);
+
+  await clickText(page, 'button', 'ქართული');
+  const georgianUi = await page.evaluate(
+    () =>
+      document.body.innerText.includes('პარამეტრები') &&
+      localStorage.getItem('kvali_lang') === 'ka'
+  );
+  check('Georgian language switches the UI and is stored', georgianUi);
+  await clickText(page, 'button', 'English');
+  await page.waitForFunction(() => document.body.innerText.includes('Settings'), {
+    timeout: 10000,
+  });
+  const englishStored = await page.evaluate(() => localStorage.getItem('kvali_lang') === 'en');
+  check('English language can be restored', englishStored);
+
+  await clickText(page, 'button', 'Imperial (mi, ft)');
+  const imperial = await page.evaluate(() => localStorage.getItem('kvali_units'));
+  check('imperial units are stored', imperial === 'imperial', String(imperial));
+  await clickText(page, 'button', 'Metric (km, m)');
+
+  await clickText(page, 'button', 'Light');
+  const lightTheme = await page.evaluate(
+    () =>
+      !document.documentElement.classList.contains('dark') &&
+      localStorage.getItem('kvali_theme') === 'light'
+  );
+  check('light theme restores and is stored', lightTheme);
+
+  // Map layer screen and layer toggles.
+  await clickText(page, 'nav button', 'Map');
+  await page.click('[aria-label="Map layers"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Positron Light'), {
+    timeout: 10000,
+  });
+  await clickText(page, 'button', 'Dark Night');
+  const darkMap = await page.evaluate(() =>
+    document.documentElement.classList.contains('dark')
+  );
+  check('map style switches to dark', darkMap);
+  await clickText(page, 'button', 'Positron Light');
+  check(
+    'map style switches back to light',
+    await page.evaluate(() => !document.documentElement.classList.contains('dark'))
+  );
+
+  const switch3d = '[role="switch"][aria-label="3D buildings"]';
+  const before3d = await page.$eval(switch3d, (node) => node.getAttribute('aria-checked'));
+  await page.click(switch3d);
+  const without3d = await page.$eval(switch3d, (node) => node.getAttribute('aria-checked'));
+  await page.click(switch3d);
+  const with3d = await page.$eval(switch3d, (node) => node.getAttribute('aria-checked'));
+  check('3D buildings toggle updates', before3d !== without3d && with3d === before3d);
+
+  await page.click('[aria-label="Back"]');
+  await page.waitForFunction(
+    () => !!window.__kvaliMap && window.__kvaliMap.loaded() === true,
+    { timeout: 30000 }
+  );
+  check('map reloads after changing layers', true);
+
+  // Road alert filters and About.
+  await clickText(page, 'nav button', 'Alerts');
+  const alertSwitch = '[role="switch"][aria-label="Fixed speed cameras"]';
+  await page.waitForSelector(alertSwitch, { timeout: 10000 });
+  const beforeAlert = await page.$eval(alertSwitch, (node) => node.getAttribute('aria-checked'));
+  await page.click(alertSwitch);
+  const afterAlert = await page.$eval(alertSwitch, (node) => node.getAttribute('aria-checked'));
+  await page.click(alertSwitch);
+  check('alert category toggle updates', beforeAlert !== afterAlert);
+
+  await clickText(page, 'nav button', 'Settings');
+  await page.click('[aria-label="About Kvali"]');
+  await page.waitForFunction(() => document.body.innerText.includes('About Kvali'), {
+    timeout: 10000,
+  });
+  check('About screen opens', true);
+  await page.click('[aria-label="Back"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Settings'), {
+    timeout: 10000,
+  });
+
   // Search -> directions -> route calculation.
   await clickText(page, 'nav button', 'Search');
   await page.waitForSelector('input[type="text"]', { timeout: 10000 });
