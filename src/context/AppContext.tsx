@@ -512,6 +512,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [theme]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('kvali_lang', language);
+    } catch {}
+  }, [language]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('kvali_units', units);
+    } catch {}
+  }, [units]);
+
+  // Persist the rest of the user's preferences and their own data so nothing
+  // silently resets when the app is reopened.
+  useEffect(() => {
+    try {
+      localStorage.setItem('kvali_layers', JSON.stringify(layers));
+      localStorage.setItem('kvali_saved_places', JSON.stringify(savedPlaces));
+      localStorage.setItem('kvali_collections', JSON.stringify(collections));
+      localStorage.setItem('kvali_tracks', JSON.stringify(recordedTracks));
+      localStorage.setItem('kvali_alert_cats', JSON.stringify(enabledAlertCategories));
+      localStorage.setItem('kvali_alert_dist', String(alertDistanceMeters));
+      localStorage.setItem('kvali_beep_vol', String(beepVolume));
+      localStorage.setItem('kvali_sound_enabled', String(soundEnabled));
+      localStorage.setItem('kvali_airplane_mode', String(airplaneOfflineMode));
+      localStorage.setItem('kvali_mode', travelMode);
+      localStorage.setItem('kvali_route_pref', JSON.stringify(routePreferences));
+    } catch {}
+  }, [
+    layers,
+    savedPlaces,
+    collections,
+    recordedTracks,
+    enabledAlertCategories,
+    alertDistanceMeters,
+    beepVolume,
+    soundEnabled,
+    airplaneOfflineMode,
+    travelMode,
+    routePreferences,
+  ]);
+
   // Request the device location (native plugin on Android, browser API on web)
   const requestUserLocation = useCallback(async (): Promise<{ latitude: number; longitude: number } | null> => {
     if (geolocationStatus === 'requesting') return null;
