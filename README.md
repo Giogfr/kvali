@@ -26,7 +26,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 
 ## Download & install
 
-- **Android:** grab the signed APK from the [latest release](https://github.com/Giogfr/kvali/releases/latest), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
+- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.1](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.1), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
 - **Web / PWA:** run `bun run build` and serve `dist/`, or deploy it anywhere static. In Chrome or Edge, use **Install app** in the address bar to add it as a standalone app with offline support.
 
 ## Table of contents
@@ -274,7 +274,7 @@ Without that file, `assembleRelease` still builds, just unsigned.
 
 Tagged builds attach the signed release APK, so you can download and sideload it directly:
 
-- Browse the [Releases](https://github.com/Giogfr/kvali/releases) page and download the APK from the latest release.
+- Browse the [Releases](https://github.com/Giogfr/kvali/releases) page and download the APK from the newest release (betas are marked *Pre-release*).
 - On the phone, allow installs from your browser, then open the downloaded APK.
 - Grant location permission on first launch and choose precise location where offered.
 
