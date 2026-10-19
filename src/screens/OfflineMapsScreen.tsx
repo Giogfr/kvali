@@ -37,6 +37,7 @@ export const OfflineMapsScreen: React.FC = () => {
     airplaneOfflineMode,
     setAirplaneOfflineMode,
     userLocation,
+    manualLocation,
     effectiveCenter,
   } = useApp();
 
@@ -158,7 +159,7 @@ export const OfflineMapsScreen: React.FC = () => {
     setIsAddingArea(true);
     let lat = effectiveCenter.latitude;
     let lon = effectiveCenter.longitude;
-    if (!userLocation) {
+    if (!userLocation && !manualLocation) {
       try {
         const loc = await getCurrentLocation();
         lat = loc.latitude;
