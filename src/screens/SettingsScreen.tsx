@@ -21,10 +21,14 @@ import { HeaderBar } from '../components/common/HeaderBar';
 import { NativeBadge } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
 import {
+  getPreferredVoice,
   isLanguageSupported,
+  listVoices,
   openVoiceInstall,
+  setPreferredVoice,
   speakText,
   speechLang,
+  type SpeechVoice,
 } from '../lib/speech';
 import { TravelMode, VoiceMode } from '../types';
 
@@ -49,11 +53,22 @@ export const SettingsScreen: React.FC = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState<boolean | null>(null);
   const [isTestingVoice, setIsTestingVoice] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechVoice[]>([]);
+  const [preferredVoice, setPreferredVoiceState] = useState<string>(() => getPreferredVoice() || '');
 
   useEffect(() => {
     let cancelled = false;
-    isLanguageSupported(speechLang(language)).then((supported) => {
+    const lang = speechLang(language);
+    isLanguageSupported(lang).then((supported) => {
       if (!cancelled) setVoiceSupported(supported);
+    });
+    listVoices(lang).then((voices) => {
+      if (cancelled) return;
+      setAvailableVoices(voices);
+      const selected = getPreferredVoice();
+      if (selected && !voices.some((voice) => voice.voiceURI === selected)) {
+        setPreferredVoiceState('');
+      }
     });
     return () => {
       cancelled = true;
@@ -62,12 +77,17 @@ export const SettingsScreen: React.FC = () => {
 
   const handleTestVoice = async () => {
     setIsTestingVoice(true);
-    await speakText(
+    const spoken = await speakText(
       language === 'ka' ? 'ორას მეტრში შეუხვიეთ მარცხნივ' : 'In two hundred metres, turn left',
       language
     );
     setIsTestingVoice(false);
-    showToast(t('voiceTestStarted'), 'info');
+    showToast(spoken ? t('voiceTestStarted') : t('voiceTestFailed'), spoken ? 'info' : 'warn');
+  };
+
+  const handleVoiceChange = (voiceURI: string) => {
+    setPreferredVoiceState(voiceURI);
+    setPreferredVoice(voiceURI || null);
   };
 
   const handleResetConfirm = () => {
@@ -289,6 +309,25 @@ export const SettingsScreen: React.FC = () => {
                   </button>
                 )}
               </div>
+
+              {availableVoices.length > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className={rowHint}>{t('voiceSound')}</span>
+                  <select
+                    value={preferredVoice}
+                    onChange={(e) => handleVoiceChange(e.target.value)}
+                    className="max-w-[62%] bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none"
+                  >
+                    <option value="">{t('voiceSystemDefault')}</option>
+                    {availableVoices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name}
+                        {voice.localService ? '' : ` (${t('voiceOnline')})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {language === 'ka' && voiceSupported === false && (
                 <p className="text-[10px] text-[#C9973F] leading-snug">{t('georgianVoiceMissing')}</p>

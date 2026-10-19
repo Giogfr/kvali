@@ -2,29 +2,81 @@
  * Voice guidance.
  *
  * On Android we use the native text-to-speech engine through the Capacitor
- * plugin, which lets us select the installed Georgian voice. On the web we
+ * plugin, which lets us select an installed Georgian voice. On the web we
  * fall back to the browser's speechSynthesis API.
  */
 
 import { Capacitor } from '@capacitor/core';
 import { TextToSpeech, QueueStrategy } from '@capacitor-community/text-to-speech';
 
+export interface SpeechVoice {
+  name: string;
+  lang: string;
+  voiceURI: string;
+  localService: boolean;
+  default: boolean;
+}
+
+const PREFERRED_VOICE_KEY = 'kvali_tts_voice';
+
 export function speechLang(language: 'en' | 'ka'): string {
   return language === 'ka' ? 'ka-GE' : 'en-US';
 }
 
-function pickVoiceIndex(
-  voices: { lang: string; default: boolean }[],
-  lang: string
-): number | undefined {
-  if (voices.length === 0) return undefined;
+export function getPreferredVoice(): string | null {
+  try {
+    return localStorage.getItem(PREFERRED_VOICE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setPreferredVoice(voiceURI: string | null): void {
+  try {
+    if (voiceURI) localStorage.setItem(PREFERRED_VOICE_KEY, voiceURI);
+    else localStorage.removeItem(PREFERRED_VOICE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function matchesLanguage(voiceLang: string, lang: string): boolean {
   const wanted = lang.toLowerCase();
-  const exact = voices.findIndex((v) => v.lang.toLowerCase() === wanted);
-  if (exact >= 0) return exact;
   const base = wanted.split('-')[0];
-  const sameLanguage = voices.findIndex((v) => v.lang.toLowerCase().startsWith(base));
-  if (sameLanguage >= 0) return sameLanguage;
-  return undefined;
+  const candidate = voiceLang.toLowerCase();
+  return candidate === wanted || candidate.startsWith(`${base}-`) || candidate === base;
+}
+
+function pickVoiceIndex(voices: SpeechVoice[], lang: string): number | undefined {
+  if (voices.length === 0) return undefined;
+
+  const preferred = getPreferredVoice();
+  if (preferred) {
+    const preferredIndex = voices.findIndex((voice) => voice.voiceURI === preferred);
+    if (preferredIndex >= 0 && matchesLanguage(voices[preferredIndex].lang, lang)) {
+      return preferredIndex;
+    }
+  }
+
+  const wanted = lang.toLowerCase();
+  const base = wanted.split('-')[0];
+  let bestIndex: number | undefined;
+  let bestScore = -1;
+
+  voices.forEach((voice, index) => {
+    const candidate = voice.lang.toLowerCase();
+    if (!candidate.startsWith(base)) return;
+    let score = candidate === wanted ? 4 : 2;
+    // Local voices keep working without a connection, which matters for a
+    // navigation app; a better network voice can still be chosen in settings.
+    if (voice.localService) score += 1;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
 }
 
 function webVoices(): SpeechSynthesisVoice[] {
@@ -50,6 +102,28 @@ async function getWebVoicesWhenReady(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
+export async function listVoices(lang: string): Promise<SpeechVoice[]> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const { voices } = await TextToSpeech.getSupportedVoices();
+      return (voices as SpeechVoice[]).filter((voice) => matchesLanguage(voice.lang, lang));
+    }
+
+    const voices = await getWebVoicesWhenReady();
+    return voices
+      .filter((voice) => matchesLanguage(voice.lang, lang))
+      .map((voice) => ({
+        name: voice.name,
+        lang: voice.lang,
+        voiceURI: voice.voiceURI,
+        localService: voice.localService,
+        default: voice.default,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export async function isLanguageSupported(lang: string): Promise<boolean> {
   try {
     if (Capacitor.isNativePlatform()) {
@@ -59,21 +133,20 @@ export async function isLanguageSupported(lang: string): Promise<boolean> {
 
     const voices = await getWebVoicesWhenReady();
     if (voices.length === 0) return true;
-    const wanted = lang.toLowerCase();
-    const base = wanted.split('-')[0];
-    return voices.some(
-      (v) => v.lang.toLowerCase() === wanted || v.lang.toLowerCase().startsWith(base)
-    );
+    return voices.some((v) => matchesLanguage(v.lang, lang));
   } catch {
     return false;
   }
 }
 
+/**
+ * Speaks text and reports whether the platform actually accepted the request.
+ */
 export async function speakText(
   text: string,
   language: 'en' | 'ka',
   opts: { rate?: number; volume?: number } = {}
-): Promise<void> {
+): Promise<boolean> {
   const lang = speechLang(language);
   const rate = opts.rate ?? 1;
   const volume = opts.volume ?? 1;
@@ -81,7 +154,7 @@ export async function speakText(
   if (Capacitor.isNativePlatform()) {
     try {
       const { voices } = await TextToSpeech.getSupportedVoices();
-      const voice = pickVoiceIndex(voices, lang);
+      const voice = pickVoiceIndex(voices as SpeechVoice[], lang);
       await TextToSpeech.speak({
         text,
         lang,
@@ -91,15 +164,15 @@ export async function speakText(
         voice,
         queueStrategy: QueueStrategy.Flush,
       });
+      return true;
     } catch {
-      /* no installed voice or engine failure */
+      return false;
     }
-    return;
   }
 
   try {
     const synth = window.speechSynthesis;
-    if (!synth) return;
+    if (!synth) return false;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
@@ -107,12 +180,15 @@ export async function speakText(
     utterance.volume = volume;
 
     const voices = await getWebVoicesWhenReady();
-    const index = pickVoiceIndex(voices, lang);
-    if (index !== undefined) utterance.voice = voices[index];
+    const preferred = getPreferredVoice();
+    let selected = preferred ? voices.find((voice) => voice.voiceURI === preferred) : undefined;
+    if (!selected) selected = voices.find((voice) => matchesLanguage(voice.lang, lang));
+    if (selected) utterance.voice = selected;
 
     synth.speak(utterance);
+    return true;
   } catch {
-    /* speech is best-effort */
+    return false;
   }
 }
 
