@@ -232,6 +232,41 @@ try {
   );
   check('map reloads after changing layers', true);
 
+  // Long-press a spot, save it, and confirm it reaches the saved list.
+  const mapCanvas = await page.$('.maplibregl-canvas');
+  const mapBox = await mapCanvas.boundingBox();
+  await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+  await page.mouse.down();
+  await sleep(700);
+  await page.mouse.up();
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('button')].some((node) =>
+        (node.textContent || '').includes('Save place')
+      ),
+    { timeout: 10000 }
+  );
+  await clickText(page, 'button', 'Save place');
+  await page.waitForSelector('input[type="text"]', { timeout: 10000 });
+  await page.focus('input[type="text"]');
+  await page.$eval('input[type="text"]', (input) => input.select());
+  await page.type('input[type="text"]', 'My Test Spot');
+  await clickText(page, 'button', 'Save changes');
+  const storedPlaces = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('kvali_saved_places') || '[]')
+  );
+  check(
+    'a dropped pin is saved to the device',
+    storedPlaces.some((place) => place.name === 'My Test Spot'),
+    storedPlaces.map((place) => place.name).join(', ')
+  );
+  await clickText(page, 'nav button', 'Saved');
+  await page.waitForFunction(() => document.body.innerText.includes('My Test Spot'), {
+    timeout: 10000,
+  });
+  check('the saved place appears in the list', true);
+  await page.click('[aria-label="Back"]');
+
   // Road alert filters and About.
   await clickText(page, 'nav button', 'Alerts');
   const alertSwitch = '[role="switch"][aria-label="Fixed speed cameras"]';
@@ -372,7 +407,8 @@ try {
     entry.includes('overpass') ||
     entry.includes('blocked by CORS policy') ||
     entry.includes('net::ERR_FAILED') ||
-    entry.includes('net::ERR_TIMED_OUT');
+    entry.includes('net::ERR_TIMED_OUT') ||
+    entry.includes('net::ERR_CONNECTION_TIMED_OUT');
   const fatalErrors = browserErrors.filter((entry) => !benign(entry) && !externalService(entry));
   const externalErrors = browserErrors.filter((entry) => !benign(entry) && externalService(entry));
   if (externalErrors.length > 0) {
