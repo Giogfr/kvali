@@ -9,7 +9,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2F6FEB"></a>
   <a href="https://github.com/Giogfr/kvali/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Giogfr/kvali/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-0.9.4-2F6FEB">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.1-2F6FEB">
   <br />
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
@@ -22,7 +22,12 @@
 
 Kvali is an open-source navigation app for Georgia. It is a React + TypeScript app that runs in the browser and on Android through Capacitor. Maps are OpenStreetMap vector tiles rendered with MapLibre GL; search and reverse geocoding come from Nominatim, routes from OSRM, and nearby points of interest from Overpass.
 
-> **Status: development preview (0.9.x).** Kvali is not ready for real driving yet. It has been built and tested in the browser and on an Android device, but not field-tested on the road. Please read [Project status](#project-status) and [How to test](#how-to-test) before relying on it.
+> **Status: public beta (1.0.0-beta.1).** Kvali does real routing, GPS guidance, Georgian voice and offline maps, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
+
+## Download & install
+
+- **Android:** grab the signed APK from the [latest release](https://github.com/Giogfr/kvali/releases/latest), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
+- **Web / PWA:** run `bun run build` and serve `dist/`, or deploy it anywhere static. In Chrome or Edge, use **Install app** in the address bar to add it as a standalone app with offline support.
 
 ## Table of contents
 
@@ -63,9 +68,9 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 
 ### Routing & guidance
 
-- Car, walking, and cycling routes from OSRM with alternatives, waypoints, and route preferences (avoid tolls, highways, unpaved).
+- Car and bike routes from FOSSGIS OSRM, walking routes from Valhalla, with route preferences (avoid tolls, highways, unpaved).
 - Turn-by-turn navigation driven by real GPS fixes: manoeuvre banner, remaining distance and ETA, off-route detection with automatic rerouting.
-- Voice guidance via the platform speech synthesiser, with *spoken*, *chime*, and *muted* modes.
+- Voice guidance via the platform speech synthesiser, with *spoken*, *chime*, and *muted* modes and a picker for the installed voice (it prefers an offline voice and warns when no Georgian voice is available).
 - Shareable route links (`?dest=…&name=…&mode=…`).
 
 ### Safety
@@ -76,7 +81,9 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 
 ### Offline & device
 
-- Offline map areas that cache real map tiles in device storage through a service worker, so the map keeps rendering without a connection.
+- Offline map areas that cache real vector tiles (zooms 9–14, both map styles, sprites and fonts) in device storage through a service worker, so the map keeps rendering without a connection.
+- Routes you have calculated once are saved on the device (to roughly 110 m) and work again offline; nearby POIs and alert data are cached for a week.
+- Installable as a PWA with its own icon, and offline-first: the app shell loads from the cache with no network.
 - Screen wake lock while guidance or track recording is active.
 - Metric / imperial units, light / dark theme, English / Georgian, all persisted locally.
 
@@ -135,6 +142,9 @@ bun run preview
 | `bun run preview` | Serve the production build locally. |
 | `bun run lint` | Type-check with `tsc --noEmit`. |
 | `bun run clean` | Remove the `dist/` directory. |
+| `bun run test:smoke` | End-to-end browser checks (map, routing, preferences); needs the dev server on :3000. |
+| `bun run test:offline` | Same idea with the network switched off; needs `bun run preview` on :4173. |
+| `bun run icons` | Regenerate the PWA and Android launcher icons from the built-in SVG. |
 
 CI runs `lint` and `build` on every push to `main` and on pull requests (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
@@ -148,7 +158,7 @@ src/
 │  └─ map/       # MapView (MapLibre), FallbackMap (SVG), PinCallout
 ├─ context/      # AppContext (app state), ToastContext
 ├─ lib/          # geo.ts, navigation.ts, services.ts, location.ts, offline.ts,
-│                # wakeLock.ts, translations.ts
+│                # routeCache.ts, offlineCache.ts, speech.ts, wakeLock.ts, translations.ts
 ├─ screens/      # One component per screen (lazy-loaded)
 ├─ types/        # Shared TypeScript types
 ├─ index.css     # Tailwind entry + design tokens, keyframes, utilities
@@ -156,8 +166,11 @@ src/
 └─ main.tsx      # React root, service-worker registration
 public/
 ├─ favicon.svg, logo.svg
+├─ manifest.webmanifest      # PWA metadata
+├─ icons/                    # Generated PWA icons
 ├─ sw.js                     # Tile/asset caching service worker
 └─ maplibre-gl-worker.mjs
+scripts/                       # smoke.mjs, offline.mjs, icons.mjs
 android/                       # Capacitor Android project
 .github/workflows/ci.yml
 ```
@@ -199,13 +212,13 @@ Persisted to `localStorage`: theme, language, units, voice mode, travel mode, ro
 
 ## Offline behaviour
 
-Downloaded areas store real map tiles in device storage (`public/sw.js` caches the tile hosts), so the map keeps drawing without a connection and on weak rural signal.
+The app is offline-first. The shell, the downloaded map tiles, and any route you have already calculated are served from the device cache, so the map keeps drawing and a known route keeps guiding without a connection — even if you still have a little internet.
 
 What still needs a connection:
 
 - Search and reverse geocoding (Nominatim).
-- Point-of-interest lookup (Overpass).
-- Turn-by-turn routing (OSRM).
+- Point-of-interest and alert lookups (Overpass).
+- A **new** route you have never calculated before (there is no on-device routing graph yet).
 
 Voice guidance uses the device speech synthesiser, so the available voices and languages depend on the platform.
 
@@ -235,20 +248,37 @@ Requires JDK 21 and the Android SDK (platform 36, build-tools 36).
 bun run build
 bunx cap sync android
 cd android
-./gradlew assembleDebug      # gradlew.bat on Windows
+./gradlew assembleRelease    # gradlew.bat on Windows
 ```
 
-The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. Point the build at your SDK with `android/local.properties` (`sdk.dir=…`); that file is not committed.
+The APK is written to `android/app/build/outputs/apk/release/app-release.apk`. Point the build at your SDK with `android/local.properties` (`sdk.dir=…`); that file is not committed.
+
+### Signing a release
+
+`android/app/build.gradle` reads an optional `android/keystore.properties` (gitignored). Create the key and the file once:
+
+```sh
+keytool -genkeypair -v -keystore android/kvali-release.jks -alias kvali \
+  -keyalg RSA -keysize 2048 -validity 10000
+
+# android/keystore.properties
+storeFile=kvali-release.jks
+storePassword=…
+keyAlias=kvali
+keyPassword=…
+```
+
+Without that file, `assembleRelease` still builds, just unsigned.
 
 ## Releases
 
-Tagged builds attach the debug APK as a release asset, so you can download and sideload it directly:
+Tagged builds attach the signed release APK, so you can download and sideload it directly:
 
 - Browse the [Releases](https://github.com/Giogfr/kvali/releases) page and download the APK from the latest release.
 - On the phone, allow installs from your browser, then open the downloaded APK.
 - Grant location permission on first launch and choose precise location where offered.
 
-Release APKs are unsigned debug builds; for distribution you would need to add a signing config to `android/app/build.gradle`.
+Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.1` (`versionCode` 3).
 
 ## How to test
 
@@ -290,7 +320,7 @@ To exercise location screens without moving, use your browser's sensor override 
 
 ## Contributing
 
-Contributions are welcome. Keep it framework-light, match the existing code style, and run `bun run lint` and `bun run build` before opening a pull request. There is no automated test suite yet — adding tests for the pure helpers in `src/lib/` would be a great first contribution.
+Contributions are welcome. Keep it framework-light, match the existing code style, and run `bun run lint`, `bun run build`, `bun run test:smoke` and `bun run test:offline` before opening a pull request. The two browser suites cover the map, routing, preferences and offline mode; unit tests for the pure helpers in `src/lib/` would still be a welcome addition.
 
 ## License
 

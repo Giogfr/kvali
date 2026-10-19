@@ -98,6 +98,33 @@ try {
   });
   check('service worker caches map tiles', cache.tiles > 10, JSON.stringify(cache));
 
+  // The same build must be installable as a PWA.
+  const pwa = await page.evaluate(async () => {
+    const manifest = await (await fetch('/manifest.webmanifest')).json();
+    const icon = await fetch('/icons/icon-512.png');
+    const maskable = await fetch('/icons/maskable-512.png');
+    return {
+      display: manifest.display,
+      startUrl: manifest.start_url,
+      icons: manifest.icons?.length ?? 0,
+      iconOk: icon.ok,
+      iconType: icon.headers.get('content-type'),
+      maskableOk: maskable.ok,
+      linked: !!document.querySelector('link[rel="manifest"]'),
+    };
+  });
+  check(
+    'PWA manifest and icons are installable',
+    pwa.linked &&
+      pwa.display === 'standalone' &&
+      pwa.startUrl === '/' &&
+      pwa.icons >= 2 &&
+      pwa.iconOk &&
+      pwa.maskableOk &&
+      /image\/png/.test(pwa.iconType || ''),
+    JSON.stringify(pwa)
+  );
+
   // Download an area through the UI, not by browsing, and make sure the real
   // prefetch path works (styles, glyphs, sprites and zooms 9-14).
   await clickText(page, 'nav button', 'Settings');
