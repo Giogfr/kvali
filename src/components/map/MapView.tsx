@@ -307,6 +307,19 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     } catch {}
   }, [selectedPlace, hasInitError]);
 
+  // Focus the map when a manual position is chosen (no GPS available).
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !manualLocation || userLocation || hasInitError) return;
+    try {
+      map.flyTo({
+        center: [manualLocation.longitude, manualLocation.latitude],
+        zoom: 15,
+        duration: 900,
+      });
+    } catch {}
+  }, [manualLocation, userLocation, hasInitError]);
+
   // Render markers incrementally, reusing existing ones instead of rebuilding every time
   const updateMarkers = useCallback(() => {
     const map = mapInstanceRef.current;

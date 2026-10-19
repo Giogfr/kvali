@@ -270,9 +270,9 @@ export const MapScreen: React.FC = () => {
 
         {/* Recenter */}
         <button
-          onClick={() => {
-            triggerRecenter();
-            showToast(t('recenter') + ': ' + (userLocation ? t('gpsLive') : t('gpsWaiting')), 'info');
+          onClick={async () => {
+            await triggerRecenter();
+            showToast(t('recenter'), 'info');
           }}
           className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
             theme === 'dark'

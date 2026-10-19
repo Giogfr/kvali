@@ -165,7 +165,7 @@ interface AppContextType {
 
   // Recenter Trigger
   recenterTrigger: number;
-  triggerRecenter: () => void;
+  triggerRecenter: () => Promise<void>;
 
   // Prototype Reset
   resetPrototypeData: () => void;

@@ -58,7 +58,8 @@ export async function ensureLocationPermission(): Promise<boolean> {
   if (!isNativePlatform()) return true;
   const status = await Geolocation.checkPermissions();
   if (status.location === 'granted') return true;
-  if (status.location === 'denied') return false;
+  // Ask again even after a denial: the user may have re-enabled it in settings
+  // and Android will simply answer immediately when it is permanently denied.
   const requested = await Geolocation.requestPermissions();
   return requested.location === 'granted';
 }
