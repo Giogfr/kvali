@@ -83,6 +83,7 @@ export const OfflineMapsScreen: React.FC = () => {
         const result = await prefetchRegion({
           bbox: region.bbox,
           styleUrl: theme === 'dark' ? MAP_STYLES.dark : MAP_STYLES.light,
+          extraStyleUrls: [theme === 'dark' ? MAP_STYLES.light : MAP_STYLES.dark],
           onProgress: ({ done, total, bytes }) => {
             const pct = total ? Math.round((done / total) * 100) : 0;
             if (pct !== lastPct) {

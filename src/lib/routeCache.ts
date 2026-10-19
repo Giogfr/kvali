@@ -1,0 +1,127 @@
+/**
+ * Stores routes that were calculated while online so navigation keeps working
+ * in offline mode. Only real routes returned by the routing services are
+ * stored; nothing here is generated locally.
+ */
+
+import type { RealRouteResult } from './services';
+
+export type TravelModeKey = 'car' | 'walking' | 'cycling';
+
+interface LatLng {
+  latitude: number;
+  longitude: number;
+}
+
+export interface SavedRoute {
+  key: string;
+  savedAt: number;
+  origin: LatLng;
+  destination: LatLng;
+  waypoints: LatLng[];
+  mode: TravelModeKey;
+  routes: RealRouteResult[];
+}
+
+const STORAGE_KEY = 'kvali_saved_routes_v1';
+const MAX_ENTRIES = 10;
+// ~110 metres at Georgian latitudes: close enough that the saved route still
+// starts on the same street, while surviving normal GPS drift.
+const COORD_PRECISION = 3;
+
+function rounded(value: number): number {
+  return Number(value.toFixed(COORD_PRECISION));
+}
+
+function pointKey(point: LatLng): string {
+  return `${rounded(point.latitude)},${rounded(point.longitude)}`;
+}
+
+export function routeCacheKey(
+  origin: LatLng,
+  destination: LatLng,
+  waypoints: LatLng[],
+  mode: TravelModeKey
+): string {
+  return [mode, pointKey(origin), ...waypoints.map(pointKey), pointKey(destination)].join('|');
+}
+
+function readAll(): SavedRoute[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry): entry is SavedRoute =>
+        !!entry &&
+        typeof entry.key === 'string' &&
+        Array.isArray(entry.routes) &&
+        entry.routes.length > 0 &&
+        entry.routes.every(
+          (route: RealRouteResult) =>
+            Array.isArray(route.coordinates) && route.coordinates.length > 1
+        )
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeAll(entries: SavedRoute[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, MAX_ENTRIES)));
+  } catch {
+    // Storage is full: keep the newest few routes rather than failing silently.
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, 3)));
+    } catch {
+      /* routing still works, it just will not be available offline */
+    }
+  }
+}
+
+export function loadSavedRoute(
+  origin: LatLng,
+  destination: LatLng,
+  waypoints: LatLng[],
+  mode: TravelModeKey
+): RealRouteResult[] | null {
+  const key = routeCacheKey(origin, destination, waypoints, mode);
+  const entry = readAll().find((item) => item.key === key);
+  return entry ? entry.routes : null;
+}
+
+export function saveRoute(
+  origin: LatLng,
+  destination: LatLng,
+  waypoints: LatLng[],
+  mode: TravelModeKey,
+  routes: RealRouteResult[]
+): void {
+  if (routes.length === 0) return;
+  const key = routeCacheKey(origin, destination, waypoints, mode);
+  const entries = readAll().filter((entry) => entry.key !== key);
+  entries.unshift({
+    key,
+    savedAt: Date.now(),
+    origin,
+    destination,
+    waypoints,
+    mode,
+    routes,
+  });
+  writeAll(entries);
+}
+
+export function clearSavedRoutes(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function savedRouteCount(): number {
+  return readAll().length;
+}

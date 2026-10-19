@@ -27,10 +27,18 @@ import {
   fetchOverpassAlerts,
   reverseGeocodeNominatim,
 } from '../lib/services';
-import { getCurrentLocation, watchLocation, LocationError, type LocationResult } from '../lib/location';
+import {
+  getCurrentLocation,
+  ensureLocationPermission,
+  watchLocation,
+  LocationError,
+  type LocationResult,
+} from '../lib/location';
 import { speakText, stopSpeaking } from '../lib/speech';
 import { computeProgress } from '../lib/navigation';
 import { calculateDistanceKm } from '../lib/geo';
+import { loadSavedRoute, saveRoute } from '../lib/routeCache';
+import { readCache, writeCache } from '../lib/offlineCache';
 
 interface ActiveNavState {
   isActive: boolean;
@@ -109,6 +117,8 @@ interface AppContextType {
   setSelectedRouteAlternative: (route: RouteAlternative | null) => void;
   isCalculatingRoute: boolean;
   routeError: string | null;
+  routeFromCache: boolean;
+  isOnline: boolean;
   calculateRoutes: () => Promise<void>;
   getShareableRouteUrl: () => string;
 
@@ -271,6 +281,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [geolocationStatus, setGeolocationStatus] = useState<GeolocationStatus>('idle');
   const stopWatchRef = useRef<(() => void) | null>(null);
   const didAutoLocateRef = useRef(false);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Manual location for devices without GPS (or when permission is denied).
   // This is always labelled as manual — it is never presented as a GPS fix.
@@ -357,6 +381,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedRouteAlternative, setSelectedRouteAlternative] = useState<RouteAlternative | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeFromCache, setRouteFromCache] = useState(false);
 
   // Road Alerts
   const [roadAlerts, setRoadAlerts] = useState<RoadAlert[]>(() => {
@@ -491,6 +516,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const requestUserLocation = useCallback(async (): Promise<{ latitude: number; longitude: number } | null> => {
     if (geolocationStatus === 'requesting') return null;
     setGeolocationStatus('requesting');
+
+    let granted = false;
+    try {
+      granted = await ensureLocationPermission();
+    } catch {
+      setGeolocationStatus('unavailable');
+      return null;
+    }
+
+    if (!granted) {
+      setGeolocationStatus('denied');
+      return null;
+    }
+
+    // Permission is granted: start continuous tracking right away. A single
+    // getCurrentPosition() call can time out indoors, and that must not stop
+    // the GPS from ever activating.
+    setGeolocationStatus('granted');
+
     try {
       const loc = await getCurrentLocation();
       applyLocation(loc);
@@ -500,18 +544,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         latitude: loc.latitude,
         longitude: loc.longitude,
       });
-      setGeolocationStatus('granted');
       setRecenterTrigger((p) => p + 1);
       return { latitude: loc.latitude, longitude: loc.longitude };
     } catch (err) {
       if (err instanceof LocationError && err.kind === 'denied') {
         setGeolocationStatus('denied');
-      } else {
-        setGeolocationStatus('unavailable');
       }
+      // Otherwise the watch may still deliver a fix; keep waiting for it.
       return null;
     }
-  }, [geolocationStatus]);
+  }, [geolocationStatus, setManualLocation]);
 
   // Continuous geolocation tracking once permission has been granted
   useEffect(() => {
@@ -534,6 +576,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stop = stopFn;
         stopWatchRef.current = stopFn;
       }
+    }).catch(() => {
+      if (!cancelled) setGeolocationStatus('unavailable');
     });
 
     return () => {
@@ -557,7 +601,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!layers.pointsOfInterest) return;
-    if (airplaneOfflineMode) return;
+
+    const cached = readCache<Place[]>(`poi:${poiAnchor}`, 7 * 24 * 60 * 60 * 1000);
+    if (cached) setNearbyPois(cached);
+
+    // Offline (or offline mode): keep whatever was downloaded with the area.
+    if (airplaneOfflineMode || !isOnline) return;
 
     const [latStr, lonStr] = poiAnchor.split(',');
     const latitude = parseFloat(latStr);
@@ -578,19 +627,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           aliases: [],
           address: poi.address,
         }));
-        setNearbyPois(mapped);
+        if (mapped.length > 0) {
+          setNearbyPois(mapped);
+          writeCache(`poi:${poiAnchor}`, mapped);
+        }
       })
       .catch((err) => {
         if (err?.name === 'AbortError') return;
-        setNearbyPois([]);
+        if (!cached) setNearbyPois([]);
       });
 
     return () => controller.abort();
-  }, [layers.pointsOfInterest, poiAnchor, airplaneOfflineMode]);
+  }, [layers.pointsOfInterest, poiAnchor, airplaneOfflineMode, isOnline]);
 
   // Real mapped enforcement and hazards from OpenStreetMap, refreshed per area.
   useEffect(() => {
-    if (airplaneOfflineMode) return;
+    const cached = readCache<RoadAlert[]>(`alerts:${poiAnchor}`, 7 * 24 * 60 * 60 * 1000);
+    if (cached) setMappedAlerts(cached);
+
+    if (airplaneOfflineMode || !isOnline) return;
 
     const [latStr, lonStr] = poiAnchor.split(',');
     const latitude = parseFloat(latStr);
@@ -599,30 +654,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     fetchOverpassAlerts(latitude, longitude, 6000, controller.signal)
       .then((rows) => {
-        setMappedAlerts(
-          rows.map((row) => ({
-            id: row.id,
-            category: row.category,
-            latitude: row.latitude,
-            longitude: row.longitude,
-            roadName: row.roadName,
-            roadNameKa: row.roadName,
-            speedLimit: row.speedLimit,
-            warningDistanceMeters: 400,
-            source: 'mapped' as const,
-            lastUpdatedText: row.lastUpdatedText,
-            description: row.description,
-            descriptionKa: row.descriptionKa,
-          }))
-        );
+        const mapped: RoadAlert[] = rows.map((row) => ({
+          id: row.id,
+          category: row.category,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          roadName: row.roadName,
+          roadNameKa: row.roadName,
+          speedLimit: row.speedLimit,
+          warningDistanceMeters: 400,
+          source: 'mapped' as const,
+          lastUpdatedText: row.lastUpdatedText,
+          description: row.description,
+          descriptionKa: row.descriptionKa,
+        }));
+        setMappedAlerts(mapped);
+        writeCache(`alerts:${poiAnchor}`, mapped);
       })
       .catch((err) => {
         if (err?.name === 'AbortError') return;
-        setMappedAlerts([]);
+        if (!cached) setMappedAlerts([]);
       });
 
     return () => controller.abort();
-  }, [poiAnchor, airplaneOfflineMode]);
+  }, [poiAnchor, airplaneOfflineMode, isOnline]);
 
   const allAlerts = useMemo<RoadAlert[]>(() => {
     const userIds = new Set(roadAlerts.map((a) => a.id));
@@ -747,39 +802,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       latitude: s.latitude,
       longitude: s.longitude,
     }));
+    const destination = { latitude: destLat, longitude: destLon };
+    const offline = airplaneOfflineMode || !isOnline;
+    const cached = loadSavedRoute(origin, destination, waypoints, travelMode);
+
+    if (offline) {
+      if (cached) {
+        setRouteAlternatives(cached);
+        setSelectedRouteAlternative(cached[0]);
+        setRouteFromCache(true);
+        setRouteError(null);
+      } else {
+        setRouteAlternatives([]);
+        setSelectedRouteAlternative(null);
+        setRouteFromCache(false);
+        setRouteError(
+          language === 'ka'
+            ? 'ამ მარშრუტის შენახული ასლი არ არის. გამორთეთ ოფლაინ რეჟიმი, გამოთვალეთ მარშრუტი ერთხელ და შემდეგ ის ოფლაინაც იმუშავებს.'
+            : 'This route is not saved yet. Turn off offline mode, calculate it once, and it will work offline afterwards.'
+        );
+      }
+      setIsCalculatingRoute(false);
+      return;
+    }
 
     try {
-      const osrmRoutes = await fetchOsrmRoute(
-        origin,
-        { latitude: destLat, longitude: destLon },
-        waypoints,
-        travelMode
-      );
+      const osrmRoutes = await fetchOsrmRoute(origin, destination, waypoints, travelMode);
 
       if (osrmRoutes.length > 0) {
         setRouteAlternatives(osrmRoutes);
         setSelectedRouteAlternative(osrmRoutes[0]);
+        setRouteFromCache(false);
+        saveRoute(origin, destination, waypoints, travelMode, osrmRoutes);
         return;
       }
 
       setRouteAlternatives([]);
       setSelectedRouteAlternative(null);
+      setRouteFromCache(false);
       setRouteError(
         language === 'ka' ? 'ამ მოგზაურობისთვის მარშრუტი ვერ მოიძებნა.' : 'No route found for this trip.'
       );
     } catch (err) {
-      console.warn('OSRM route request failed:', err);
-      setRouteAlternatives([]);
-      setSelectedRouteAlternative(null);
-      setRouteError(
-        language === 'ka'
-          ? 'მარშრუტის სერვისი მიუწვდომელია. შეამოწმეთ კავშირი და სცადეთ თავიდან.'
-          : 'Routing service unavailable. Check your connection and try again.'
-      );
+      console.warn('Route request failed:', err);
+      if (cached) {
+        setRouteAlternatives(cached);
+        setSelectedRouteAlternative(cached[0]);
+        setRouteFromCache(true);
+        setRouteError(null);
+      } else {
+        setRouteAlternatives([]);
+        setSelectedRouteAlternative(null);
+        setRouteFromCache(false);
+        setRouteError(
+          language === 'ka'
+            ? 'მარშრუტის სერვისი მიუწვდომელია. შეამოწმეთ კავშირი და სცადეთ თავიდან.'
+            : 'Routing service unavailable. Check your connection and try again.'
+        );
+      }
     } finally {
       setIsCalculatingRoute(false);
     }
-  }, [routeOrigin, routeDestination, intermediateStops, travelMode, userLocation, manualLocation, language]);
+  }, [
+    routeOrigin,
+    routeDestination,
+    intermediateStops,
+    travelMode,
+    userLocation,
+    manualLocation,
+    language,
+    airplaneOfflineMode,
+    isOnline,
+  ]);
 
   // Recalculate route whenever destination, origin, mode, preferences or stops change
   useEffect(() => {
@@ -1322,6 +1416,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedRouteAlternative,
         isCalculatingRoute,
         routeError,
+        routeFromCache,
+        isOnline,
         calculateRoutes,
         getShareableRouteUrl,
         activeNav,

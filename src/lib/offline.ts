@@ -53,8 +53,14 @@ async function cacheResponse(cache: Cache | null, url: string, response: Respons
   }
 }
 
+interface TileSource {
+  template: string;
+  minzoom: number;
+  maxzoom: number;
+}
+
 interface StyleAssets {
-  tiles: string[];
+  tiles: TileSource[];
   assets: string[];
 }
 
@@ -64,24 +70,37 @@ async function resolveStyleAssets(
   cache: Cache | null
 ): Promise<StyleAssets> {
   const res = await fetch(styleUrl, { signal });
+  // Clone before reading: a Response body can only be consumed once.
+  const copy = res.clone();
   const style = await res.json();
-  await cacheResponse(cache, styleUrl, res);
+  await cacheResponse(cache, styleUrl, copy);
 
-  const tiles: string[] = [];
+  const tiles: TileSource[] = [];
   const assets: string[] = [];
   const sources = (style && style.sources) || {};
 
   for (const key of Object.keys(sources)) {
     const src = sources[key];
     if (Array.isArray(src?.tiles)) {
-      tiles.push(...src.tiles);
+      for (const template of src.tiles) {
+        tiles.push({
+          template,
+          minzoom: src.minzoom ?? 0,
+          maxzoom: src.maxzoom ?? 22,
+        });
+      }
     } else if (typeof src?.url === 'string') {
       assets.push(src.url);
       try {
         const tjRes = await fetch(src.url, { signal });
+        const tjCopy = tjRes.clone();
         const tj = await tjRes.json();
-        await cacheResponse(cache, src.url, tjRes);
-        if (Array.isArray(tj?.tiles)) tiles.push(...tj.tiles);
+        await cacheResponse(cache, src.url, tjCopy);
+        const minzoom = tj?.minzoom ?? src.minzoom ?? 0;
+        const maxzoom = tj?.maxzoom ?? src.maxzoom ?? 22;
+        if (Array.isArray(tj?.tiles)) {
+          for (const template of tj.tiles) tiles.push({ template, minzoom, maxzoom });
+        }
       } catch {
         /* ignore unusable source */
       }
@@ -119,7 +138,7 @@ async function resolveStyleAssets(
 }
 
 function buildRegionUrls(
-  templates: string[],
+  sources: TileSource[],
   bbox: BBox,
   minZoom: number,
   maxZoom: number
@@ -128,8 +147,12 @@ function buildRegionUrls(
   const urls: string[] = [];
   const seen = new Set<string>();
 
-  for (const template of templates) {
-    for (let z = minZoom; z <= maxZoom; z++) {
+  for (const source of sources) {
+    // Do not request zooms the source does not have: the low-zoom raster
+    // background only exists up to zoom 6, and asking for more returns 404s.
+    const from = Math.max(minZoom, source.minzoom);
+    const to = Math.min(maxZoom, source.maxzoom);
+    for (let z = from; z <= to; z++) {
       const x0 = lon2tileX(minLon, z);
       const x1 = lon2tileX(maxLon, z);
       const y0 = lat2tileY(maxLat, z);
@@ -137,7 +160,7 @@ function buildRegionUrls(
 
       for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
         for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) {
-          const url = template
+          const url = source.template
             .replace('{z}', String(z))
             .replace('{x}', String(x))
             .replace('{y}', String(y))
@@ -156,15 +179,42 @@ function buildRegionUrls(
 export async function prefetchRegion(opts: {
   bbox: BBox;
   styleUrl: string;
+  /** Extra styles (for example the dark theme) downloaded in the same pass. */
+  extraStyleUrls?: string[];
   minZoom?: number;
   maxZoom?: number;
   onProgress?: (p: PrefetchProgress) => void;
   signal?: AbortSignal;
 }): Promise<{ tiles: number; bytes: number; total: number; capped: boolean }> {
-  const { bbox, styleUrl, minZoom = 9, maxZoom = 14, onProgress, signal } = opts;
+  const {
+    bbox,
+    styleUrl,
+    extraStyleUrls = [],
+    minZoom = 9,
+    maxZoom = 14,
+    onProgress,
+    signal,
+  } = opts;
 
   const cache = await openCache();
-  const { tiles: templates, assets } = await resolveStyleAssets(styleUrl, signal, cache);
+  const tileSources = new Map<string, TileSource>();
+  const assets = new Set<string>();
+
+  // Cache every style the app can switch to, so changing the theme offline
+  // does not leave the map without a style.
+  for (const url of [styleUrl, ...extraStyleUrls]) {
+    const resolved = await resolveStyleAssets(url, signal, cache);
+    for (const source of resolved.tiles) {
+      const existing = tileSources.get(source.template);
+      if (existing) {
+        existing.minzoom = Math.min(existing.minzoom, source.minzoom);
+        existing.maxzoom = Math.max(existing.maxzoom, source.maxzoom);
+      } else {
+        tileSources.set(source.template, { ...source });
+      }
+    }
+    resolved.assets.forEach((asset) => assets.add(asset));
+  }
 
   // Cache the style, sprites and fonts first so the map can boot offline.
   for (const url of assets) {
@@ -177,7 +227,7 @@ export async function prefetchRegion(opts: {
     }
   }
 
-  let urls = buildRegionUrls(templates, bbox, minZoom, maxZoom);
+  let urls = buildRegionUrls([...tileSources.values()], bbox, minZoom, maxZoom);
   const capped = urls.length > MAX_TILES;
   if (capped) urls = urls.slice(0, MAX_TILES);
 

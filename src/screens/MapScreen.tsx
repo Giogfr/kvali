@@ -40,6 +40,7 @@ export const MapScreen: React.FC = () => {
     geolocationStatus,
     requestUserLocation,
     manualLocation,
+    isOnline,
     handleMapTapCoords,
   } = useApp();
 
@@ -147,7 +148,13 @@ export const MapScreen: React.FC = () => {
               <LocateFixed size={16} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold leading-tight">{t('locationOffTitle')}</p>
+              <p className="text-[12px] font-semibold leading-tight">
+                {geolocationStatus === 'granted'
+                  ? t('gpsWaiting')
+                  : geolocationStatus === 'requesting'
+                  ? t('locating')
+                  : t('locationOffTitle')}
+              </p>
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-snug">
                 {t('locationOffDesc')}
               </p>
@@ -182,10 +189,10 @@ export const MapScreen: React.FC = () => {
         </div>
       )}
 
-      {airplaneOfflineMode && (userLocation || manualLocation || !showLocationBanner) && (
+      {(airplaneOfflineMode || !isOnline) && (userLocation || manualLocation || !showLocationBanner) && (
         <div className="absolute top-16 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C9973F] text-black text-[11px] font-semibold shadow-md">
           <WifiOff size={13} />
-          <span>{t('offlineStatus')}</span>
+          <span>{airplaneOfflineMode ? t('offlineStatus') : t('offlineNoConnection')}</span>
         </div>
       )}
 
