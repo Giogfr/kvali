@@ -71,7 +71,10 @@ try {
   });
 
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('kvali_onboarded', 'true');
+  });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
   await page.waitForSelector('.maplibregl-canvas', { timeout: 30000 });

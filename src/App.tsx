@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { PhoneShell } from './components/layout/PhoneShell';
 import { BottomNav } from './components/layout/BottomNav';
+import { FirstRunOnboarding } from './components/onboarding/FirstRunOnboarding';
 import { useWakeLock } from './lib/wakeLock';
 
 // Screens are loaded on demand so the map engine stays out of the first paint.
@@ -88,6 +89,7 @@ export default function App() {
       <ToastProvider>
         <PhoneShell>
           <MainScreenRouter />
+          <FirstRunOnboarding />
         </PhoneShell>
       </ToastProvider>
     </AppProvider>

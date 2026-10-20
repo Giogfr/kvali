@@ -97,6 +97,18 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'domcontentloaded' });
 
+  // A brand-new install gets the download/location/voice walkthrough.
+  await page.waitForFunction(
+    () =>
+      document.body.innerText.includes('Keep the map offline') ||
+      document.body.innerText.includes('Download maps'),
+    { timeout: 15000 }
+  );
+  check('first-run onboarding appears', true);
+
+  await page.evaluate(() => localStorage.setItem('kvali_onboarded', 'true'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
   await page.waitForSelector('.maplibregl-canvas', { timeout: 30000 });
   await page.waitForFunction(() => !!window.__kvaliMap, { timeout: 30000 });
   await page.waitForFunction(() => window.__kvaliMap?.loaded() === true, { timeout: 30000 });
