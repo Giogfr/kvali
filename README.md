@@ -143,6 +143,7 @@ bun run preview
 | `bun run preview` | Serve the production build locally. |
 | `bun run lint` | Type-check with `tsc --noEmit`. |
 | `bun run clean` | Remove the `dist/` directory. |
+| `bun run test:units` | Pure-module unit checks (navigation, geo, addresses, time, alerts). |
 | `bun run test:smoke` | End-to-end browser checks (map, routing, preferences); needs the dev server on :3000. |
 | `bun run test:offline` | Same idea with the network switched off; needs `bun run preview` on :4173. |
 | `bun run icons` | Regenerate the PWA and Android launcher icons from the built-in SVG. |
