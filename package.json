@@ -16,7 +16,8 @@
     "test:geo": "bun scripts/test-geo.mjs",
     "test:navigation": "bun scripts/test-navigation.mjs",
     "test:address": "bun scripts/test-address.mjs",
-    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs",
+    "test:time": "bun scripts/test-time.mjs",
+    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
