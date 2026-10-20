@@ -85,6 +85,14 @@ interface AppContextType {
   routePreferences: RoutePreferences;
   setRoutePreferences: React.Dispatch<React.SetStateAction<RoutePreferences>>;
 
+  // Navigation camera
+  navView: '2d' | '3d';
+  setNavView: (view: '2d' | '3d') => void;
+  northUpLock: boolean;
+  setNorthUpLock: (locked: boolean) => void;
+  isFollowing: boolean;
+  setIsFollowing: (following: boolean) => void;
+
   // Real Geolocation
   userLocation: UserLocation | null;
   geolocationStatus: GeolocationStatus;
@@ -95,6 +103,7 @@ interface AppContextType {
 
   // Places, Map Pins & Search
   places: Place[];
+  poisUnavailable: boolean;
   selectedPlace: Place | null;
   setSelectedPlace: (place: Place | null) => void;
   temporaryPin: TemporaryPin | null;
@@ -199,6 +208,10 @@ const DEFAULT_ALERT_CATEGORIES: Record<AlertCategory, boolean> = {
   community_reports: true,
   mobile_police: false,
   police_station: true,
+  stop_sign: true,
+  traffic_light: true,
+  school_zone: true,
+  sharp_curve: true,
 };
 
 const DEFAULT_LAYERS: LayerVisibility = {
@@ -328,6 +341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const liveTrackStartTime = useRef<number | null>(null);
   const isRecordingRef = useRef(false);
   const lastRerouteRef = useRef(0);
+  const offRouteSinceRef = useRef<number | null>(null);
   const lastSpokenRef = useRef('');
 
   useEffect(() => {
@@ -360,6 +374,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Places from OpenStreetMap around the current area, plus dropped pins.
   const [nearbyPois, setNearbyPois] = useState<Place[]>([]);
+  const [poisUnavailable, setPoisUnavailable] = useState(false);
   const places = nearbyPois;
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [temporaryPin, setTemporaryPin] = useState<TemporaryPin | null>(null);
@@ -452,6 +467,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
   });
+
+  // Navigation camera preferences
+  const [navView, setNavViewState] = useState<'2d' | '3d'>(() => {
+    try {
+      return localStorage.getItem('kvali_nav_view') === '2d' ? '2d' : '3d';
+    } catch {
+      return '3d';
+    }
+  });
+  const [northUpLock, setNorthUpLockState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('kvali_north_up') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isFollowing, setIsFollowingState] = useState<boolean>(true);
+
+  const setNavView = useCallback((view: '2d' | '3d') => setNavViewState(view), []);
+  const setNorthUpLock = useCallback((locked: boolean) => setNorthUpLockState(locked), []);
+  const setIsFollowing = useCallback((following: boolean) => setIsFollowingState(following), []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('kvali_nav_view', navView);
+    } catch {}
+  }, [navView]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('kvali_north_up', String(northUpLock));
+    } catch {}
+  }, [northUpLock]);
 
   // Saved Places & Collections
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(() => {
@@ -653,33 +701,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [latStr, lonStr] = poiAnchor.split(',');
     const latitude = parseFloat(latStr);
     const longitude = parseFloat(lonStr);
-    const controller = new AbortController();
+    let controller = new AbortController();
+    let retryTimer: number | null = null;
+    let cancelled = false;
 
-    fetchOverpassPois(latitude, longitude, 4000, controller.signal)
-      .then((pois) => {
-        const mapped: Place[] = pois.map((poi) => ({
-          id: poi.id,
-          name: poi.name,
-          nameKa: poi.name,
-          category: poi.category as PlaceCategory,
-          latitude: poi.latitude,
-          longitude: poi.longitude,
-          description: poi.address || 'OpenStreetMap place',
-          descriptionKa: poi.address || 'OpenStreetMap-ის ობიექტი',
-          aliases: [],
-          address: poi.address,
-        }));
-        if (mapped.length > 0) {
-          setNearbyPois(mapped);
-          writeCache(`poi:${poiAnchor}`, mapped);
-        }
-      })
-      .catch((err) => {
-        if (err?.name === 'AbortError') return;
-        if (!cached) setNearbyPois([]);
-      });
+    const load = (attempt: number) => {
+      controller = new AbortController();
+      fetchOverpassPois(latitude, longitude, 4000, controller.signal)
+        .then((pois) => {
+          if (cancelled) return;
+          const mapped: Place[] = pois.map((poi) => ({
+            id: poi.id,
+            name: poi.name,
+            nameKa: poi.name,
+            category: poi.category as PlaceCategory,
+            latitude: poi.latitude,
+            longitude: poi.longitude,
+            description: poi.address || 'OpenStreetMap place',
+            descriptionKa: poi.address || 'OpenStreetMap-ის ობიექტი',
+            aliases: [],
+            address: poi.address,
+          }));
+          if (mapped.length > 0) {
+            setNearbyPois(mapped);
+            writeCache(`poi:${poiAnchor}`, mapped);
+            setPoisUnavailable(false);
+          } else if (!cached) {
+            setPoisUnavailable(true);
+          }
+        })
+        .catch((err) => {
+          if (err?.name === 'AbortError' || cancelled) return;
+          // Keep the last known POIs on screen instead of blanking the map.
+          if (attempt < 2) {
+            retryTimer = window.setTimeout(() => load(attempt + 1), 4000 * (attempt + 1));
+          } else if (!cached) {
+            setPoisUnavailable(true);
+          }
+        });
+    };
 
-    return () => controller.abort();
+    load(0);
+
+    return () => {
+      cancelled = true;
+      if (retryTimer !== null) clearTimeout(retryTimer);
+      controller.abort();
+    };
   }, [layers.pointsOfInterest, poiAnchor, airplaneOfflineMode, isOnline]);
 
   // Real mapped enforcement and hazards from OpenStreetMap, refreshed per area.
@@ -1297,12 +1365,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       upcomingAlert: initialAlert,
     });
     lastRerouteRef.current = 0;
+    setIsFollowing(true);
     setRecenterTrigger((prev) => prev + 1);
     navigateTo('active-navigation');
   };
 
   const endNavigation = () => {
     void stopSpeaking();
+    setIsFollowing(true);
     setActiveNav((prev) => ({ ...prev, isActive: false, route: null, gpsActive: false, offRouteM: 0 }));
     navigateTo('map');
   };
@@ -1338,16 +1408,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [userLocation, activeNav.isActive, activeNav.route, findUpcomingAlert]);
 
   // Re-route when the driver has clearly drifted off the current route.
+  // The threshold is wider at highway speed, and the deviation must persist for
+  // three seconds so a single noisy GPS fix cannot trigger a reroute.
   useEffect(() => {
-    if (!activeNav.isActive || !activeNav.route || !userLocation || !activeNav.gpsActive) return;
-    if (activeNav.offRouteM < 60) return;
+    if (!activeNav.isActive || !activeNav.route || !userLocation || !activeNav.gpsActive) {
+      offRouteSinceRef.current = null;
+      return;
+    }
+
+    const highway = (userLocation.speedKmh ?? activeNav.currentSpeedKmh) > 80;
+    const thresholdM = highway ? 150 : 50;
+
+    if (activeNav.offRouteM < thresholdM) {
+      offRouteSinceRef.current = null;
+      return;
+    }
 
     const now = Date.now();
+    if (offRouteSinceRef.current === null) {
+      offRouteSinceRef.current = now;
+      return;
+    }
+    if (now - offRouteSinceRef.current < 3000) return;
     if (now - lastRerouteRef.current < 15000) return;
     lastRerouteRef.current = now;
 
     calculateRoutes({ latitude: userLocation.latitude, longitude: userLocation.longitude });
-  }, [activeNav.isActive, activeNav.route, activeNav.gpsActive, activeNav.offRouteM, userLocation, calculateRoutes]);
+  }, [
+    activeNav.isActive,
+    activeNav.route,
+    activeNav.gpsActive,
+    activeNav.offRouteM,
+    activeNav.currentSpeedKmh,
+    userLocation,
+    calculateRoutes,
+  ]);
 
   // Keep the active route in sync when a recalculation produces a new one.
   useEffect(() => {
@@ -1431,6 +1526,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTravelMode,
         routePreferences,
         setRoutePreferences,
+        navView,
+        setNavView,
+        northUpLock,
+        setNorthUpLock,
+        isFollowing,
+        setIsFollowing,
         userLocation,
         geolocationStatus,
         requestUserLocation,
@@ -1438,6 +1539,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         manualLocation,
         setManualLocation,
         places,
+        poisUnavailable,
         selectedPlace,
         setSelectedPlace,
         temporaryPin,

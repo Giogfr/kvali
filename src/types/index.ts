@@ -63,7 +63,11 @@ export type AlertCategory =
   | 'lane_restrictions'
   | 'community_reports'
   | 'mobile_police'
-  | 'police_station';
+  | 'police_station'
+  | 'stop_sign'
+  | 'traffic_light'
+  | 'school_zone'
+  | 'sharp_curve';
 
 export interface RoadAlert {
   id: string;
