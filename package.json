@@ -21,7 +21,8 @@
     "test:nearby-alerts": "bun scripts/test-nearby-alerts.mjs",
     "test:route-preferences": "bun scripts/test-route-preferences.mjs",
     "test:gpx": "bun scripts/test-gpx-export.mjs",
-    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs && bun scripts/test-route-preferences.mjs && bun scripts/test-gpx-export.mjs",
+    "test:i18n": "bun scripts/test-i18n.mjs",
+    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs && bun scripts/test-route-preferences.mjs && bun scripts/test-gpx-export.mjs && bun scripts/test-i18n.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
