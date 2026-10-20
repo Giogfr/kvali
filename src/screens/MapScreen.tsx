@@ -14,6 +14,7 @@ import {
   MapPin,
   X,
   Box,
+  Info,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MapView, type MapViewHandle } from '../components/map/MapView';
@@ -42,6 +43,7 @@ export const MapScreen: React.FC = () => {
     manualLocation,
     isOnline,
     handleMapTapCoords,
+    poisUnavailable,
   } = useApp();
 
   const { showToast } = useToast();
@@ -193,6 +195,13 @@ export const MapScreen: React.FC = () => {
         <div className="absolute top-16 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#C9973F] text-black text-[11px] font-semibold shadow-md">
           <WifiOff size={13} />
           <span>{airplaneOfflineMode ? t('offlineStatus') : t('offlineNoConnection')}</span>
+        </div>
+      )}
+
+      {isOnline && !airplaneOfflineMode && poisUnavailable && (
+        <div className="absolute top-16 left-3 right-20 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1E1E1E]/95 border border-neutral-700 text-neutral-200 text-[11px] font-medium shadow-md backdrop-blur-md">
+          <Info size={13} className="shrink-0" />
+          <span className="truncate">{t('mapDataUnavailable')}</span>
         </div>
       )}
 

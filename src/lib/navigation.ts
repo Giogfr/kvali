@@ -184,10 +184,56 @@ export function snapToRoute(
   return best;
 }
 
+export interface SharpCurveAhead {
+  distanceM: number;
+  location: [number, number];
+  angleDeg: number;
+}
+
+function segmentBearing(a: [number, number], b: [number, number], latRef: number): number {
+  const dLon = ((b[0] - a[0]) * Math.PI) / 180;
+  const lat1 = (a[1] * Math.PI) / 180;
+  const lat2 = (b[1] * Math.PI) / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
 /**
- * Works out the next maneuver by seeing where each step's location falls along
- * the route and picking the first one that is still ahead of the user.
+ * Finds the nearest sharp bend on the route ahead of the driver. Purely derived
+ * from the route geometry, so it works offline and never invents road data.
  */
+export function findSharpCurveAhead(
+  coords: [number, number][],
+  point: { latitude: number; longitude: number },
+  lookaheadM = 300
+): SharpCurveAhead | null {
+  if (coords.length < 3) return null;
+
+  const cumulative = cumulativeDistances(coords);
+  const { alongKm } = projectOnRoute(coords, point, cumulative);
+  const traveledM = alongKm * 1000;
+
+  let best: SharpCurveAhead | null = null;
+
+  for (let i = 1; i < coords.length - 1; i++) {
+    const distanceM = cumulative[i] * 1000 - traveledM;
+    if (distanceM < 10 || distanceM > lookaheadM) continue;
+
+    const incoming = segmentBearing(coords[i - 1], coords[i], point.latitude);
+    const outgoing = segmentBearing(coords[i], coords[i + 1], point.latitude);
+    let turn = Math.abs(outgoing - incoming);
+    if (turn > 180) turn = 360 - turn;
+
+    if (turn >= 55 && (!best || distanceM < best.distanceM)) {
+      best = { distanceM, location: coords[i], angleDeg: turn };
+    }
+  }
+
+  return best;
+}
+
+
 export function computeProgress(
   route: RouteAlternative,
   position: { latitude: number; longitude: number }

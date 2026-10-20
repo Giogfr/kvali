@@ -18,6 +18,10 @@ import {
   Send,
   Trash2,
   Shield,
+  Octagon,
+  School,
+  TrafficCone,
+  TrendingUp,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
@@ -109,6 +113,10 @@ export const RoadAlertsScreen: React.FC = () => {
     { id: 'community_reports', label: t('communityReports'), icon: Info },
     { id: 'mobile_police', label: t('mobilePolice'), icon: ShieldAlert },
     { id: 'police_station', label: t('policeStation'), icon: Shield },
+    { id: 'stop_sign', label: t('stopSign'), icon: Octagon },
+    { id: 'traffic_light', label: t('trafficLight'), icon: TrafficCone },
+    { id: 'school_zone', label: t('schoolZone'), icon: School },
+    { id: 'sharp_curve', label: t('sharpCurve'), icon: TrendingUp },
   ];
 
   const sourceLabel = (source: RoadAlert['source']) => {
