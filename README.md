@@ -91,7 +91,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 ### Personal tools
 
 - Saved places with collections, notes, and JSON import/export.
-- Recorded GPS tracks with GeoJSON export.
+- Recorded GPS tracks with GPX import and export.
 - Full-screen, safe-area-aware layout that adapts to phone portrait, landscape, and car displays.
 
 ## Tech stack
