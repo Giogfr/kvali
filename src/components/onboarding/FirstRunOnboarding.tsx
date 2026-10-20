@@ -1,3 +1,12 @@
+/**
+ * Kvali — first-run onboarding.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+
 import React, { useState } from 'react';
 import { ArrowRight, Check, Download, LocateFixed, Volume2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';

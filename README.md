@@ -7,7 +7,7 @@
 <p align="center"><b>კვალი</b> — navigation for Georgia. Open maps, real routing, and turn-by-turn guidance in English and Georgian.</p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2F6FEB"></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB"></a>
   <a href="https://github.com/Giogfr/kvali/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Giogfr/kvali/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.1-2F6FEB">
   <br />
@@ -43,6 +43,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 - [Accessibility](#accessibility)
 - [Offline behaviour](#offline-behaviour)
 - [Data & attribution](#data--attribution)
+- [Third-party components](#third-party-components)
 - [Android build](#android-build)
 - [Releases](#releases)
 - [How to test](#how-to-test)
@@ -232,6 +233,27 @@ Voice guidance uses the device speech synthesiser, so the available voices and l
 
 These are shared community services — keep to reasonable request rates if you run your own copy, and respect each service's usage policy.
 
+## Third-party components
+
+Kvali is distributed under the GNU General Public License, version 3 or later. The direct dependencies and their licenses are:
+
+| Component | License | Used for |
+| --- | --- | --- |
+| [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) | BSD-3-Clause | Map rendering, gestures, offline tile sources |
+| [React](https://github.com/facebook/react) / [React DOM](https://github.com/facebook/react) | MIT | UI |
+| [Lucide](https://github.com/lucide-icons/lucide) | ISC | Icons |
+| [Capacitor core / Android / Geolocation](https://github.com/ionic-team/capacitor) | MIT | Android shell and location bridge |
+| [Capacitor Text-to-Speech](https://github.com/capacitor-community/text-to-speech) | MIT | Spoken turn instructions |
+| [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | MIT | Styling |
+| [Vite](https://github.com/vitejs/vite) / [TypeScript](https://github.com/microsoft/TypeScript) | MIT / Apache-2.0 | Build and type-checking (development only) |
+| [Puppeteer Core](https://github.com/puppeteer/puppeteer) | Apache-2.0 | End-to-end tests (development only) |
+
+The full license text for each component is kept in [`licenses/`](licenses/). The [`NOTICE`](NOTICE) file records the same information for redistribution and will also list any source ported from other GPL projects.
+
+Map data © OpenStreetMap contributors (ODbL); tiles by OpenFreeMap; geocoding by Nominatim; routing by OSRM and Valhalla; points of interest and alerts by Overpass. Those services are not bundled with the app and are used under their own terms.
+
+Kvali does not include code from OsmAnd, Navi, Organic Maps, or other navigation projects at this time. Organic Maps was consulted for interaction design only.
+
 ## Data
 
 Kvali ships with **no bundled sample or demonstration data**. Places, routes, and points of interest all come from live community services, and anything that cannot be fetched is shown as empty rather than faked:
@@ -324,6 +346,6 @@ Contributions are welcome. Keep it framework-light, match the existing code styl
 
 ## License
 
-MIT © 2026 Giogfr — see [LICENSE](LICENSE).
+GNU General Public License, version 3 or later © 2026 Kvali contributors — see [LICENSE](LICENSE). Third-party notices are in [NOTICE](NOTICE) and [`licenses/`](licenses/).
 
 Map data © OpenStreetMap contributors (ODbL). See [Data & attribution](#data--attribution) for third-party services.

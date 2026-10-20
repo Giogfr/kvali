@@ -2,6 +2,15 @@
  * Unit checks for the pure navigation engine. Run with: node scripts/test-navigation-engine.mjs
  */
 
+/**
+ * Kvali — unit checks for the navigation engine.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+
 import assert from 'node:assert/strict';
 import { OffRouteDetector, resolveBearing } from '../src/lib/navigationEngine.ts';
 

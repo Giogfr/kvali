@@ -1,0 +1,61 @@
+Kvali — navigation for Georgia
+Copyright (C) 2026 Kvali contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <https://www.gnu.org/licenses/>.
+
+The full license text is in the LICENSE file.
+
+Portions ported from other projects
+-----------------------------------
+
+No source code from OsmAnd, Navi, Organic Maps, or any other navigation
+project has been ported into Kvali at this time. Organic Maps was consulted
+for interaction design only; no code or assets were copied.
+
+If GPL-licensed code is ported in the future, every ported file will keep its
+original copyright notice and the upstream commit SHA will be recorded here.
+
+Third-party components
+----------------------
+
+Runtime dependencies:
+
+  MapLibre GL JS                       BSD-3-Clause
+  React, React DOM                     MIT
+  Lucide                               ISC
+  @capacitor/core                      MIT
+  @capacitor/android                   MIT
+  @capacitor/geolocation               MIT
+  @capacitor-community/text-to-speech  MIT
+
+Build and test dependencies (not distributed in the app):
+
+  Tailwind CSS                         MIT
+  Vite                                 MIT
+  TypeScript                           Apache-2.0
+  Puppeteer Core                       Apache-2.0
+  @types/*                             MIT
+
+License texts for these packages are in the licenses/ directory.
+
+Map data and services
+---------------------
+
+  Map data © OpenStreetMap contributors, ODbL.
+  Tiles by OpenFreeMap.
+  Geocoding by Nominatim.
+  Routing by FOSSGIS OSRM and Valhalla.
+  Points of interest and road alerts by Overpass.
+
+These services are not bundled with Kvali; they are queried at runtime under
+their respective usage policies.
