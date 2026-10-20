@@ -15,6 +15,7 @@
     "test:engine": "node scripts/test-navigation-engine.mjs",
     "test:geo": "node scripts/test-geo.mjs",
     "test:navigation": "node scripts/test-navigation.mjs",
+    "test:address": "node scripts/test-address.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
