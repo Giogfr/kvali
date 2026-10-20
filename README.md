@@ -343,7 +343,7 @@ To exercise location screens without moving, use your browser's sensor override 
 
 ## Contributing
 
-Contributions are welcome. Keep it framework-light, match the existing code style, and run `bun run lint`, `bun run build`, `bun run test:smoke` and `bun run test:offline` before opening a pull request. The two browser suites cover the map, routing, preferences and offline mode; unit tests for the pure helpers in `src/lib/` would still be a welcome addition.
+Contributions are welcome. Keep it framework-light, match the existing code style, and run `bun run lint`, `bun run test:units`, `bun run build`, `bun run test:smoke` and `bun run test:offline` before opening a pull request. The unit suites cover the pure helpers; the browser suites cover the map, routing, preferences, GPX and offline mode.
 
 ## License
 
