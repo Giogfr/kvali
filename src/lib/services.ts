@@ -6,6 +6,7 @@
  */
 
 import type { AlertCategory } from '../types';
+import { normalizeAddress, normalizeGeorgianText } from './georgianAddress';
 
 export interface RouteStep {
   instruction: string;
@@ -81,16 +82,17 @@ export async function searchNominatim(
     const data = await response.json();
     if (!Array.isArray(data)) return [];
 
-    return data
+    const results = data
       .map((item: any): GeocodeResult | null => {
         const lat = parseFloat(item.lat);
         const lon = parseFloat(item.lon);
         if (isNaN(lat) || isNaN(lon)) return null;
         const displayName: string = item.display_name || '';
+        const normalized = normalizeAddress({ text: displayName, latitude: lat, longitude: lon });
         return {
           id: `nominatim-${item.osm_type || 'place'}-${item.osm_id ?? item.place_id}`,
-          name: item.name || displayName.split(',')[0] || trimmed,
-          displayName,
+          name: normalizeGeorgianText(item.name || displayName.split(',')[0] || trimmed),
+          displayName: normalized.text,
           latitude: lat,
           longitude: lon,
           category: item.category,
@@ -98,6 +100,27 @@ export async function searchNominatim(
         };
       })
       .filter((r: GeocodeResult | null): r is GeocodeResult => r !== null);
+
+    // Nominatim sometimes returns records whose textual city disagrees with the
+    // point (a known Georgian OSM data issue). Keep them, but rank the records
+    // that pass the coordinate check first instead of hiding results.
+    return results.sort((a, b) => {
+      const aMismatch = normalizeAddress({
+        text: a.displayName,
+        latitude: a.latitude,
+        longitude: a.longitude,
+      }).coordinateMismatch
+        ? 1
+        : 0;
+      const bMismatch = normalizeAddress({
+        text: b.displayName,
+        latitude: b.latitude,
+        longitude: b.longitude,
+      }).coordinateMismatch
+        ? 1
+        : 0;
+      return aMismatch - bMismatch;
+    });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') throw err;
     return [];
@@ -233,8 +256,15 @@ export async function fetchOsrmRoute(
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') throw err;
-    console.warn('OSRM routing request failed:', err);
-    throw err;
+    console.warn('OSRM routing request failed, trying Valhalla fallback:', err);
+    return fetchValhallaRoute(
+      origin,
+      destination,
+      waypoints,
+      mode === 'cycling' ? 'bicycle' : 'auto',
+      mode,
+      signal
+    );
   }
 }
 
@@ -322,10 +352,12 @@ function valhallaManeuver(type: number): { type: string; modifier: string } {
   }
 }
 
-async function fetchValhallaWalkingRoute(
+async function fetchValhallaRoute(
   origin: { latitude: number; longitude: number },
   destination: { latitude: number; longitude: number },
   waypoints: { latitude: number; longitude: number }[],
+  costing: 'pedestrian' | 'auto' | 'bicycle',
+  mode: 'car' | 'walking' | 'cycling',
   signal?: AbortSignal
 ): Promise<RealRouteResult[]> {
   const locations = [origin, ...waypoints, destination].map((point) => ({
@@ -338,7 +370,7 @@ async function fetchValhallaWalkingRoute(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       locations,
-      costing: 'pedestrian',
+      costing,
       directions_options: { units: 'kilometers', language: 'en-US' },
     }),
     signal,
@@ -351,7 +383,7 @@ async function fetchValhallaWalkingRoute(
   const data = await response.json();
   const trip = data?.trip;
   if (!trip || !Array.isArray(trip.legs) || trip.legs.length === 0) {
-    throw new Error(data?.error || 'No walking route found');
+    throw new Error(data?.error || `No ${mode} route found`);
   }
 
   const coordinates: [number, number][] = [];
@@ -398,20 +430,35 @@ async function fetchValhallaWalkingRoute(
     (step) => step.name && step.name !== 'Road' && step.distanceMeters > 300
   )?.name;
 
+  const labels = {
+    car: { en: 'Driving Route', ka: 'საავტომობილო მარშრუტი', via: 'by road' },
+    walking: { en: 'Walking Route', ka: 'საფეხმავლო მარშრუტი', via: 'on foot' },
+    cycling: { en: 'Cycling Route', ka: 'ველომარშრუტი', via: 'by bike' },
+  }[mode];
+
   return [
     {
-      id: 'valhalla-walk-0',
-      name: 'Walking Route',
-      nameKa: 'საფეხმავლო მარშრუტი',
+      id: `valhalla-${mode}-0`,
+      name: `${labels.en} (Valhalla)`,
+      nameKa: labels.ka,
       distanceKm,
       durationMinutes,
       coordinates,
       steps,
-      via: mainRoad ? `via ${mainRoad}` : 'on foot',
-      viaKa: mainRoad ? `${mainRoad}-ით` : 'ფეხით',
+      via: mainRoad ? `via ${mainRoad}` : labels.via,
+      viaKa: mainRoad ? `${mainRoad}-ით` : labels.via,
       isRealService: true,
     },
   ];
+}
+
+function fetchValhallaWalkingRoute(
+  origin: { latitude: number; longitude: number },
+  destination: { latitude: number; longitude: number },
+  waypoints: { latitude: number; longitude: number }[],
+  signal?: AbortSignal
+): Promise<RealRouteResult[]> {
+  return fetchValhallaRoute(origin, destination, waypoints, 'pedestrian', 'walking', signal);
 }
 
 export interface OverpassPoi {
@@ -590,8 +637,11 @@ const ALERT_QUERY = `[out:json][timeout:25];
   nwr["man_made"="surveillance"]["surveillance:type"~"^(ALPR|ANPR)$"](around:RADIUS,LAT,LON);
   nwr["amenity"="police"](around:RADIUS,LAT,LON);
   nwr["highway"="construction"](around:RADIUS,LAT,LON);
+  node["highway"="stop"](around:1200,LAT,LON);
+  node["highway"="traffic_signals"](around:1500,LAT,LON);
+  way["amenity"="school"](around:3000,LAT,LON);
 );
-out center tags 200;`;
+out center tags 300;`;
 
 function alertCategoryFromTags(tags: Record<string, string>): AlertCategory | null {
   if (tags.highway === 'speed_camera') return 'fixed_speed_camera';
@@ -604,6 +654,9 @@ function alertCategoryFromTags(tags: Record<string, string>): AlertCategory | nu
   }
   if (tags.enforcement) return 'enforcement_other';
   if (tags.amenity === 'police') return 'police_station';
+  if (tags.highway === 'stop') return 'stop_sign';
+  if (tags.highway === 'traffic_signals') return 'traffic_light';
+  if (tags.amenity === 'school') return 'school_zone';
   if (tags.highway === 'construction' || tags.construction) return 'roadworks';
   if (tags.access === 'no' && tags.highway) return 'road_closures';
   return null;
@@ -625,6 +678,14 @@ function alertLabels(category: AlertCategory): { en: string; ka: string } {
       return { en: 'Roadworks / construction', ka: 'საგზაო სამუშაოები' };
     case 'road_closures':
       return { en: 'Road closure', ka: 'ჩაკეტილი გზა' };
+    case 'stop_sign':
+      return { en: 'Stop sign', ka: 'გაჩერების ნიშანი' };
+    case 'traffic_light':
+      return { en: 'Traffic light', ka: 'შუქნიშანი' };
+    case 'school_zone':
+      return { en: 'School zone', ka: 'სკოლის ზონა' };
+    case 'sharp_curve':
+      return { en: 'Sharp curve', ka: 'მკვეთრი მოხვევა' };
     default:
       return { en: 'Road alert', ka: 'საგზაო გაფრთხილება' };
   }
