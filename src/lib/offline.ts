@@ -1,4 +1,4 @@
-import { OfflineRegion } from '../types';
+import type { OfflineRegion } from '../types';
 
 export type BBox = [number, number, number, number]; // minLon, minLat, maxLon, maxLat
 

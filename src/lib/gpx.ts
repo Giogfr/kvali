@@ -8,7 +8,7 @@
  */
 
 import { calculateDistanceKm } from './geo';
-import { RecordedTrack } from '../types';
+import type { RecordedTrack } from '../types';
 
 export interface GpxParseResult {
   tracks: RecordedTrack[];

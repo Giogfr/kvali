@@ -1,4 +1,4 @@
-import { UnitSystem } from '../types';
+import type { UnitSystem } from '../types';
 
 /**
  * Calculates distance in kilometers between two coordinates using the Haversine formula.
