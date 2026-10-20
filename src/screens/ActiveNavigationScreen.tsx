@@ -119,7 +119,12 @@ export const ActiveNavigationScreen: React.FC = () => {
                 <div className="text-[22px] font-bold tracking-tight leading-tight tabular-nums">
                   {formatDistance(activeNav.currentManeuver.distanceMeters / 1000, units)}
                 </div>
-                <div className="text-[15px] font-semibold text-neutral-100 truncate">
+                <div
+                  className="text-[15px] font-semibold text-neutral-100 truncate"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
                   {language === 'ka'
                     ? activeNav.currentManeuver.instructionKa
                     : activeNav.currentManeuver.instruction}
