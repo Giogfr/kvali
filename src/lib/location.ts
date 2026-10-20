@@ -1,4 +1,12 @@
 /**
+ * Kvali.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+/**
  * Location access that works both in the browser and inside the Android app.
  *
  * On Android we go through the Capacitor Geolocation plugin, which talks to the
