@@ -22,6 +22,7 @@ import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { ToggleSwitch } from '../components/common/Controls';
 import { formatDistance } from '../lib/geo';
+import { hasActiveRoutePreferences } from '../lib/routePreferences';
 import { formatDurationMinutes } from '../lib/time';
 import type { TravelMode } from '../types';
 
@@ -355,6 +356,12 @@ export const RoutePlanningScreen: React.FC = () => {
               label={t('avoidUnpaved')}
             />
           </div>
+
+          {hasActiveRoutePreferences(routePreferences) && (
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              {t('preferencesViaValhalla')}
+            </p>
+          )}
         </div>
 
         {/* Disclaimer Notice */}
