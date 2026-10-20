@@ -18,16 +18,10 @@ import {
 import { useApp } from '../context/AppContext';
 import { MapView } from '../components/map/MapView';
 import { calculateDistanceKm, formatDistance } from '../lib/geo';
+import { isSchoolZoneActive } from '../lib/alertSchedule';
 import { findSharpCurveAhead } from '../lib/navigation';
 import { etaFromNow, formatClockTime, formatDurationMinutes } from '../lib/time';
 import type { RoadAlert } from '../types';
-
-function isSchoolTime(now: Date): boolean {
-  const day = now.getDay();
-  if (day === 0 || day === 6) return false;
-  const hour = now.getHours();
-  return hour >= 8 && hour < 16;
-}
 
 function alertIcon(category: RoadAlert['category']) {
   if (category === 'school_zone') return School;
@@ -77,7 +71,7 @@ export const ActiveNavigationScreen: React.FC = () => {
   // Nearest mapped alerts ahead of the driver, with live distance in metres.
   const aheadAlerts = useMemo(() => {
     if (!userLocation) return [] as (RoadAlert & { distanceM: number })[];
-    const schoolTime = isSchoolTime(new Date());
+    const schoolTime = isSchoolZoneActive(new Date());
     return roadAlerts
       .filter((alert) => enabledAlertCategories[alert.category])
       .filter((alert) => alert.category !== 'school_zone' || schoolTime)
