@@ -416,7 +416,7 @@ export const SettingsScreen: React.FC = () => {
                   {t('tripToolsTitle')}
                 </span>
                 <span className="text-[11px] text-neutral-500">
-                  Track history & GPX/GeoJSON export
+                  Track recording, GPX import & export
                 </span>
               </div>
             </div>
