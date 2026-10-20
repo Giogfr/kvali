@@ -7,7 +7,7 @@
  * License version 3 or later. See the LICENSE file for the full text.
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Check, Download, LocateFixed, Volume2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -34,15 +34,25 @@ export const FirstRunOnboarding: React.FC = () => {
   const [step, setStep] = useState(0);
   const [locating, setLocating] = useState(false);
 
-  if (!open) return null;
-
-  const ka = language === 'ka';
-  const finish = () => {
+  const finish = useCallback(() => {
     try {
       localStorage.setItem(STORAGE_KEY, 'true');
     } catch {}
     setOpen(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') finish();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, finish]);
+
+  if (!open) return null;
+
+  const ka = language === 'ka';
 
   const enableLocation = async () => {
     setLocating(true);
@@ -147,7 +157,12 @@ export const FirstRunOnboarding: React.FC = () => {
 
   return (
     <div className="absolute inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-3xl bg-[#161616] border border-neutral-700 shadow-2xl text-white overflow-hidden">
+      <div
+        className="w-full max-w-md rounded-3xl bg-[#161616] border border-neutral-700 shadow-2xl text-white overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label={ka ? 'პირველი გაშვება' : 'Welcome to Kvali'}
+      >
         <div className="flex justify-end p-3">
           <button
             onClick={finish}
