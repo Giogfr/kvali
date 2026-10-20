@@ -148,7 +148,7 @@ bun run preview
 | `bun run test:offline` | Same idea with the network switched off; needs `bun run preview` on :4173. |
 | `bun run icons` | Regenerate the PWA and Android launcher icons from the built-in SVG. |
 
-CI runs `lint` and `build` on every push to `main` and on pull requests (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+CI runs `lint`, `test:units` and `build` on every push to `main` and on pull requests (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Project structure
 
