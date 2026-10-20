@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit",
     "test:smoke": "node scripts/smoke.mjs",
     "test:offline": "node scripts/offline.mjs",
+    "test:engine": "node scripts/test-navigation-engine.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {

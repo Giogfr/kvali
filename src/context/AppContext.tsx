@@ -36,6 +36,7 @@ import {
 } from '../lib/location';
 import { speakText, stopSpeaking } from '../lib/speech';
 import { computeProgress } from '../lib/navigation';
+import { OffRouteDetector } from '../lib/navigationEngine';
 import { calculateDistanceKm } from '../lib/geo';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, writeCache } from '../lib/offlineCache';
@@ -340,8 +341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [liveTrackPoints, setLiveTrackPoints] = useState<[number, number][]>([]);
   const liveTrackStartTime = useRef<number | null>(null);
   const isRecordingRef = useRef(false);
-  const lastRerouteRef = useRef(0);
-  const offRouteSinceRef = useRef<number | null>(null);
+  const offRouteDetectorRef = useRef(new OffRouteDetector());
   const lastSpokenRef = useRef('');
 
   useEffect(() => {
@@ -1364,7 +1364,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       upcomingAlert: initialAlert,
     });
-    lastRerouteRef.current = 0;
+    offRouteDetectorRef.current.reset();
     setIsFollowing(true);
     setRecenterTrigger((prev) => prev + 1);
     navigateTo('active-navigation');
@@ -1408,30 +1408,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [userLocation, activeNav.isActive, activeNav.route, findUpcomingAlert]);
 
   // Re-route when the driver has clearly drifted off the current route.
-  // The threshold is wider at highway speed, and the deviation must persist for
-  // three seconds so a single noisy GPS fix cannot trigger a reroute.
+  // OffRouteDetector owns the speed-dependent threshold, the three-second
+  // debounce and the cooldown between reroutes.
   useEffect(() => {
     if (!activeNav.isActive || !activeNav.route || !userLocation || !activeNav.gpsActive) {
-      offRouteSinceRef.current = null;
+      offRouteDetectorRef.current.reset();
       return;
     }
 
-    const highway = (userLocation.speedKmh ?? activeNav.currentSpeedKmh) > 80;
-    const thresholdM = highway ? 150 : 50;
-
-    if (activeNav.offRouteM < thresholdM) {
-      offRouteSinceRef.current = null;
-      return;
-    }
-
-    const now = Date.now();
-    if (offRouteSinceRef.current === null) {
-      offRouteSinceRef.current = now;
-      return;
-    }
-    if (now - offRouteSinceRef.current < 3000) return;
-    if (now - lastRerouteRef.current < 15000) return;
-    lastRerouteRef.current = now;
+    const decision = offRouteDetectorRef.current.update(
+      activeNav.offRouteM,
+      userLocation.speedKmh ?? activeNav.currentSpeedKmh
+    );
+    if (!decision.reroute) return;
 
     calculateRoutes({ latitude: userLocation.latitude, longitude: userLocation.longitude });
   }, [

@@ -361,6 +361,54 @@ try {
     `pitch ${navigating.pitch.toFixed(1)}, zoom ${navigating.zoom.toFixed(1)}`
   );
 
+  // Driver HUD: speed, a speed-limit sign (mapped or explicit dash) and controls.
+  const hud = await page.evaluate(() => ({
+    speed: document.body.innerText.includes('KM/H'),
+    limitSign: !!document.querySelector(
+      '[title="Speed limit"], [title="Speed limit not mapped here"]'
+    ),
+    controls: ['Follow', 'North up'].every((label) =>
+      [...document.querySelectorAll('button')].some((b) => b.getAttribute('aria-label') === label)
+    ),
+  }));
+  check(
+    'navigation HUD shows speed, a speed-limit sign and camera controls',
+    hud.speed && hud.limitSign && hud.controls,
+    JSON.stringify(hud)
+  );
+
+  // The guidance overlay must be click-through so the driver can look around.
+  const navCanvas = await page.$('.maplibregl-canvas');
+  const navBox = await navCanvas.boundingBox();
+  const beforeNavPan = await mapState(page);
+  await page.mouse.move(navBox.x + navBox.width / 2, navBox.y + navBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(navBox.x + navBox.width / 2 + 130, navBox.y + navBox.height / 2 + 80, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  await sleep(700);
+  const afterNavPan = await mapState(page);
+  check(
+    'the map can be moved during navigation',
+    distanceKm(beforeNavPan.center, afterNavPan.center) > 0.003,
+    `${distanceKm(beforeNavPan.center, afterNavPan.center).toFixed(3)} km`
+  );
+
+  const recenterClickable = await page.evaluate(() => {
+    const button = document.querySelector('button[aria-label="Follow"]');
+    if (!button) return false;
+    button.click();
+    return true;
+  });
+  await sleep(1400);
+  const recentered = await mapState(page);
+  check(
+    'the follow button brings the camera back',
+    recenterClickable && recentered.zoom >= 16,
+    `zoom ${recentered.zoom.toFixed(1)}`
+  );
+
   await clickText(page, 'button', 'End Navigation');
   await page.waitForFunction(() => !document.body.innerText.includes('End Navigation'), {
     timeout: 10000,
@@ -420,7 +468,12 @@ try {
     entry.includes('blocked by CORS policy') ||
     entry.includes('net::ERR_FAILED') ||
     entry.includes('net::ERR_TIMED_OUT') ||
-    entry.includes('net::ERR_CONNECTION_TIMED_OUT');
+    entry.includes('net::ERR_CONNECTION_TIMED_OUT') ||
+    // Chrome omits the URL for gateway errors; the dev server itself never
+    // answers 5xx, so these come from the volunteer map services.
+    entry.includes('status of 502') ||
+    entry.includes('status of 503') ||
+    entry.includes('status of 429');
   const fatalErrors = browserErrors.filter((entry) => !benign(entry) && !externalService(entry));
   const externalErrors = browserErrors.filter((entry) => !benign(entry) && externalService(entry));
   if (externalErrors.length > 0) {
