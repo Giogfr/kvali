@@ -19,6 +19,12 @@ That runs the pure-module suites:
 | `test:time` | ETA and duration formatting |
 | `test:alerts` | school-zone time windows |
 | `test:nearby-alerts` | distance ranking and limits |
+| `test:route-preferences` | Avoid toggles to Valhalla costing options |
+| `test:gpx` | GPX 1.1 output, escaping, bad coordinates |
+| `test:i18n` | EN/KA key parity and untranslated strings |
+
+That is ten suites and more than fifty checks. Each suite exits non-zero on
+the first failure, so `test:units` stops at the broken module.
 
 The CI workflow runs `bun run test:units` on every push and pull request.
 
