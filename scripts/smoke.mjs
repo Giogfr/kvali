@@ -6,6 +6,9 @@
  */
 
 import puppeteer from 'puppeteer-core';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const BASE = process.env.KVALI_URL || 'http://127.0.0.1:3000';
 const CHROME =
@@ -300,6 +303,99 @@ try {
     timeout: 10000,
   });
 
+  // GPX round-trip through the Trip Tools screen.
+  const gpxDir = await mkdtemp(join(tmpdir(), 'kvali-gpx-'));
+  const gpxPath = join(gpxDir, 'smoke-track.gpx');
+  await writeFile(
+    gpxPath,
+    `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="smoke" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><name>Smoke test track</name><trkseg>
+    <trkpt lat="42.2679" lon="42.6946"><time>2026-01-01T10:00:00Z</time></trkpt>
+    <trkpt lat="42.2720" lon="42.7000"><time>2026-01-01T10:10:00Z</time></trkpt>
+    <trkpt lat="42.2780" lon="42.7060"><time>2026-01-01T10:20:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>
+`,
+    'utf8'
+  );
+
+  await clickText(page, 'button', 'Trip Tools');
+  await page.waitForFunction(() => document.body.innerText.includes('Import GPX'), {
+    timeout: 10000,
+  });
+  const gpxInput = await page.$('input[type="file"]');
+  await gpxInput.uploadFile(gpxPath);
+  await page.waitForFunction(() => document.body.innerText.includes('Smoke test track'), {
+    timeout: 10000,
+  });
+  const importedTrack = await page.evaluate(() => {
+    const tracks = JSON.parse(localStorage.getItem('kvali_tracks') || '[]');
+    return tracks.find((track) => track.title === 'Smoke test track') || null;
+  });
+  check(
+    'GPX import adds a track with its real points and distance',
+    importedTrack?.coordinates?.length === 3 && importedTrack?.distanceKm > 0.5,
+    importedTrack
+      ? `${importedTrack.coordinates.length} points, ${importedTrack.distanceKm} km, ${importedTrack.durationMinutes} min`
+      : 'no track stored'
+  );
+
+  // Serialise through the same module the UI uses, and intercept the anchor
+  // click so the check does not depend on the browser's download plumbing.
+  const exported = await page.evaluate(async () => {
+    const { trackToGpx } = await import('/src/lib/gpx.ts');
+    const track = JSON.parse(localStorage.getItem('kvali_tracks') || '[]')[0];
+    const xml = trackToGpx(track);
+    window.__kvaliDownloads = [];
+    window.__kvaliOriginalAnchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) {
+        window.__kvaliDownloads.push(this.download);
+        return;
+      }
+      return window.__kvaliOriginalAnchorClick.call(this);
+    };
+    return xml;
+  });
+  await page.evaluate(() => document.querySelector('button[title="Export GPX"]')?.click());
+  const downloadState = await page.evaluate(() => {
+    const state = {
+      names: window.__kvaliDownloads,
+      buttons: document.querySelectorAll('button[title="Export GPX"]').length,
+      toast: document.body.innerText
+        .split('\n')
+        .filter((line) => /Export|GPX/i.test(line))
+        .slice(0, 5)
+        .join(' | '),
+    };
+    HTMLAnchorElement.prototype.click = window.__kvaliOriginalAnchorClick;
+    return state;
+  });
+  const downloadNames = downloadState.names;
+  check(
+    'GPX export serialises a valid track and downloads it',
+    exported.includes('<gpx') &&
+      exported.includes('<trkpt') &&
+      exported.includes('Smoke test track') &&
+      downloadNames.length === 1 &&
+      downloadNames[0] === 'Smoke-test-track.gpx',
+    `files: ${downloadNames.join(', ') || 'none'}; buttons: ${downloadState.buttons}; ${downloadState.toast}`
+  );
+
+  await page.evaluate(() => document.querySelector('button[title="Delete track"]')?.click());
+  await page.waitForFunction(
+    () => JSON.parse(localStorage.getItem('kvali_tracks') || '[]').length === 0,
+    { timeout: 10000 }
+  );
+  check('imported track can be deleted', true);
+  await rm(gpxDir, { recursive: true, force: true });
+
+  await page.click('[aria-label="Back"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Settings'), {
+    timeout: 10000,
+  });
+
   // Search -> directions -> route calculation.
   await clickText(page, 'nav button', 'Search');
   await page.waitForSelector('input[type="text"]', { timeout: 10000 });
@@ -361,6 +457,12 @@ try {
     `pitch ${navigating.pitch.toFixed(1)}, zoom ${navigating.zoom.toFixed(1)}`
   );
 
+  // Let the initial easeTo finish; a drag during it would be overwritten.
+  await page.waitForFunction(
+    () => window.__kvaliMap && !window.__kvaliMap.isMoving(),
+    { timeout: 5000 }
+  );
+
   // Driver HUD: speed, a speed-limit sign (mapped or explicit dash) and controls.
   const hud = await page.evaluate(() => ({
     speed: document.body.innerText.includes('KM/H'),
@@ -378,12 +480,27 @@ try {
   );
 
   // The guidance overlay must be click-through so the driver can look around.
+  // Find a spot where the map canvas is the hit target, so a POI marker or a
+  // control cannot swallow the drag.
   const navCanvas = await page.$('.maplibregl-canvas');
   const navBox = await navCanvas.boundingBox();
+  const dragStart = await page.evaluate(() => {
+    const canvas = document.querySelector('.maplibregl-canvas');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    for (let y = rect.top + rect.height * 0.15; y < rect.bottom - rect.height * 0.35; y += 24) {
+      for (let x = rect.left + 16; x < rect.right - 100; x += 24) {
+        if (document.elementFromPoint(x, y) === canvas) return { x, y };
+      }
+    }
+    return null;
+  });
   const beforeNavPan = await mapState(page);
-  await page.mouse.move(navBox.x + navBox.width / 2, navBox.y + navBox.height / 2);
+  const startX = dragStart?.x ?? navBox.x + navBox.width * 0.3;
+  const startY = dragStart?.y ?? navBox.y + navBox.height * 0.4;
+  await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(navBox.x + navBox.width / 2 + 130, navBox.y + navBox.height / 2 + 80, {
+  await page.mouse.move(startX + 130, startY + 80, {
     steps: 12,
   });
   await page.mouse.up();
