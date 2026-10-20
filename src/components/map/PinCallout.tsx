@@ -7,7 +7,7 @@
  * License version 3 or later. See the LICENSE file for the full text.
  */
 import React, { useState } from 'react';
-import { Navigation, Bookmark, Trash2, X, LocateFixed } from 'lucide-react';
+import { Navigation, Bookmark, Trash2, X, LocateFixed, Copy } from 'lucide-react';
 import { Place, TemporaryPin } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../context/ToastContext';
@@ -88,6 +88,17 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
     showToast(t('useAsMyLocation'), 'success');
   };
 
+  const coordinateText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+  const handleCopyCoordinates = async () => {
+    try {
+      await navigator.clipboard.writeText(coordinateText);
+      showToast(t('coordinatesCopied'), 'success');
+    } catch {
+      showToast(t('copyFailed'), 'warn');
+    }
+  };
+
   return (
     <div
       className={`absolute bottom-20 left-3 right-3 rounded-xl border shadow-xl z-30 p-3.5 transition-all animate-callout-in ${
@@ -104,9 +115,19 @@ export const PinCallout: React.FC<PinCalloutProps> = ({
               {title}
             </h3>
           </div>
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono mt-0.5">
-            {lat.toFixed(5)}, {lng.toFixed(5)}
-          </p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
+              {coordinateText}
+            </p>
+            <button
+              onClick={handleCopyCoordinates}
+              className="p-0.5 rounded text-neutral-400 hover:text-[#2F6FEB] transition-colors"
+              aria-label={t('copyCoordinates')}
+              title={t('copyCoordinates')}
+            >
+              <Copy size={11} />
+            </button>
+          </div>
         </div>
         <button
           onClick={onClose}
