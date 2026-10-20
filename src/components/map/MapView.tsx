@@ -65,6 +65,9 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     layers,
     enabledAlertCategories,
     activeNav,
+    navView,
+    northUpLock,
+    setIsFollowing,
   } = useApp();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -195,6 +198,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       // Let the driver pan freely; following resumes when they tap recenter.
       map.on('dragstart', () => {
         followRef.current = false;
+        setIsFollowing(false);
       });
 
       map.on('load', () => {
@@ -293,13 +297,14 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     const map = mapInstanceRef.current;
     if (!map || recenterTrigger === 0 || hasInitError) return;
     followRef.current = true;
+    setIsFollowing(true);
     const navigating = activeNav.isActive && !!userLocation;
     try {
       map.flyTo({
         center: [centerRef.current.longitude, centerRef.current.latitude],
-        zoom: navigating ? 17 : 14.5,
-        pitch: navigating ? 50 : 0,
-        bearing: navigating ? userLocation?.headingDegrees ?? 0 : 0,
+        zoom: navigating ? 17.5 : 14.5,
+        pitch: navigating && navView === '3d' ? 45 : 0,
+        bearing: navigating && !northUpLock ? userLocation?.headingDegrees ?? 0 : 0,
         essential: true,
         duration: 1000,
       });
@@ -391,8 +396,17 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     }
 
     if (layers.speedCameras) {
+      const radarCategories = new Set([
+        'stop_sign',
+        'traffic_light',
+        'school_zone',
+        'sharp_curve',
+      ]);
       roadAlerts.forEach((alert) => {
         if (!enabledAlertCategories[alert.category]) return;
+        // Stop signs, signals and schools are guidance-only; drawing a marker
+        // for every one of them would bury the map in pins.
+        if (radarCategories.has(alert.category)) return;
         const isCam = alert.category.includes('camera') || alert.category.includes('zone');
         desired.push({
           key: `alert-${alert.id}`,
@@ -572,26 +586,43 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
 
   // Turn-by-turn camera: follow the position, tilt and rotate to the heading.
   // Panning pauses following until the driver taps recenter.
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || hasInitError || !activeNav.isActive) return;
-    followRef.current = true;
-  }, [activeNav.isActive, hasInitError]);
+  const navStartedRef = useRef(false);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || hasInitError || !activeNav.isActive || !userLocation || !followRef.current) return;
+    if (!activeNav.isActive) {
+      navStartedRef.current = false;
+      return;
+    }
+    if (!map || !isStyleLoaded || hasInitError) return;
+    followRef.current = true;
+    if (navStartedRef.current) return;
+    navStartedRef.current = true;
+    try {
+      map.easeTo({
+        center: [centerRef.current.longitude, centerRef.current.latitude],
+        zoom: 17.5,
+        pitch: navView === '3d' ? 45 : 0,
+        bearing: northUpLock ? 0 : userLocation?.headingDegrees ?? 0,
+        duration: 800,
+      });
+    } catch {}
+  }, [activeNav.isActive, isStyleLoaded, hasInitError, navView, northUpLock, userLocation]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !isStyleLoaded || hasInitError || !activeNav.isActive || !userLocation || !followRef.current) return;
     try {
       const heading = userLocation.headingDegrees;
       map.easeTo({
         center: [userLocation.longitude, userLocation.latitude],
-        zoom: Math.max(map.getZoom(), 16),
-        pitch: 50,
-        bearing: typeof heading === 'number' ? heading : map.getBearing(),
+        pitch: navView === '3d' ? 45 : 0,
+        bearing:
+          northUpLock || typeof heading !== 'number' ? 0 : heading,
         duration: 800,
       });
     } catch {}
-  }, [userLocation, activeNav.isActive, hasInitError]);
+  }, [userLocation, activeNav.isActive, isStyleLoaded, hasInitError, navView, northUpLock]);
 
   // Flatten the camera again after navigation ends.
   useEffect(() => {
@@ -630,10 +661,20 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
             minzoom: 14,
             filter: ['!=', ['coalesce', ['get', 'hide_3d'], false], true],
             paint: {
-              'fill-extrusion-color': theme === 'dark' ? '#34343a' : '#d8d4cd',
-              'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+              'fill-extrusion-color': theme === 'dark' ? '#40404a' : '#cfc9bf',
+              'fill-extrusion-height': [
+                'max',
+                3,
+                [
+                  'coalesce',
+                  ['get', 'render_height'],
+                  ['*', ['coalesce', ['get', 'building:levels'], 3], 3],
+                  8,
+                ],
+              ],
               'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-              'fill-extrusion-opacity': 0.85,
+              'fill-extrusion-opacity': 1,
+              'fill-extrusion-vertical-gradient': true,
             },
           } as maplibregl.LayerSpecification,
           firstSymbol?.id
