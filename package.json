@@ -13,6 +13,7 @@
     "test:smoke": "node scripts/smoke.mjs",
     "test:offline": "node scripts/offline.mjs",
     "test:engine": "node scripts/test-navigation-engine.mjs",
+    "test:geo": "node scripts/test-geo.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
