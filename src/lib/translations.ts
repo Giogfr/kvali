@@ -255,7 +255,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     tripToolsTitle: 'Trip Tools',
     recordedTracks: 'Recorded Tracks',
     noTracksYet: 'No recorded tracks yet. Start a recording or finish a route to see one here.',
-    exportGeoJson: 'Export GeoJSON',
+    importGpx: 'Import GPX',
+    exportGpx: 'Export GPX',
     deleteTrack: 'Delete track',
 
     // About
@@ -524,7 +525,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     tripToolsTitle: 'მოგზაურობის ხელსაწყოები',
     recordedTracks: 'ჩაწერილი ბილიკები',
     noTracksYet: 'ჩაწერილი ბილიკები არ არის.',
-    exportGeoJson: 'GeoJSON ექსპორტი',
+    importGpx: 'GPX-ის იმპორტი',
+    exportGpx: 'GPX ექსპორტი',
     deleteTrack: 'წაშლა',
 
     // About

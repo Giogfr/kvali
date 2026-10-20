@@ -1,9 +1,10 @@
-import React from 'react';
-import { Footprints, Plus, Square, Download, Trash2, Gauge, Clock, Compass } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Footprints, Plus, Square, Download, Trash2, Gauge, Clock, Compass, Upload } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { useToast } from '../context/ToastContext';
 import { formatDistance, formatSpeed } from '../lib/geo';
+import { parseGpx, trackToGpx } from '../lib/gpx';
 import { RecordedTrack } from '../types';
 
 export const TripToolsScreen: React.FC = () => {
@@ -12,6 +13,7 @@ export const TripToolsScreen: React.FC = () => {
     theme,
     units,
     recordedTracks,
+    addRecordedTrack,
     deleteTrack,
     isRecordingLiveTrack,
     startLiveTrackRecording,
@@ -21,6 +23,7 @@ export const TripToolsScreen: React.FC = () => {
   } = useApp();
 
   const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleToggleRecording = () => {
     if (isRecordingLiveTrack) {
@@ -34,37 +37,51 @@ export const TripToolsScreen: React.FC = () => {
 
   const handleExportTrack = (track: RecordedTrack) => {
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            properties: {
-              title: track.title,
-              date: track.date,
-              distanceKm: track.distanceKm,
-              durationMinutes: track.durationMinutes,
-              avgSpeedKmh: track.avgSpeedKmh,
-            },
-            geometry: {
-              type: 'LineString',
-              coordinates: track.coordinates,
-            },
-          },
-        ],
-      };
-
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(geojson, null, 2));
+      const blob = new Blob([trackToGpx(track)], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
       const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `${track.id}.geojson`);
+      const safeName = track.title.replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '') || track.id;
+      downloadAnchor.href = url;
+      downloadAnchor.download = `${safeName}.gpx`;
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      showToast(`Exported ${track.title} as GeoJSON`, 'success');
+      showToast(`Exported ${track.title} as GPX`, 'success');
     } catch {
       showToast('Export failed', 'warn');
+    }
+  };
+
+  const handleImportGpx = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('GPX file is too large (limit 10 MB)', 'warn');
+        return;
+      }
+      const result = parseGpx(await file.text(), file.name);
+      if (result.tracks.length === 0) {
+        showToast('No tracks with at least two points were found in this GPX file', 'warn');
+        return;
+      }
+      result.tracks.forEach(addRecordedTrack);
+      showToast(
+        result.skipped > 0
+          ? `Imported ${result.tracks.length} track(s), skipped ${result.skipped} empty one(s)`
+          : `Imported ${result.tracks.length} track(s)`,
+        'success'
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error ? `Could not import GPX: ${error.message}` : 'Could not import GPX',
+        'warn'
+      );
+    } finally {
+      event.target.value = '';
     }
   };
 
@@ -113,6 +130,20 @@ export const TripToolsScreen: React.FC = () => {
             <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 font-semibold">
               {t('recordedTracks')} ({recordedTracks.length})
             </span>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 text-[11px] font-medium transition-colors"
+            >
+              <Upload size={12} />
+              <span>{t('importGpx')}</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".gpx,application/gpx+xml"
+              className="hidden"
+              onChange={handleImportGpx}
+            />
           </div>
 
           {recordedTracks.length > 0 ? (
@@ -170,7 +201,7 @@ export const TripToolsScreen: React.FC = () => {
                         <button
                           onClick={() => handleExportTrack(track)}
                           className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white transition-colors"
-                          title={t('exportGeoJson')}
+                          title={t('exportGpx')}
                         >
                           <Download size={14} />
                         </button>
