@@ -9,6 +9,7 @@ community service, and every failure is shown honestly.
 | Low-zoom relief | OpenFreeMap | `ne2_shaded` raster source, max zoom 6 |
 | Search and reverse geocoding | Nominatim | `nominatim.openstreetmap.org/search`, `/reverse` |
 | Car and bicycle routing | FOSSGIS OSRM | `routing.openstreetmap.de/routed-car`, `/routed-bike` |
+| Preference-aware routing | FOSSGIS Valhalla | `valhalla1.openstreetmap.de/route` with `costing_options` |
 | Walking routing | FOSSGIS Valhalla | `valhalla1.openstreetmap.de/route` |
 | Routing fallback | FOSSGIS Valhalla | same endpoint with `auto` or `bicycle` costing |
 | Points of interest, cameras, alerts | Overpass | `overpass-api.de`, `overpass.kumi.systems`, `overpass.private.coffee` |
@@ -25,7 +26,19 @@ community service, and every failure is shown honestly.
   gateway errors are normal. The app retries a limited number of times, then
   keeps cached results or shows nothing.
 
-## Failure behaviour
+## Route preferences
+
+The public OSRM profile rejects `exclude` flags ("Exclude flag combination is
+not supported"), so a route with any Avoid toggle enabled is requested from
+Valhalla instead. Valhalla receives `use_tolls`, `use_highways` and
+`use_tracks` (or `use_trails` for walking) in `costing_options`. The route card
+still shows which provider answered; no preference is silently ignored.
+
+If Valhalla is unavailable, the app falls back to OSRM and the preferences are
+not applied. The fallback is visible in the route label, and the app does not
+claim the exclusions were honoured.
+
+
 
 The integrity rule is simple: missing data is better than invented data.
 
