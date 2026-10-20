@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MapView } from '../components/map/MapView';
-import { calculateDistanceKm, formatDistance } from '../lib/geo';
+import { nearbyAlerts } from '../lib/alerts';
+import { formatDistance } from '../lib/geo';
 import { isSchoolZoneActive } from '../lib/alertSchedule';
 import { findSharpCurveAhead } from '../lib/navigation';
 import { etaFromNow, formatClockTime, formatDurationMinutes } from '../lib/time';
@@ -72,22 +73,10 @@ export const ActiveNavigationScreen: React.FC = () => {
   const aheadAlerts = useMemo(() => {
     if (!userLocation) return [] as (RoadAlert & { distanceM: number })[];
     const schoolTime = isSchoolZoneActive(new Date());
-    return roadAlerts
+    const visible = roadAlerts
       .filter((alert) => enabledAlertCategories[alert.category])
-      .filter((alert) => alert.category !== 'school_zone' || schoolTime)
-      .map((alert) => ({
-        ...alert,
-        distanceM:
-          calculateDistanceKm(
-            userLocation.latitude,
-            userLocation.longitude,
-            alert.latitude,
-            alert.longitude
-          ) * 1000,
-      }))
-      .filter((alert) => alert.distanceM <= 5000)
-      .sort((a, b) => a.distanceM - b.distanceM)
-      .slice(0, 3);
+      .filter((alert) => alert.category !== 'school_zone' || schoolTime);
+    return nearbyAlerts(visible, userLocation, 5000, 3);
   }, [roadAlerts, enabledAlertCategories, userLocation]);
 
   // Sharp bends are derived from the route geometry, so they work offline.
