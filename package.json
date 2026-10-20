@@ -18,7 +18,8 @@
     "test:address": "bun scripts/test-address.mjs",
     "test:time": "bun scripts/test-time.mjs",
     "test:alerts": "bun scripts/test-alert-schedule.mjs",
-    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs",
+    "test:nearby-alerts": "bun scripts/test-nearby-alerts.mjs",
+    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
