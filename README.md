@@ -32,6 +32,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 ## Table of contents
 
 - [Features](#features)
+- [Documentation](#documentation)
 - [Tech stack](#tech-stack)
 - [Requirements](#requirements)
 - [Getting started](#getting-started)
@@ -93,6 +94,16 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 - Saved places with collections, notes, and JSON import/export.
 - Recorded GPS tracks with GPX import and export.
 - Full-screen, safe-area-aware layout that adapts to phone portrait, landscape, and car displays.
+
+## Documentation
+
+Architecture notes and honest status reports live in [`docs/`](docs/):
+
+- [Navigation engine](docs/navigation-engine.md) — projection, snapping, off-route detection.
+- [Georgian addresses](docs/georgian-addresses.md) — script and postcode normalization.
+- [Background location](docs/background-location.md) — plugin licenses and the integration plan.
+- [Offline routing](docs/routing-graph.md) and [offline tiles](docs/offline-tiles.md) — what is still missing.
+- [Data sources](docs/data-sources.md), [privacy](docs/privacy.md) and [testing](docs/testing.md).
 
 ## Tech stack
 
