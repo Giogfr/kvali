@@ -1,4 +1,12 @@
 /**
+ * Kvali.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+/**
  * Renders the Kvali app icon into every PNG size the PWA and Android need.
  *
  * Uses the locally installed Chrome (already a test dependency) instead of

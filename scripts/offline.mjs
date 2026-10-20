@@ -1,4 +1,12 @@
 /**
+ * Kvali.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+/**
  * Offline-first end-to-end test against the production build served by
  * `bun run preview`. Verifies the service worker, cached map assets and cached
  * routes while the network is actually switched off.

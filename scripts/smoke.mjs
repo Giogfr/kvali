@@ -1,4 +1,12 @@
 /**
+ * Kvali.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+/**
  * End-to-end smoke test for the web build.
  *
  * Uses the locally installed Chrome (no browser download) and a simulated GPS
