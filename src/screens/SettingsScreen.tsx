@@ -45,6 +45,10 @@ export const SettingsScreen: React.FC = () => {
     setVoiceMode,
     travelMode,
     setTravelMode,
+    navView,
+    setNavView,
+    northUpLock,
+    setNorthUpLock,
     navigateTo,
     resetPrototypeData,
   } = useApp();
@@ -269,6 +273,46 @@ export const SettingsScreen: React.FC = () => {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Map guidance while navigating */}
+            <div className="p-3.5 space-y-2.5">
+              <div>
+                <span className={rowTitle}>{t('mapGuidance')}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setNavView('3d')}
+                  className={`py-2 px-3 rounded-lg border text-[12px] font-medium flex items-center justify-between transition-colors ${
+                    navView === '3d' ? optionActive : optionInactive
+                  }`}
+                >
+                  <span>{t('tiltedView')}</span>
+                  {navView === '3d' && <Check size={13} className="text-[#2F6FEB]" />}
+                </button>
+                <button
+                  onClick={() => setNavView('2d')}
+                  className={`py-2 px-3 rounded-lg border text-[12px] font-medium flex items-center justify-between transition-colors ${
+                    navView === '2d' ? optionActive : optionInactive
+                  }`}
+                >
+                  <span>{t('flatView')}</span>
+                  {navView === '2d' && <Check size={13} className="text-[#2F6FEB]" />}
+                </button>
+              </div>
+
+              <label className="flex items-center justify-between gap-3 cursor-pointer">
+                <span>
+                  <span className={rowTitle}>{t('northUpLock')}</span>
+                  <span className={`${rowHint} block`}>{t('northUpLockHint')}</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={northUpLock}
+                  onChange={(e) => setNorthUpLock(e.target.checked)}
+                  className="w-5 h-5 accent-[#2F6FEB]"
+                />
+              </label>
             </div>
 
             {/* Voice Guidance */}
