@@ -14,7 +14,8 @@ import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { ToggleSwitch } from '../components/common/Controls';
 import { formatDistance } from '../lib/geo';
-import { TravelMode } from '../types';
+import { formatDurationMinutes } from '../lib/time';
+import type { TravelMode } from '../types';
 
 export const RoutePlanningScreen: React.FC = () => {
   const {
@@ -287,7 +288,7 @@ export const RoutePlanningScreen: React.FC = () => {
 
                     <div className="text-right">
                       <span className="text-[16px] font-bold tabular-nums text-[#2F6FEB]">
-                        {alt.durationMinutes} min
+                        {formatDurationMinutes(alt.durationMinutes)}
                       </span>
                       <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block tabular-nums">
                         {distStr}

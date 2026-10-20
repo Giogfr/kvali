@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { useToast } from '../context/ToastContext';
 import { formatDistance, formatSpeed } from '../lib/geo';
+import { formatDurationMinutes } from '../lib/time';
 import { parseGpx, trackToGpx } from '../lib/gpx';
 import { RecordedTrack } from '../types';
 
@@ -170,7 +171,7 @@ export const TripToolsScreen: React.FC = () => {
                         <div className="flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400 mt-2">
                           <span className="flex items-center gap-1">
                             <Clock size={12} className="text-neutral-500" />
-                            <span className="tabular-nums font-mono">{track.durationMinutes} min</span>
+                            <span className="tabular-nums font-mono">{formatDurationMinutes(track.durationMinutes)}</span>
                           </span>
                           <span>·</span>
                           <span className="flex items-center gap-1">

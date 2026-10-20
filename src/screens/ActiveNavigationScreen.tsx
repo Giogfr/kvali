@@ -19,6 +19,7 @@ import { useApp } from '../context/AppContext';
 import { MapView } from '../components/map/MapView';
 import { calculateDistanceKm, formatDistance } from '../lib/geo';
 import { findSharpCurveAhead } from '../lib/navigation';
+import { etaFromNow, formatClockTime, formatDurationMinutes } from '../lib/time';
 import type { RoadAlert } from '../types';
 
 function isSchoolTime(now: Date): boolean {
@@ -71,11 +72,7 @@ export const ActiveNavigationScreen: React.FC = () => {
       ? Math.round(activeNav.speedLimitKmh * 0.621371)
       : activeNav.speedLimitKmh;
 
-  const now = new Date();
-  const etaDate = new Date(now.getTime() + activeNav.remainingDurationMinutes * 60000);
-  const etaHours = etaDate.getHours().toString().padStart(2, '0');
-  const etaMinutes = etaDate.getMinutes().toString().padStart(2, '0');
-  const etaString = `${etaHours}:${etaMinutes}`;
+  const etaString = formatClockTime(etaFromNow(activeNav.remainingDurationMinutes));
 
   // Nearest mapped alerts ahead of the driver, with live distance in metres.
   const aheadAlerts = useMemo(() => {
@@ -264,7 +261,7 @@ export const ActiveNavigationScreen: React.FC = () => {
             {/* Remaining distance & duration */}
             <div className="text-right">
               <div className="text-[20px] font-bold text-[#2F6FEB] tabular-nums leading-tight">
-                {activeNav.remainingDurationMinutes} min
+                {formatDurationMinutes(activeNav.remainingDurationMinutes)}
               </div>
               <div className="text-[12px] text-neutral-300 tabular-nums">
                 {distStr} · ETA {etaString}
