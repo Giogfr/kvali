@@ -12,10 +12,11 @@
     "lint": "tsc --noEmit",
     "test:smoke": "node scripts/smoke.mjs",
     "test:offline": "node scripts/offline.mjs",
-    "test:engine": "node scripts/test-navigation-engine.mjs",
-    "test:geo": "node scripts/test-geo.mjs",
-    "test:navigation": "node scripts/test-navigation.mjs",
-    "test:address": "node scripts/test-address.mjs",
+    "test:engine": "bun scripts/test-navigation-engine.mjs",
+    "test:geo": "bun scripts/test-geo.mjs",
+    "test:navigation": "bun scripts/test-navigation.mjs",
+    "test:address": "bun scripts/test-address.mjs",
+    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
