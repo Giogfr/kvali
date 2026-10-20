@@ -178,6 +178,7 @@ interface AppContextType {
 
   // Tracks & Trips
   recordedTracks: RecordedTrack[];
+  addRecordedTrack: (track: RecordedTrack) => void;
   deleteTrack: (id: string) => void;
   isRecordingLiveTrack: boolean;
   startLiveTrackRecording: () => void;
@@ -1278,6 +1279,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Trip Tools
+  const addRecordedTrack = useCallback((track: RecordedTrack) => {
+    setRecordedTracks((prev) => [track, ...prev]);
+  }, []);
+
   const deleteTrack = (id: string) => {
     setRecordedTracks((prev) => prev.filter((t) => t.id !== id));
   };
@@ -1584,6 +1589,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createCollection,
         importPlacesJson,
         recordedTracks,
+        addRecordedTrack,
         deleteTrack,
         isRecordingLiveTrack,
         startLiveTrackRecording,
