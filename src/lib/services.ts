@@ -13,7 +13,8 @@
  * - OpenStreetMap Overpass (POIs and mapped road alerts)
  */
 
-import type { AlertCategory } from '../types';
+import type { AlertCategory, RoutePreferences } from '../types';
+import { hasActiveRoutePreferences, valhallaCostingOptions } from './routePreferences';
 import { normalizeAddress, normalizeGeorgianText } from './georgianAddress';
 
 export interface RouteStep {
@@ -179,10 +180,25 @@ export async function fetchOsrmRoute(
   destination: { latitude: number; longitude: number },
   waypoints: { latitude: number; longitude: number }[] = [],
   mode: 'car' | 'walking' | 'cycling' = 'car',
+  preferences?: RoutePreferences,
   signal?: AbortSignal
 ): Promise<RealRouteResult[]> {
   if (mode === 'walking') {
-    return fetchValhallaWalkingRoute(origin, destination, waypoints, signal);
+    return fetchValhallaWalkingRoute(origin, destination, waypoints, preferences, signal);
+  }
+
+  // The public OSRM profile rejects exclusions, so preference-aware routes go
+  // through Valhalla, which supports toll, highway and unpaved costing.
+  if (preferences && hasActiveRoutePreferences(preferences)) {
+    return fetchValhallaRoute(
+      origin,
+      destination,
+      waypoints,
+      mode === 'cycling' ? 'bicycle' : 'auto',
+      mode,
+      preferences,
+      signal
+    );
   }
 
   // Construct coordinates list: origin; intermediate...; destination
@@ -271,6 +287,7 @@ export async function fetchOsrmRoute(
       waypoints,
       mode === 'cycling' ? 'bicycle' : 'auto',
       mode,
+      preferences,
       signal
     );
   }
@@ -366,6 +383,7 @@ async function fetchValhallaRoute(
   waypoints: { latitude: number; longitude: number }[],
   costing: 'pedestrian' | 'auto' | 'bicycle',
   mode: 'car' | 'walking' | 'cycling',
+  preferences?: RoutePreferences,
   signal?: AbortSignal
 ): Promise<RealRouteResult[]> {
   const locations = [origin, ...waypoints, destination].map((point) => ({
@@ -379,6 +397,9 @@ async function fetchValhallaRoute(
     body: JSON.stringify({
       locations,
       costing,
+      costing_options: preferences
+        ? { [costing]: valhallaCostingOptions(costing, preferences) }
+        : undefined,
       directions_options: { units: 'kilometers', language: 'en-US' },
     }),
     signal,
@@ -464,9 +485,18 @@ function fetchValhallaWalkingRoute(
   origin: { latitude: number; longitude: number },
   destination: { latitude: number; longitude: number },
   waypoints: { latitude: number; longitude: number }[],
+  preferences?: RoutePreferences,
   signal?: AbortSignal
 ): Promise<RealRouteResult[]> {
-  return fetchValhallaRoute(origin, destination, waypoints, 'pedestrian', 'walking', signal);
+  return fetchValhallaRoute(
+    origin,
+    destination,
+    waypoints,
+    'pedestrian',
+    'walking',
+    preferences,
+    signal
+  );
 }
 
 export interface OverpassPoi {

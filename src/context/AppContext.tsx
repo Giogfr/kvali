@@ -946,7 +946,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const osrmRoutes = await fetchOsrmRoute(origin, destination, waypoints, travelMode);
+      const osrmRoutes = await fetchOsrmRoute(
+        origin,
+        destination,
+        waypoints,
+        travelMode,
+        routePreferences
+      );
 
       if (osrmRoutes.length > 0) {
         setRouteAlternatives(osrmRoutes);
