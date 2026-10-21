@@ -268,6 +268,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     importGpx: 'Import GPX',
     exportGpx: 'Export GPX',
     deleteTrack: 'Delete track',
+    trackStarted: 'Recording your track',
+    trackSaved: 'Track saved',
+    trackTooShort: 'Nothing to save yet — move a few metres first.',
 
     // About
     aboutTitle: 'About Kvali',
@@ -540,6 +543,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     importGpx: 'GPX-ის იმპორტი',
     exportGpx: 'GPX ექსპორტი',
     deleteTrack: 'წაშლა',
+    trackStarted: 'ბილიკის ჩაწერა დაწყებულია',
+    trackSaved: 'ბილიკი შენახულია',
+    trackTooShort: 'ჯერ არაფერია შესანახი — გაიარეთ რამდენიმე მეტრი.',
 
     // About
     aboutTitle: 'კვალის შესახებ',

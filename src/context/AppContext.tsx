@@ -46,6 +46,7 @@ import { speakText, stopSpeaking } from '../lib/speech';
 import { computeProgress } from '../lib/navigation';
 import { OffRouteDetector } from '../lib/navigationEngine';
 import { calculateDistanceKm } from '../lib/geo';
+import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, writeCache } from '../lib/offlineCache';
 
@@ -191,7 +192,7 @@ interface AppContextType {
   deleteTrack: (id: string) => void;
   isRecordingLiveTrack: boolean;
   startLiveTrackRecording: () => void;
-  stopAndSaveLiveTrack: (title?: string) => void;
+  stopAndSaveLiveTrack: (title?: string) => RecordedTrack | null;
 
   // Recenter Trigger
   recenterTrigger: number;
@@ -350,6 +351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isRecordingLiveTrack, setIsRecordingLiveTrack] = useState(false);
   const [liveTrackPoints, setLiveTrackPoints] = useState<[number, number][]>([]);
   const liveTrackStartTime = useRef<number | null>(null);
+  const lastTrackPoint = useRef<{ latitude: number; longitude: number } | null>(null);
   const isRecordingRef = useRef(false);
   const offRouteDetectorRef = useRef(new OffRouteDetector());
   const lastSpokenRef = useRef('');
@@ -368,7 +370,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: loc.timestamp,
     });
     if (isRecordingRef.current) {
-      setLiveTrackPoints((prev) => [...prev, [loc.longitude, loc.latitude]]);
+      const next = { latitude: loc.latitude, longitude: loc.longitude };
+      if (shouldAppendTrackPoint(lastTrackPoint.current, next)) {
+        lastTrackPoint.current = next;
+        setLiveTrackPoints((prev) => [...prev, [loc.longitude, loc.latitude]]);
+      }
     }
   }, []);
 
@@ -808,6 +814,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const startLiveTrackRecording = useCallback(() => {
     setIsRecordingLiveTrack(true);
     setLiveTrackPoints([]);
+    lastTrackPoint.current = null;
     liveTrackStartTime.current = Date.now();
     // Ensure geolocation is active
     if (geolocationStatus !== 'granted') {
@@ -816,46 +823,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [geolocationStatus, requestUserLocation]);
 
   const stopAndSaveLiveTrack = useCallback(
-    (customTitle?: string) => {
+    (customTitle?: string): RecordedTrack | null => {
       setIsRecordingLiveTrack(false);
       const points = liveTrackPoints;
       const startTime = liveTrackStartTime.current || Date.now();
-      const elapsedMinutes = Math.max(1, Math.round((Date.now() - startTime) / 60000));
 
-      // Calculate approximate distance
-      let totalDistanceKm = 0;
-      for (let i = 1; i < points.length; i++) {
-        const p1 = points[i - 1];
-        const p2 = points[i];
-        if (p1 && p2) {
-          const R = 6371;
-          const dLat = ((p2[1] - p1[1]) * Math.PI) / 180;
-          const dLon = ((p2[0] - p1[0]) * Math.PI) / 180;
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos((p1[1] * Math.PI) / 180) *
-              Math.cos((p2[1] * Math.PI) / 180) *
-              Math.sin(dLon / 2) *
-              Math.sin(dLon / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          totalDistanceKm += R * c;
-        }
+      if (points.length < 2) {
+        lastTrackPoint.current = null;
+        return null;
       }
 
-      const dist = parseFloat(Math.max(0.1, totalDistanceKm).toFixed(1));
-      const avgSpeed = parseFloat(((dist / (elapsedMinutes / 60)) || 0).toFixed(1));
+      const summary = summariseTrack(points, Date.now() - startTime);
 
       const newTrack: RecordedTrack = {
         id: `track-live-${Date.now()}`,
         title: customTitle || `Live GPS Track ${new Date().toLocaleDateString()}`,
         date: new Date().toISOString().split('T')[0],
-        distanceKm: dist,
-        durationMinutes: elapsedMinutes,
-        avgSpeedKmh: avgSpeed,
+        distanceKm: summary.distanceKm,
+        durationMinutes: summary.durationMinutes,
+        avgSpeedKmh: summary.avgSpeedKmh,
         coordinates: points,
       };
 
       setRecordedTracks((prev) => [newTrack, ...prev]);
+      lastTrackPoint.current = null;
+      return newTrack;
     },
     [liveTrackPoints]
   );

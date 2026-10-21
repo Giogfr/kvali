@@ -36,11 +36,11 @@ export const TripToolsScreen: React.FC = () => {
 
   const handleToggleRecording = () => {
     if (isRecordingLiveTrack) {
-      stopAndSaveLiveTrack();
-      showToast('Track saved', 'success');
+      const saved = stopAndSaveLiveTrack();
+      showToast(saved ? t('trackSaved') : t('trackTooShort'), saved ? 'success' : 'info');
     } else {
       startLiveTrackRecording();
-      showToast('Recording your track', 'info');
+      showToast(t('trackStarted'), 'info');
     }
   };
 
