@@ -193,7 +193,7 @@ export async function prefetchRegion(opts: {
   maxZoom?: number;
   onProgress?: (p: PrefetchProgress) => void;
   signal?: AbortSignal;
-}): Promise<{ tiles: number; bytes: number; total: number; capped: boolean }> {
+}): Promise<{ tiles: number; failed: number; bytes: number; total: number; capped: boolean }> {
   const {
     bbox,
     styleUrl,
@@ -241,6 +241,8 @@ export async function prefetchRegion(opts: {
 
   const total = urls.length;
   let done = 0;
+  let cached = 0;
+  let failed = 0;
   let bytes = 0;
   let cursor = 0;
   onProgress?.({ done, total, bytes });
@@ -252,14 +254,35 @@ export async function prefetchRegion(opts: {
       if (index >= urls.length) return;
 
       const url = urls[index];
+
+      // A paused download is resumed by starting the region again. Tiles that
+      // already made it into the cache are skipped instead of fetched twice.
+      try {
+        const hit = cache ? await cache.match(url) : undefined;
+        if (hit) {
+          cached += 1;
+          done += 1;
+          onProgress?.({ done, total, bytes });
+          continue;
+        }
+      } catch {
+        /* treat a cache miss as a normal fetch */
+      }
+
       try {
         const res = await fetch(url, { signal });
-        const copy = res.clone();
-        const buf = await res.arrayBuffer();
-        bytes += buf.byteLength;
-        await cacheResponse(cache, url, copy);
+        if (!res.ok) {
+          failed += 1;
+        } else {
+          const copy = res.clone();
+          const buf = await res.arrayBuffer();
+          bytes += buf.byteLength;
+          await cacheResponse(cache, url, copy);
+          cached += 1;
+        }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') throw err;
+        failed += 1;
       }
       done += 1;
       onProgress?.({ done, total, bytes });
@@ -269,7 +292,7 @@ export async function prefetchRegion(opts: {
   const workers = Math.min(DOWNLOAD_CONCURRENCY, Math.max(1, total));
   await Promise.all(Array.from({ length: workers }, worker));
 
-  return { tiles: done, bytes, total, capped };
+  return { tiles: cached, failed, bytes, total, capped };
 }
 
 export async function getStorageEstimate(): Promise<{ usage: number; quota: number } | null> {
