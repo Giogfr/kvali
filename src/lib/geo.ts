@@ -34,19 +34,20 @@ export function calculateDistanceKm(
  * Formats distance with unit consideration.
  */
 export function formatDistance(distanceKm: number, units: UnitSystem): string {
+  const km = Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : 0;
   if (units === 'imperial') {
-    const miles = distanceKm * 0.621371;
+    const miles = km * 0.621371;
     if (miles < 0.2) {
-      const feet = Math.round(distanceKm * 3280.84);
+      const feet = Math.round(km * 3280.84);
       return `${feet} ft`;
     }
     return `${miles.toFixed(1)} mi`;
   } else {
-    if (distanceKm < 1) {
-      const meters = Math.round(distanceKm * 1000);
+    if (km < 1) {
+      const meters = Math.round(km * 1000);
       return `${meters} m`;
     }
-    return `${distanceKm.toFixed(1)} km`;
+    return `${km.toFixed(1)} km`;
   }
 }
 
@@ -54,9 +55,10 @@ export function formatDistance(distanceKm: number, units: UnitSystem): string {
  * Formats speed with unit consideration.
  */
 export function formatSpeed(speedKmh: number, units: UnitSystem): string {
+  const speed = Number.isFinite(speedKmh) && speedKmh > 0 ? speedKmh : 0;
   if (units === 'imperial') {
-    const mph = Math.round(speedKmh * 0.621371);
+    const mph = Math.round(speed * 0.621371);
     return `${mph} mph`;
   }
-  return `${Math.round(speedKmh)} km/h`;
+  return `${Math.round(speed)} km/h`;
 }

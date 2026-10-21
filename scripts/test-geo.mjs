@@ -49,4 +49,12 @@ check('speed rounds to whole units', () => {
   assert.equal(formatSpeed(0, 'metric'), '0 km/h');
 });
 
-console.log(`\n${passed}/6 checks passed`);
+check('invalid or negative values never leak into the UI', () => {
+  assert.equal(formatDistance(Number.NaN, 'metric'), '0 m');
+  assert.equal(formatDistance(-2, 'metric'), '0 m');
+  assert.equal(formatDistance(Number.POSITIVE_INFINITY, 'imperial'), '0 ft');
+  assert.equal(formatSpeed(Number.NaN, 'metric'), '0 km/h');
+  assert.equal(formatSpeed(-10, 'imperial'), '0 mph');
+});
+
+console.log(`\n${passed} checks passed`);
