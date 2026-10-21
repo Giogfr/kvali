@@ -26,6 +26,7 @@
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",

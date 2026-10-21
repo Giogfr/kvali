@@ -5,6 +5,7 @@
     "": {
       "name": "react-example",
       "dependencies": {
+        "@capacitor-community/background-geolocation": "^1.2.26",
         "@capacitor-community/text-to-speech": "^8.0.2",
         "@capacitor/android": "^8.5.3",
         "@capacitor/core": "^8.5.3",
@@ -30,6 +31,8 @@
     },
   },
   "packages": {
+    "@capacitor-community/background-geolocation": ["@capacitor-community/background-geolocation@1.2.26", "", { "peerDependencies": { "@capacitor/core": ">=3.0.0" } }, "sha512-kuva8VQ6zM+uIKgHUJTP87IYbmGKhX7DZw62JYfGZ888h4Xr5zeN+UTR6KBRHQVrGBpzSfbv+6/HQVuHYa7W5A=="],
+
     "@capacitor-community/text-to-speech": ["@capacitor-community/text-to-speech@8.0.2", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-SbpBMzcmzdTiN8jQDme/yUYHEJISZA+IiaRn5zT14k3UKpjaA7eYBnSm9h76rJHRV/y6DVZVhT1J0SaK5JTKtA=="],
 
     "@capacitor/android": ["@capacitor/android@8.5.3", "", { "peerDependencies": { "@capacitor/core": "^8.5.0" } }, "sha512-ilH4gSSz3DrketMkzDVAvY9JsWJ//rCQnECLTdcFRO7xXDogwAbUvQAnIAbiqefwV/D1xfjEL4Gw1MJXEcaA9g=="],
