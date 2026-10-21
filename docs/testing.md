@@ -22,9 +22,14 @@ That runs the pure-module suites:
 | `test:route-preferences` | Avoid toggles to Valhalla costing options |
 | `test:gpx` | GPX 1.1 output, escaping, bad coordinates |
 | `test:i18n` | EN/KA key parity and untranslated strings |
+| `test:location` | GPS unit conversion, null handling, bad fixes |
+| `test:track` | recording jitter filter and honest totals |
+| `test:route-cache` | saved-route validation and cache keys |
+| `test:speech` | voice/language matching, including Georgian |
+| `test:speed` | speed/limit display, tolerance and limit scope |
 
-That is ten suites and more than fifty checks. Each suite exits non-zero on
-the first failure, so `test:units` stops at the broken module.
+That is fifteen suites and just under a hundred checks. Each suite exits
+non-zero on the first failure, so `test:units` stops at the broken module.
 
 The CI workflow runs `bun run test:units` on every push and pull request.
 
