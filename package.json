@@ -22,12 +22,13 @@
     "test:route-preferences": "bun scripts/test-route-preferences.mjs",
     "test:gpx": "bun scripts/test-gpx-export.mjs",
     "test:i18n": "bun scripts/test-i18n.mjs",
+    "test:i18n-template": "bun scripts/test-i18n-template.mjs",
     "test:location": "bun scripts/test-location.mjs",
     "test:track": "bun scripts/test-track.mjs",
     "test:route-cache": "bun scripts/test-route-cache.mjs",
     "test:speech": "bun scripts/test-speech.mjs",
     "test:speed": "bun scripts/test-speed.mjs",
-    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs && bun scripts/test-route-preferences.mjs && bun scripts/test-gpx-export.mjs && bun scripts/test-i18n.mjs && bun scripts/test-location.mjs && bun scripts/test-track.mjs && bun scripts/test-route-cache.mjs && bun scripts/test-speech.mjs && bun scripts/test-speed.mjs",
+    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs && bun scripts/test-route-preferences.mjs && bun scripts/test-gpx-export.mjs && bun scripts/test-i18n.mjs && bun scripts/test-i18n-template.mjs && bun scripts/test-location.mjs && bun scripts/test-track.mjs && bun scripts/test-route-cache.mjs && bun scripts/test-speech.mjs && bun scripts/test-speed.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
