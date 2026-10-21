@@ -52,10 +52,10 @@ must open system settings and choose **Allow all the time**; Kvali cannot grant
 this for them and does not pretend otherwise.
 
 On Android 13 and newer the ongoing notification also needs the notification
-permission. The plugin requests location permission itself, but not
-notification permission; until the user enables notifications, the service can
-run while its notification stays hidden. A settings shortcut is provided from
-the app so this is discoverable.
+permission. Kvali asks for it through `@capacitor/local-notifications` as soon
+as location is on, and shows a warning when the answer is no; until the user
+enables notifications, the service can run while its notification stays hidden.
+The Settings screen can open the system page where this can be changed.
 
 ## Verification
 
