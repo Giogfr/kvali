@@ -30,6 +30,7 @@ import { formatDistance } from '../lib/geo';
 import { isSchoolZoneActive } from '../lib/alertSchedule';
 import { findSharpCurveAhead } from '../lib/navigation';
 import { etaFromNow, formatClockTime, formatDurationMinutes } from '../lib/time';
+import { isOverspeeding, speedForDisplay, speedLimitForDisplay } from '../lib/speed';
 import type { RoadAlert } from '../types';
 
 function alertIcon(category: RoadAlert['category']) {
@@ -63,17 +64,10 @@ export const ActiveNavigationScreen: React.FC = () => {
 
   const distStr = formatDistance(activeNav.remainingDistanceKm, units);
 
-  const speedValue =
-    units === 'imperial'
-      ? Math.round(activeNav.currentSpeedKmh * 0.621371)
-      : Math.round(activeNav.currentSpeedKmh);
+  const speedValue = speedForDisplay(activeNav.currentSpeedKmh, units);
   const speedUnit = units === 'imperial' ? 'MPH' : 'KM/H';
-  const speedLimit =
-    activeNav.speedLimitKmh === null
-      ? null
-      : units === 'imperial'
-      ? Math.round(activeNav.speedLimitKmh * 0.621371)
-      : activeNav.speedLimitKmh;
+  const speedLimit = speedLimitForDisplay(activeNav.speedLimitKmh, units);
+  const overspeeding = isOverspeeding(activeNav.currentSpeedKmh, activeNav.speedLimitKmh);
 
   const etaString = formatClockTime(etaFromNow(activeNav.remainingDurationMinutes));
 
@@ -232,7 +226,11 @@ export const ActiveNavigationScreen: React.FC = () => {
             {/* Speed & speed limit */}
             <div className="flex items-baseline gap-3">
               <div>
-                <div className="text-[44px] landscape:text-[34px] font-extrabold tracking-tighter tabular-nums leading-none text-white">
+                <div
+                  className={`text-[44px] landscape:text-[34px] font-extrabold tracking-tighter tabular-nums leading-none ${
+                    overspeeding ? 'text-red-400' : 'text-white'
+                  }`}
+                >
                   {speedValue}
                 </div>
                 <div className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
@@ -244,11 +242,19 @@ export const ActiveNavigationScreen: React.FC = () => {
                   limit is not mapped in OpenStreetMap here, never a guess. */}
               <div
                 className={`w-11 h-11 rounded-full border-[3px] flex flex-col items-center justify-center shadow font-bold text-[13px] tabular-nums shrink-0 ${
-                  speedLimit !== null
+                  overspeeding
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : speedLimit !== null
                     ? 'border-red-500 bg-white text-black'
                     : 'border-neutral-500 bg-neutral-200/90 text-neutral-600 border-dashed'
                 }`}
-                title={speedLimit !== null ? t('speedLimit') : t('speedLimitUnmapped')}
+                title={
+                  speedLimit !== null
+                    ? overspeeding
+                      ? `${t('speedLimit')} · ${t('overSpeed')}`
+                      : t('speedLimit')
+                    : t('speedLimitUnmapped')
+                }
               >
                 <span>{speedLimit !== null ? speedLimit : '–'}</span>
               </div>
