@@ -47,6 +47,7 @@ import { computeProgress } from '../lib/navigation';
 import { OffRouteDetector } from '../lib/navigationEngine';
 import { calculateDistanceKm } from '../lib/geo';
 import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
+import { isOverspeeding } from '../lib/speed';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, writeCache } from '../lib/offlineCache';
 
@@ -355,6 +356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isRecordingRef = useRef(false);
   const offRouteDetectorRef = useRef(new OffRouteDetector());
   const lastSpokenRef = useRef('');
+  const lastOverSpeedBeepRef = useRef(0);
 
   useEffect(() => {
     isRecordingRef.current = isRecordingLiveTrack;
@@ -1343,7 +1345,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [soundEnabled, beepVolume]);
 
-  // Nearest enabled alert ahead of the driver, if any falls inside the alert radius.
+  // One chime when the driver crosses the limit, then at most once a minute.
+  // The GPS speed wobbles around the tolerance, so a naive effect would beep
+  // constantly at the boundary.
+  useEffect(() => {
+    if (!activeNav.isActive) {
+      lastOverSpeedBeepRef.current = 0;
+      return;
+    }
+    if (!isOverspeeding(activeNav.currentSpeedKmh, activeNav.speedLimitKmh)) return;
+    const now = Date.now();
+    if (now - lastOverSpeedBeepRef.current < 60_000) return;
+    lastOverSpeedBeepRef.current = now;
+    playTestBeep();
+  }, [
+    activeNav.isActive,
+    activeNav.currentSpeedKmh,
+    activeNav.speedLimitKmh,
+    playTestBeep,
+  ]);
   const findUpcomingAlert = useCallback(
     (loc: { latitude: number; longitude: number }): RoadAlert | null => {
       let nearest: RoadAlert | null = null;
