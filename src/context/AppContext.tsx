@@ -47,7 +47,7 @@ import { computeProgress } from '../lib/navigation';
 import { OffRouteDetector } from '../lib/navigationEngine';
 import { calculateDistanceKm } from '../lib/geo';
 import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
-import { isOverspeeding } from '../lib/speed';
+import { isOverspeeding, limitInScope } from '../lib/speed';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, writeCache } from '../lib/offlineCache';
 
@@ -1392,6 +1392,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : 'Follow the route';
 
     const initialAlert = userLocation ? findUpcomingAlert(userLocation) : null;
+    const initialAlertMeters =
+      initialAlert && userLocation
+        ? calculateDistanceKm(
+            userLocation.latitude,
+            userLocation.longitude,
+            initialAlert.latitude,
+            initialAlert.longitude
+          ) * 1000
+        : Infinity;
 
     setActiveNav({
       isActive: true,
@@ -1401,7 +1410,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       remainingDistanceKm: route.distanceKm,
       remainingDurationMinutes: route.durationMinutes,
       currentSpeedKmh: userLocation?.speedKmh ?? 0,
-      speedLimitKmh: initialAlert?.speedLimit ?? null,
+      speedLimitKmh: limitInScope(initialAlert?.speedLimit, initialAlertMeters),
       currentManeuver: {
         instruction: initialInstruction,
         instructionKa: initialInstruction,
@@ -1429,6 +1438,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const progress = computeProgress(activeNav.route, userLocation);
     const upcoming = findUpcomingAlert(userLocation);
+    const upcomingMeters = upcoming
+      ? calculateDistanceKm(
+          userLocation.latitude,
+          userLocation.longitude,
+          upcoming.latitude,
+          upcoming.longitude
+        ) * 1000
+      : Infinity;
     setActiveNav((prev) => {
       if (!prev.isActive || !prev.route) return prev;
       const step = progress.nextStep;
@@ -1439,7 +1456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         remainingDistanceKm: parseFloat(progress.remainingKm.toFixed(2)),
         remainingDurationMinutes: Math.round(progress.remainingMinutes),
         currentSpeedKmh: userLocation.speedKmh ?? prev.currentSpeedKmh,
-        speedLimitKmh: upcoming?.speedLimit ?? null,
+        speedLimitKmh: limitInScope(upcoming?.speedLimit, upcomingMeters),
         upcomingAlert: upcoming,
         currentManeuver: step
           ? {

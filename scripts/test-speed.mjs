@@ -13,6 +13,8 @@ import {
   isOverspeeding,
   speedForDisplay,
   speedLimitForDisplay,
+  limitInScope,
+  SPEED_LIMIT_SCOPE_M,
 } from '../src/lib/speed.ts';
 
 let passed = 0;
@@ -56,6 +58,16 @@ check('the tolerance does not shrink in imperial mode', () => {
   // by ten display units.
   assert.equal(isOverspeeding(96.5, 50), true);
   assert.equal(isOverspeeding(84, 80), false);
+});
+
+check('a limit only counts while its sign is close', () => {
+  assert.equal(SPEED_LIMIT_SCOPE_M, 300);
+  assert.equal(limitInScope(60, 120), 60);
+  assert.equal(limitInScope(60, 300), 60);
+  assert.equal(limitInScope(60, 301), null);
+  assert.equal(limitInScope(undefined, 10), null);
+  assert.equal(limitInScope(0, 10), null);
+  assert.equal(limitInScope(60, Number.NaN), null);
 });
 
 console.log(`\n${passed} checks passed`);
