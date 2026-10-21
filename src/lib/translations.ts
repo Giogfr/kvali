@@ -167,6 +167,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     estimate: 'est.',
     downloadedOn: 'Saved',
     downloadComplete: 'Offline area saved',
+    downloadPartial: 'Area saved up to the cache limit; some detail is missing.',
     downloadFailed: 'Download failed. Check your connection and try again.',
     downloadCancelled: 'Download cancelled',
     clearCache: 'Clear cached map data',
@@ -184,6 +185,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     download: 'Download',
     downloading: 'Downloading…',
     downloaded: 'Downloaded',
+    partial: 'Partial',
     notDownloaded: 'Not downloaded',
     updateAvailable: 'Update available',
 
@@ -437,6 +439,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     estimate: 'მიახლ.',
     downloadedOn: 'შენახულია',
     downloadComplete: 'ოფლაინ არეალი შენახულია',
+    downloadPartial: 'არეალი შენახულია ქეშის ლიმიტამდე; დეტალების ნაწილი აკლია.',
     downloadFailed: 'ჩამოტვირთვა ვერ მოხერხდა. შეამოწმეთ კავშირი და სცადეთ ხელახლა.',
     downloadCancelled: 'ჩამოტვირთვა გაუქმდა',
     clearCache: 'რუკის ქეშის გასუფთავება',
@@ -454,6 +457,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     download: 'ჩამოტვირთვა',
     downloading: 'იტვირთება…',
     downloaded: 'ჩამოტვირთულია',
+    partial: 'ნაწილობრივი',
     notDownloaded: 'არ არის ჩამოტვირთული',
     updateAvailable: 'ხელმისაწვდომია განახლება',
 

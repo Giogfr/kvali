@@ -102,17 +102,26 @@ export const OfflineMapsScreen: React.FC = () => {
           signal: controller.signal,
         });
 
+        if (result.tiles === 0) {
+          throw new Error('No tiles could be cached');
+        }
+
+        const partial = result.capped || result.failed > 0;
         patchRegion(region.id, {
           status: 'downloaded',
           downloadProgress: 100,
           bytes: result.bytes,
+          partial,
           lastUpdated: new Date().toISOString().slice(0, 10),
         });
-        showToast(t('downloadComplete'), 'success');
+        showToast(
+          partial ? t('downloadPartial') : t('downloadComplete'),
+          partial ? 'warn' : 'success'
+        );
         refreshStorage();
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
-        patchRegion(region.id, { status: 'not_downloaded', downloadProgress: 0 });
+        patchRegion(region.id, { status: 'not_downloaded', downloadProgress: 0, partial: false });
         showToast(t('downloadFailed'), 'warn');
       } finally {
         const next = { ...controllersRef.current };
@@ -320,8 +329,10 @@ export const OfflineMapsScreen: React.FC = () => {
                           <span>·</span>
                           <span
                             className={`capitalize font-medium ${
-                              isDownloaded
+                              isDownloaded && !region.partial
                                 ? 'text-emerald-500'
+                                : isDownloaded
+                                ? 'text-[#C9973F]'
                                 : isDownloading
                                 ? 'text-[#2F6FEB]'
                                 : isPaused
@@ -330,7 +341,9 @@ export const OfflineMapsScreen: React.FC = () => {
                             }`}
                           >
                             {isDownloaded
-                              ? t('downloaded')
+                              ? `${t('downloaded')}${
+                                  region.partial ? ` · ${t('partial')}` : ''
+                                }`
                               : isDownloading
                               ? `${t('downloading')} ${region.downloadProgress}%`
                               : isPaused

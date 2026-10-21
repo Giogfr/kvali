@@ -134,6 +134,7 @@ export interface OfflineRegion {
   downloadProgress: number; // 0 to 100
   lastUpdated: string;
   bytes?: number; // real size once downloaded
+  partial?: boolean; // cache limit or failed tiles left gaps
 }
 
 export interface RecordedTrack {
