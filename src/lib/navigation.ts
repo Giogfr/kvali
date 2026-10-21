@@ -69,11 +69,16 @@ interface Projection {
   offRouteKm: number;
 }
 
-/** Projects a point onto a polyline, returning distance-along and distance-away. */
+/**
+ * Projects a point onto a polyline, returning distance-along and distance-away.
+ * `minAlongKm` ignores earlier passes of the same line, which matters on loops
+ * and out-and-back stretches where a later vertex sits next to an earlier one.
+ */
 export function projectOnRoute(
   coords: [number, number][],
   point: { latitude: number; longitude: number },
-  cumulative?: number[]
+  cumulative?: number[],
+  minAlongKm = -Infinity
 ): Projection {
   if (coords.length === 0) return { alongKm: 0, offRouteKm: Infinity };
   if (coords.length === 1) {
@@ -110,9 +115,11 @@ export function projectOnRoute(
     const offM = Math.hypot(p.x - projX, p.y - projY);
     const offKm = offM / 1000;
 
-    if (offKm < best.offRouteKm) {
-      const segKm = cum[i] - cum[i - 1];
-      best = { alongKm: cum[i - 1] + segKm * t, offRouteKm: offKm };
+    const segKm = cum[i] - cum[i - 1];
+    const alongKm = cum[i - 1] + segKm * t;
+
+    if (offKm < best.offRouteKm && alongKm >= minAlongKm) {
+      best = { alongKm, offRouteKm: offKm };
     }
   }
 
@@ -264,7 +271,12 @@ export function computeProgress(
   // Step 0 is the departure instruction; the interesting maneuvers start at 1.
   for (let i = 1; i < steps.length; i++) {
     const [lng, lat] = steps[i].location;
-    const stepAlong = projectOnRoute(coords, { latitude: lat, longitude: lng }, cumulative).alongKm;
+    const stepAlong = projectOnRoute(
+      coords,
+      { latitude: lat, longitude: lng },
+      cumulative,
+      traveledKm
+    ).alongKm;
     const aheadM = (stepAlong - traveledKm) * 1000;
 
     if (aheadM > 15) {
@@ -278,7 +290,12 @@ export function computeProgress(
     // Past the last known maneuver: point at the arrival instruction.
     nextStep = steps[steps.length - 1];
     const [lng, lat] = nextStep.location;
-    const stepAlong = projectOnRoute(coords, { latitude: lat, longitude: lng }, cumulative).alongKm;
+    const stepAlong = projectOnRoute(
+      coords,
+      { latitude: lat, longitude: lng },
+      cumulative,
+      traveledKm
+    ).alongKm;
     distanceToNextStepM = Math.max(0, (stepAlong - traveledKm) * 1000);
   }
 

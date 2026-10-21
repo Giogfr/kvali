@@ -119,4 +119,47 @@ check('a straight road has no sharp bend', () => {
   assert.equal(findSharpCurveAhead(straight, { latitude: 42, longitude: 44.0 }), null);
 });
 
+check('a loop back to the start still measures the way home', () => {
+  const loop = [
+    [44.0, 42.0],
+    [44.02, 42.0],
+    [44.02, 42.02],
+    [44.0, 42.02],
+    [44.0, 42.0],
+  ];
+  const route = {
+    id: 'loop',
+    name: 'Loop',
+    distanceKm: 7.7,
+    durationMinutes: 12,
+    via: 'Loop road',
+    coordinates: loop,
+    steps: [
+      {
+        instruction: 'Depart',
+        name: 'Start',
+        distanceMeters: 0,
+        durationSeconds: 0,
+        maneuverType: 'depart',
+        location: [44.0, 42.0],
+      },
+      {
+        instruction: 'Arrive',
+        name: 'Start',
+        distanceMeters: 7700,
+        durationSeconds: 720,
+        maneuverType: 'arrive',
+        location: [44.0, 42.0],
+      },
+    ],
+  };
+
+  const progress = computeProgress(route, { latitude: 42.02, longitude: 44.02 });
+  assert.equal(progress.nextStep?.instruction, 'Arrive');
+  assert.ok(
+    progress.distanceToNextStepM > 3000,
+    `arrival reported ${progress.distanceToNextStepM} m away`
+  );
+});
+
 console.log(`\n${passed} checks passed`);
