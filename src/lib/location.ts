@@ -69,6 +69,32 @@ function fromBackgroundLocation(location: BackgroundLocation): LocationResult {
   );
 }
 
+interface CoordsLike {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  speed: number | null;
+  heading: number | null;
+}
+
+/**
+ * Browsers expose coordinates on the prototype of GeolocationCoordinates, so
+ * spreading `pos.coords` yields an empty object. Read the fields explicitly.
+ */
+function fromCoords(coords: CoordsLike, timestamp: number | null): LocationResult {
+  return normaliseLocation(
+    {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      accuracy: coords.accuracy,
+      speed: coords.speed,
+      heading: coords.heading,
+      timestamp,
+    },
+    Date.now()
+  );
+}
+
 export async function ensureLocationPermission(): Promise<boolean> {
   if (!isNativePlatform()) return true;
   const status = await Geolocation.checkPermissions();
@@ -91,7 +117,7 @@ export async function getCurrentLocation(): Promise<LocationResult> {
         timeout: 10000,
         maximumAge: 30000,
       });
-      return normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now());
+      return fromCoords(pos.coords, pos.timestamp);
     } catch (err) {
       throw new LocationError('unavailable', err instanceof Error ? err.message : 'Location unavailable');
     }
@@ -103,7 +129,7 @@ export async function getCurrentLocation(): Promise<LocationResult> {
 
   return new Promise<LocationResult>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now())),
+      (pos) => resolve(fromCoords(pos.coords, pos.timestamp)),
       (err) =>
         reject(
           new LocationError(
@@ -175,7 +201,7 @@ export async function watchLocation(
             onError(new LocationError('unavailable', err.message));
             return;
           }
-          if (pos) onUpdate(normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now()));
+          if (pos) onUpdate(fromCoords(pos.coords, pos.timestamp));
         }
       );
     } catch (err) {
@@ -194,7 +220,7 @@ export async function watchLocation(
   }
 
   const id = navigator.geolocation.watchPosition(
-    (pos) => onUpdate(normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now())),
+    (pos) => onUpdate(fromCoords(pos.coords, pos.timestamp)),
     (err) =>
       onError(new LocationError(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable', err.message)),
     { enableHighAccuracy: true, maximumAge: 5000 }

@@ -35,6 +35,9 @@ function finiteOrNull(value: number | null): number | null {
  * finer than any consumer-grade GPS fix.
  */
 export function normaliseLocation(raw: RawLocation, fallbackTime: number): LocationResult {
+  if (!Number.isFinite(raw.latitude) || !Number.isFinite(raw.longitude)) {
+    throw new Error('Location fix without finite coordinates');
+  }
   const accuracy = finiteOrNull(raw.accuracy);
   const speed = finiteOrNull(raw.speed);
   const heading = finiteOrNull(raw.heading);

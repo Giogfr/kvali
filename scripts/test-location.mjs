@@ -63,4 +63,15 @@ check('zero speed stays zero rather than becoming null', () => {
   assert.equal(normaliseLocation({ ...raw, speed: 0 }, 0).speedKmh, 0);
 });
 
+check('a fix without coordinates is rejected', () => {
+  assert.throws(
+    () => normaliseLocation({ ...raw, latitude: undefined }, 0),
+    /finite coordinates/
+  );
+  assert.throws(
+    () => normaliseLocation({ ...raw, longitude: Number.NaN }, 0),
+    /finite coordinates/
+  );
+});
+
 console.log(`\n${passed} checks passed`);
