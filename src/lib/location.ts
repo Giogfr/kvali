@@ -14,8 +14,14 @@
  * standard navigator.geolocation API so the web build keeps working.
  */
 
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
+import type {
+  BackgroundGeolocationPlugin,
+  Location as BackgroundLocation,
+} from '@capacitor-community/background-geolocation';
+
+const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
 
 export interface LocationResult {
   latitude: number;
@@ -40,6 +46,17 @@ export class LocationError extends Error {
 
 export function isNativePlatform(): boolean {
   return Capacitor.isNativePlatform();
+}
+
+function fromBackgroundLocation(location: BackgroundLocation): LocationResult {
+  return {
+    latitude: parseFloat(location.latitude.toFixed(6)),
+    longitude: parseFloat(location.longitude.toFixed(6)),
+    accuracyMeters: location.accuracy === null ? null : Math.round(location.accuracy),
+    speedKmh: location.speed === null ? null : Math.round(location.speed * 3.6),
+    headingDegrees: location.bearing,
+    timestamp: location.time ?? Date.now(),
+  };
 }
 
 function toResult(
@@ -121,6 +138,42 @@ export async function watchLocation(
     if (!granted) {
       onError(new LocationError('denied', 'Location permission was denied'));
       return () => {};
+    }
+
+    // Chrome pauses WebView geolocation when the app is backgrounded. The
+    // Android foreground service below keeps delivering fixes with the screen
+    // off or another app in front, which turn-by-turn navigation needs.
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        const watcherId = await BackgroundGeolocation.addWatcher(
+          {
+            backgroundTitle: 'Kvali navigation',
+            backgroundMessage: 'Kvali is using your location for navigation.',
+            requestPermissions: true,
+            stale: false,
+            distanceFilter: 5,
+          },
+          (position, error) => {
+            if (error) {
+              onError(
+                new LocationError(
+                  error.code === 'NOT_AUTHORIZED' ? 'denied' : 'unavailable',
+                  error.message
+                )
+              );
+              return;
+            }
+            if (position) onUpdate(fromBackgroundLocation(position));
+          }
+        );
+
+        return () => {
+          void BackgroundGeolocation.removeWatcher({ id: watcherId }).catch(() => {});
+        };
+      } catch {
+        // Plugin unavailable: keep the foreground watcher below so the app
+        // still has a position while it is open.
+      }
     }
 
     let watchId: string | null = null;
