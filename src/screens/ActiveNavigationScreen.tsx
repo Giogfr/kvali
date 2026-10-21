@@ -9,6 +9,11 @@
 import React, { useMemo } from 'react';
 import {
   CornerUpRight,
+  CornerUpLeft,
+  ArrowUp,
+  RotateCcw,
+  Flag,
+  Merge,
   X,
   Compass,
   Navigation,
@@ -42,6 +47,18 @@ function alertIcon(category: RoadAlert['category']) {
   if (category === 'roadworks' || category === 'road_closures' || category === 'lane_restrictions')
     return Construction;
   return AlertTriangle;
+}
+
+function maneuverIcon(step: { maneuverType: string; maneuverModifier?: string }) {
+  const type = step.maneuverType;
+  const modifier = step.maneuverModifier ?? '';
+  if (type === 'arrive') return Flag;
+  if (type.includes('roundabout') || type === 'rotary') return RotateCcw;
+  if (type === 'merge') return Merge;
+  if (modifier.includes('uturn')) return RotateCcw;
+  if (modifier.includes('left')) return CornerUpLeft;
+  if (modifier.includes('right')) return CornerUpRight;
+  return ArrowUp;
 }
 
 export const ActiveNavigationScreen: React.FC = () => {
@@ -87,6 +104,8 @@ export const ActiveNavigationScreen: React.FC = () => {
     return findSharpCurveAhead(activeNav.route.coordinates, userLocation);
   }, [userLocation, activeNav.route]);
 
+  const ManeuverIcon = maneuverIcon(activeNav.currentManeuver);
+
   const controlBase =
     'w-12 h-12 rounded-xl border flex items-center justify-center shadow-lg pointer-events-auto press transition-colors';
   const controlIdle = 'bg-[#1E1E1E]/92 border-neutral-700 text-white';
@@ -106,7 +125,7 @@ export const ActiveNavigationScreen: React.FC = () => {
           <div className="px-3 py-2.5 sm:p-3.5 rounded-2xl bg-[#1B1B1B]/95 border border-neutral-700/80 shadow-2xl backdrop-blur-md flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-11 h-11 landscape:w-12 landscape:h-12 rounded-xl bg-white text-black flex items-center justify-center shrink-0 shadow">
-                <CornerUpRight size={28} className="stroke-[2.5]" />
+                <ManeuverIcon size={28} className="stroke-[2.5]" />
               </div>
 
               <div className="min-w-0">
@@ -190,7 +209,7 @@ export const ActiveNavigationScreen: React.FC = () => {
                   {formatDistance(sharpCurve.distanceM / 1000, units)}
                 </span>
                 <span className="text-[11px] opacity-80 truncate max-w-[120px]">
-                  {language === 'ka' ? 'მკვეთრი მოხვევა' : 'Sharp curve'}
+                  {t('sharpCurveNow')}
                 </span>
               </div>
             )}

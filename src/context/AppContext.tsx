@@ -65,6 +65,8 @@ interface ActiveNavState {
     instructionKa: string;
     roadName: string;
     distanceMeters: number;
+    maneuverType: string;
+    maneuverModifier?: string;
   };
   upcomingAlert: RoadAlert | null;
 }
@@ -562,6 +564,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       instructionKa: '',
       roadName: '',
       distanceMeters: 0,
+      maneuverType: '',
     },
     upcomingAlert: null,
   });
@@ -1412,10 +1415,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentSpeedKmh: userLocation?.speedKmh ?? 0,
       speedLimitKmh: limitInScope(initialAlert?.speedLimit, initialAlertMeters),
       currentManeuver: {
-        instruction: initialInstruction,
-        instructionKa: initialInstruction,
+        instruction: startStep?.instruction || initialInstruction,
+        instructionKa: startStep?.instructionKa || initialInstruction,
         roadName: startStep?.name || route.via || 'Route',
         distanceMeters: startStep?.distanceMeters ?? 0,
+        maneuverType: startStep?.maneuverType ?? 'depart',
+        maneuverModifier: startStep?.maneuverModifier,
       },
       upcomingAlert: initialAlert,
     });
@@ -1464,6 +1469,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               instructionKa: step.instructionKa || step.instruction,
               roadName: step.name,
               distanceMeters: Math.round(progress.distanceToNextStepM),
+              maneuverType: step.maneuverType,
+              maneuverModifier: step.maneuverModifier,
             }
           : prev.currentManeuver,
       };
