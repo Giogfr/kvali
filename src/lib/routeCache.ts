@@ -36,6 +36,38 @@ const MAX_ENTRIES = 10;
 // ~110 metres at Georgian latitudes: close enough that the saved route still
 // starts on the same street, while surviving normal GPS drift.
 const COORD_PRECISION = 3;
+const MODES: TravelModeKey[] = ['car', 'walking', 'cycling'];
+
+function isPoint(value: unknown): value is LatLng {
+  if (!value || typeof value !== 'object') return false;
+  const point = value as LatLng;
+  return Number.isFinite(point.latitude) && Number.isFinite(point.longitude);
+}
+
+function isSavedRoute(value: unknown): value is SavedRoute {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as SavedRoute;
+  return (
+    typeof entry.key === 'string' &&
+    Number.isFinite(entry.savedAt) &&
+    isPoint(entry.origin) &&
+    isPoint(entry.destination) &&
+    Array.isArray(entry.waypoints) &&
+    entry.waypoints.every(isPoint) &&
+    MODES.includes(entry.mode) &&
+    Array.isArray(entry.routes) &&
+    entry.routes.length > 0 &&
+    entry.routes.every(
+      (route) =>
+        !!route &&
+        Array.isArray(route.coordinates) &&
+        route.coordinates.length > 1 &&
+        Number.isFinite(route.distanceKm) &&
+        Number.isFinite(route.durationMinutes)
+    )
+  );
+}
+
 
 function rounded(value: number): number {
   return Number(value.toFixed(COORD_PRECISION));
@@ -60,17 +92,7 @@ function readAll(): SavedRoute[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is SavedRoute =>
-        !!entry &&
-        typeof entry.key === 'string' &&
-        Array.isArray(entry.routes) &&
-        entry.routes.length > 0 &&
-        entry.routes.every(
-          (route: RealRouteResult) =>
-            Array.isArray(route.coordinates) && route.coordinates.length > 1
-        )
-    );
+    return parsed.filter(isSavedRoute);
   } catch {
     return [];
   }
