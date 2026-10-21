@@ -20,17 +20,11 @@ import type {
   BackgroundGeolocationPlugin,
   Location as BackgroundLocation,
 } from '@capacitor-community/background-geolocation';
+import { normaliseLocation, type LocationResult } from './locationMath';
+
+export type { LocationResult } from './locationMath';
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation');
-
-export interface LocationResult {
-  latitude: number;
-  longitude: number;
-  accuracyMeters: number | null;
-  speedKmh: number | null;
-  headingDegrees: number | null;
-  timestamp: number;
-}
 
 export type LocationErrorKind = 'denied' | 'unavailable';
 
@@ -49,34 +43,17 @@ export function isNativePlatform(): boolean {
 }
 
 function fromBackgroundLocation(location: BackgroundLocation): LocationResult {
-  return {
-    latitude: parseFloat(location.latitude.toFixed(6)),
-    longitude: parseFloat(location.longitude.toFixed(6)),
-    accuracyMeters: location.accuracy === null ? null : Math.round(location.accuracy),
-    speedKmh: location.speed === null ? null : Math.round(location.speed * 3.6),
-    headingDegrees: location.bearing,
-    timestamp: location.time ?? Date.now(),
-  };
-}
-
-function toResult(
-  coords: {
-    latitude: number;
-    longitude: number;
-    accuracy: number | null;
-    speed: number | null;
-    heading: number | null;
-  },
-  timestamp: number
-): LocationResult {
-  return {
-    latitude: parseFloat(coords.latitude.toFixed(6)),
-    longitude: parseFloat(coords.longitude.toFixed(6)),
-    accuracyMeters: coords.accuracy === null ? null : Math.round(coords.accuracy),
-    speedKmh: coords.speed === null ? null : Math.round(coords.speed * 3.6),
-    headingDegrees: coords.heading,
-    timestamp,
-  };
+  return normaliseLocation(
+    {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      accuracy: location.accuracy,
+      speed: location.speed,
+      heading: location.bearing,
+      timestamp: location.time,
+    },
+    Date.now()
+  );
 }
 
 export async function ensureLocationPermission(): Promise<boolean> {
@@ -101,7 +78,7 @@ export async function getCurrentLocation(): Promise<LocationResult> {
         timeout: 10000,
         maximumAge: 30000,
       });
-      return toResult(pos.coords, pos.timestamp);
+      return normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now());
     } catch (err) {
       throw new LocationError('unavailable', err instanceof Error ? err.message : 'Location unavailable');
     }
@@ -113,7 +90,7 @@ export async function getCurrentLocation(): Promise<LocationResult> {
 
   return new Promise<LocationResult>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(toResult(pos.coords, pos.timestamp)),
+      (pos) => resolve(normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now())),
       (err) =>
         reject(
           new LocationError(
@@ -185,7 +162,7 @@ export async function watchLocation(
             onError(new LocationError('unavailable', err.message));
             return;
           }
-          if (pos) onUpdate(toResult(pos.coords, pos.timestamp));
+          if (pos) onUpdate(normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now()));
         }
       );
     } catch (err) {
@@ -204,7 +181,7 @@ export async function watchLocation(
   }
 
   const id = navigator.geolocation.watchPosition(
-    (pos) => onUpdate(toResult(pos.coords, pos.timestamp)),
+    (pos) => onUpdate(normaliseLocation({ ...pos.coords, timestamp: pos.timestamp }, Date.now())),
     (err) =>
       onError(new LocationError(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable', err.message)),
     { enableHighAccuracy: true, maximumAge: 5000 }
