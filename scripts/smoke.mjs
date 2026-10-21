@@ -475,7 +475,7 @@ try {
   const hud = await page.evaluate(() => ({
     speed: document.body.innerText.includes('KM/H'),
     limitSign: !!document.querySelector(
-      '[title="Speed limit"], [title="Speed limit not mapped here"]'
+      '[title^="Upcoming speed limit"], [title="No mapped speed limit nearby"]'
     ),
     controls: ['Follow', 'North up'].every((label) =>
       [...document.querySelectorAll('button')].some((b) => b.getAttribute('aria-label') === label)
