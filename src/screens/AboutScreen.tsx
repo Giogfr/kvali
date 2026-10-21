@@ -55,7 +55,7 @@ export const AboutScreen: React.FC = () => {
             <Github size={18} className="text-neutral-900 dark:text-white" />
             <div>
               <span className="text-[13px] font-semibold block text-neutral-800 dark:text-neutral-200">
-                Open Source Repository
+                {t('openSourceRepo')}
               </span>
               <span className="text-[11px] text-neutral-500 font-mono">
                 github.com/Giogfr/kvali
@@ -63,13 +63,13 @@ export const AboutScreen: React.FC = () => {
             </div>
           </div>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700">
-            MIT
+            GPL-3.0
           </span>
         </div>
 
         {/* Map Data & Attributions */}
         <div>
-          <span className={sectionLabel}>Data attribution</span>
+          <span className={sectionLabel}>{t('dataAttribution')}</span>
 
           <div className={`${panel} text-[11px] space-y-2 text-neutral-600 dark:text-neutral-300 leading-relaxed`}>
             <div className="flex items-start gap-2">
@@ -81,29 +81,27 @@ export const AboutScreen: React.FC = () => {
 
         {/* Privacy Summary */}
         <div>
-          <span className={sectionLabel}>Privacy Philosophy</span>
+          <span className={sectionLabel}>{t('privacyPhilosophy')}</span>
 
           <div className={`${panel} text-[11px] space-y-1.5 text-neutral-600 dark:text-neutral-300 leading-relaxed`}>
             <div className="flex items-center gap-2 font-medium text-emerald-500 dark:text-emerald-400">
               <ShieldCheck size={15} />
-              <span>Client-Side Local Storage Only</span>
+              <span>{t('clientSideStorage')}</span>
             </div>
             <p className="text-neutral-500 dark:text-neutral-400">
-              Kvali keeps your bookmarks, preferences and road reports inside your browser's local
-              storage, and caches map tiles on the device for offline use. There is no telemetry,
-              no third-party user identifiers and no advertising SDK in the codebase.
+              {t('privacyStorageNote')}
             </p>
           </div>
         </div>
 
         {/* Known Limitations */}
         <div>
-          <span className={sectionLabel}>Good to know</span>
+          <span className={sectionLabel}>{t('goodToKnow')}</span>
 
           <div className={`${panel} text-[11px] space-y-1 text-neutral-500 dark:text-neutral-400 leading-relaxed`}>
             <div className="flex items-center gap-1.5 text-[#C9973F] font-medium">
               <AlertTriangle size={14} />
-              <span>Data & coverage</span>
+              <span>{t('dataCoverage')}</span>
             </div>
             <p>{t('knownLimitations')}</p>
           </div>

@@ -439,7 +439,7 @@ export const SettingsScreen: React.FC = () => {
           <div className={`divide-y divide-neutral-200 dark:divide-neutral-800/60 bg-white dark:bg-neutral-900/40 text-[11px] border border-neutral-200 dark:border-neutral-800 rounded-xl`}>
             <div className={libraryRow}>
               <div className="min-w-0">
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Background guidance</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">{t('backgroundGuidance')}</span>
                 <span className="text-neutral-500">{t('bgGpsDesc')}</span>
               </div>
               {isAndroid() && (
@@ -456,21 +456,21 @@ export const SettingsScreen: React.FC = () => {
 
             <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Screen-off navigation</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">{t('screenOffNavigation')}</span>
                 <span className="text-neutral-500">{t('screenOffDesc')}</span>
               </div>
             </div>
 
             <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">On-device voice</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">{t('onDeviceVoice')}</span>
                 <span className="text-neutral-500">{t('ttsDesc')}</span>
               </div>
             </div>
 
             <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Android Auto & CarPlay</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">{t('androidAutoCarplay')}</span>
                 <span className="text-neutral-500">{t('androidAutoDesc')}</span>
               </div>
             </div>

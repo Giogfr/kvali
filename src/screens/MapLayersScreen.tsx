@@ -52,7 +52,7 @@ export const MapLayersScreen: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Vector Map Style Selection */}
         <div>
-          <span className={sectionLabel}>Map style</span>
+          <span className={sectionLabel}>{t('mapStyleLabel')}</span>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* Standard Light */}
@@ -129,7 +129,7 @@ export const MapLayersScreen: React.FC = () => {
 
         {/* Layer Toggles */}
         <div>
-          <span className={sectionLabel}>Overlays</span>
+          <span className={sectionLabel}>{t('mapOverlays')}</span>
 
           <div className={panel}>
             {/* 3D buildings */}

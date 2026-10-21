@@ -171,7 +171,7 @@ export const RoadAlertsScreen: React.FC = () => {
               <span className={`text-[13px] font-semibold block leading-tight ${strongText}`}>
                 {t('layerCameras')}
               </span>
-              <span className={`text-[11px] ${mutedText}`}>Alerts on the map</span>
+              <span className={`text-[11px] ${mutedText}`}>{t('alertsOnMap')}</span>
             </div>
           </div>
           <ToggleSwitch
@@ -397,7 +397,7 @@ export const RoadAlertsScreen: React.FC = () => {
         <div className="p-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-600 dark:text-neutral-400 space-y-1">
           <div className="flex items-center gap-1.5 font-semibold text-[#C9973F]">
             <Info size={14} />
-            <span>Data source</span>
+            <span>{t('dataSource')}</span>
           </div>
           <p>{t('sourceLegend')}</p>
         </div>
