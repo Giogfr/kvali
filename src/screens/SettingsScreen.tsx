@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
-import { NativeBadge } from '../components/common/Controls';
+import { isAndroid, openAppSettings } from '../lib/location';
 import { useToast } from '../context/ToastContext';
 import {
   getPreferredVoice,
@@ -438,27 +438,34 @@ export const SettingsScreen: React.FC = () => {
 
           <div className={`divide-y divide-neutral-200 dark:divide-neutral-800/60 bg-white dark:bg-neutral-900/40 text-[11px] border border-neutral-200 dark:border-neutral-800 rounded-xl`}>
             <div className={libraryRow}>
-              <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Background GPS Service</span>
+              <div className="min-w-0">
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Background guidance</span>
                 <span className="text-neutral-500">{t('bgGpsDesc')}</span>
               </div>
-              <NativeBadge label={t('nativeBadge')} />
+              {isAndroid() && (
+                <button
+                  onClick={() => {
+                    void openAppSettings();
+                  }}
+                  className="shrink-0 px-2.5 py-1 rounded-md border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  {t('openSettings')}
+                </button>
+              )}
             </div>
 
             <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Screen-off Navigation</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Screen-off navigation</span>
                 <span className="text-neutral-500">{t('screenOffDesc')}</span>
               </div>
-              <NativeBadge label={t('nativeBadge')} />
             </div>
 
             <div className={libraryRow}>
               <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Offline Neural Speech</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">On-device voice</span>
                 <span className="text-neutral-500">{t('ttsDesc')}</span>
               </div>
-              <NativeBadge label={t('nativeBadge')} />
             </div>
 
             <div className={libraryRow}>
@@ -466,15 +473,6 @@ export const SettingsScreen: React.FC = () => {
                 <span className="font-medium text-neutral-700 dark:text-neutral-300 block">Android Auto & CarPlay</span>
                 <span className="text-neutral-500">{t('androidAutoDesc')}</span>
               </div>
-              <NativeBadge label={t('nativeBadge')} />
-            </div>
-
-            <div className={libraryRow}>
-              <div>
-                <span className="font-medium text-neutral-700 dark:text-neutral-300 block">System Foreground Banner</span>
-                <span className="text-neutral-500">{t('systemNotifsDesc')}</span>
-              </div>
-              <NativeBadge label={t('nativeBadge')} />
             </div>
           </div>
         </div>

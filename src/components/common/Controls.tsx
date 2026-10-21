@@ -80,9 +80,3 @@ export const CustomSlider: React.FC<CustomSliderProps> = ({
     </div>
   );
 };
-
-export const NativeBadge: React.FC<{ label?: string }> = ({ label = 'Native feature' }) => (
-  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium tracking-tight bg-amber-500/10 text-[#C9973F] border border-[#C9973F]/30">
-    {label}
-  </span>
-);

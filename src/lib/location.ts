@@ -42,6 +42,19 @@ export function isNativePlatform(): boolean {
   return Capacitor.isNativePlatform();
 }
 
+export function isAndroid(): boolean {
+  return Capacitor.getPlatform() === 'android';
+}
+
+/**
+ * Opens the app's system settings page. Android is the only platform Kvali
+ * ships for, so other platforms are a no-op.
+ */
+export async function openAppSettings(): Promise<void> {
+  if (!isAndroid()) return;
+  await BackgroundGeolocation.openSettings();
+}
+
 function fromBackgroundLocation(location: BackgroundLocation): LocationResult {
   return normaliseLocation(
     {
@@ -120,7 +133,7 @@ export async function watchLocation(
     // Chrome pauses WebView geolocation when the app is backgrounded. The
     // Android foreground service below keeps delivering fixes with the screen
     // off or another app in front, which turn-by-turn navigation needs.
-    if (Capacitor.getPlatform() === 'android') {
+    if (isAndroid()) {
       try {
         const watcherId = await BackgroundGeolocation.addWatcher(
           {
