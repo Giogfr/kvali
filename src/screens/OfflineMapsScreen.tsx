@@ -25,6 +25,7 @@ import { ToggleSwitch } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
 import { OfflineRegion } from '../types';
 import { getCurrentLocation } from '../lib/location';
+import { clearSavedRoutes, savedRouteCount } from '../lib/routeCache';
 import {
   MAP_STYLES,
   clearTileCache,
@@ -53,6 +54,7 @@ export const OfflineMapsScreen: React.FC = () => {
 
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const [storageSupported, setStorageSupported] = useState(true);
+  const [savedRoutes, setSavedRoutes] = useState(() => savedRouteCount());
   const [isAddingArea, setIsAddingArea] = useState(false);
   const controllersRef = useRef<Record<string, AbortController>>({});
 
@@ -61,6 +63,7 @@ export const OfflineMapsScreen: React.FC = () => {
   const mutedText = 'text-neutral-500 dark:text-neutral-400';
 
   const refreshStorage = useCallback(async () => {
+    setSavedRoutes(savedRouteCount());
     const est = await getStorageEstimate();
     if (est) {
       setStorage(est);
@@ -172,6 +175,12 @@ export const OfflineMapsScreen: React.FC = () => {
     refreshStorage();
   };
 
+  const handleClearSavedRoutes = () => {
+    clearSavedRoutes();
+    setSavedRoutes(0);
+    showToast(t('savedRoutesCleared'), 'info');
+  };
+
   const handleAddArea = async () => {
     if (isAddingArea) return;
     setIsAddingArea(true);
@@ -249,6 +258,26 @@ export const OfflineMapsScreen: React.FC = () => {
 
           {!storageSupported && (
             <p className={`text-[10px] ${mutedText} mt-1.5`}>{t('storageUnavailable')}</p>
+          )}
+        </div>
+
+        {/* Routes cached for offline reuse */}
+        <div className={`p-3.5 ${cardClass} flex items-center justify-between gap-3`}>
+          <div className="min-w-0">
+            <span className="text-[13px] font-semibold block text-neutral-800 dark:text-neutral-200 leading-tight">
+              {t('savedRoutesCache')}
+            </span>
+            <span className={`text-[11px] ${mutedText} leading-tight block mt-0.5`}>
+              {t('savedRoutesCacheDesc').replace('{count}', String(savedRoutes))}
+            </span>
+          </div>
+          {savedRoutes > 0 && (
+            <button
+              onClick={handleClearSavedRoutes}
+              className="shrink-0 px-2.5 py-1 rounded-md border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            >
+              {t('clear')}
+            </button>
           )}
         </div>
 
