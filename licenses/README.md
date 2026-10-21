@@ -14,6 +14,7 @@ for packages that do not ship a license file).
 | `capacitor-android.txt` | @capacitor/android | MIT |
 | `capacitor-geolocation.txt` | @capacitor/geolocation | MIT |
 | `capacitor-background-geolocation.txt` | @capacitor-community/background-geolocation | MIT |
+| `capacitor-local-notifications.txt` | @capacitor/local-notifications | MIT |
 | `capacitor-text-to-speech.txt` | @capacitor-community/text-to-speech | MIT |
 | `tailwindcss.txt` | tailwindcss | MIT |
 | `tailwindcss-vite.txt` | @tailwindcss/vite | MIT |

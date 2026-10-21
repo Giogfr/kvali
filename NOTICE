@@ -37,6 +37,7 @@ Runtime dependencies:
   @capacitor/android                   MIT
   @capacitor/geolocation               MIT
   @capacitor-community/background-geolocation  MIT
+  @capacitor/local-notifications       MIT
   @capacitor-community/text-to-speech  MIT
 
 Build and test dependencies (not distributed in the app):
