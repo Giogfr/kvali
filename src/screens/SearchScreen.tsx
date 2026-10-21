@@ -42,6 +42,7 @@ export const SearchScreen: React.FC = () => {
     places,
     recentSearches,
     addRecentSearch,
+    removeRecentSearch,
     clearRecentSearches,
     setSelectedPlace,
     setTemporaryPin,
@@ -412,17 +413,29 @@ export const SearchScreen: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   {recentSearches.map((item, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setQuery(item)}
-                      className="w-full flex items-center justify-between py-2 px-2.5 rounded-lg text-left text-[12px] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/40 transition-colors"
+                    <div
+                      key={`${item}-${idx}`}
+                      className="group flex items-center rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800/40 transition-colors"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Clock size={13} className="text-neutral-500" />
-                        <span>{item}</span>
-                      </div>
-                      <ChevronRight size={14} className="text-neutral-600" />
-                    </button>
+                      <button
+                        onClick={() => setQuery(item)}
+                        className="flex-1 min-w-0 flex items-center justify-between py-2 px-2.5 text-left text-[12px] text-neutral-700 dark:text-neutral-300"
+                      >
+                        <span className="flex items-center gap-2.5 min-w-0">
+                          <Clock size={13} className="text-neutral-500 shrink-0" />
+                          <span className="truncate">{item}</span>
+                        </span>
+                        <ChevronRight size={14} className="text-neutral-600 shrink-0" />
+                      </button>
+                      <button
+                        onClick={() => removeRecentSearch(item)}
+                        className="p-1.5 mr-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                        aria-label={`${t('remove')}: ${item}`}
+                        title={t('remove')}
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

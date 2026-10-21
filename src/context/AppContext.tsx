@@ -119,6 +119,7 @@ interface AppContextType {
   setTemporaryPin: (pin: TemporaryPin | null) => void;
   recentSearches: string[];
   addRecentSearch: (query: string) => void;
+  removeRecentSearch: (query: string) => void;
   clearRecentSearches: () => void;
   handleMapTapCoords: (coords: { latitude: number; longitude: number }) => Promise<void>;
 
@@ -1177,6 +1178,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const removeRecentSearch = (query: string) => {
+    setRecentSearches((prev) => {
+      const updated = prev.filter((s) => s.toLowerCase() !== query.toLowerCase());
+      try {
+        if (updated.length) {
+          localStorage.setItem('kvali_recent_searches', JSON.stringify(updated));
+        } else {
+          localStorage.removeItem('kvali_recent_searches');
+        }
+      } catch {}
+      return updated;
+    });
+  };
+
   const clearRecentSearches = () => {
     setRecentSearches([]);
     try {
@@ -1554,6 +1569,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTemporaryPin,
         recentSearches,
         addRecentSearch,
+        removeRecentSearch,
         clearRecentSearches,
         handleMapTapCoords,
         routeOrigin,
