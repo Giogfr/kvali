@@ -53,9 +53,9 @@ function maneuverIcon(step: { maneuverType: string; maneuverModifier?: string })
   const type = step.maneuverType;
   const modifier = step.maneuverModifier ?? '';
   if (type === 'arrive') return Flag;
+  if (type === 'uturn' || modifier.includes('uturn')) return RotateCcw;
   if (type.includes('roundabout') || type === 'rotary') return RotateCcw;
   if (type === 'merge') return Merge;
-  if (modifier.includes('uturn')) return RotateCcw;
   if (modifier.includes('left')) return CornerUpLeft;
   if (modifier.includes('right')) return CornerUpRight;
   return ArrowUp;

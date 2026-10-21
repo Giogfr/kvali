@@ -1388,11 +1388,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Start live navigation. Progress is driven by GPS fixes, not a timer.
   const startNavigation = (route: RouteAlternative) => {
     const startStep = route.steps && route.steps.length > 1 ? route.steps[1] : route.steps?.[0];
-    const initialInstruction = startStep
-      ? language === 'ka'
-        ? startStep.instructionKa || startStep.instruction
-        : startStep.instruction
-      : 'Follow the route';
+    const followRoute = t('followRoute');
 
     const initialAlert = userLocation ? findUpcomingAlert(userLocation) : null;
     const initialAlertMeters =
@@ -1415,8 +1411,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentSpeedKmh: userLocation?.speedKmh ?? 0,
       speedLimitKmh: limitInScope(initialAlert?.speedLimit, initialAlertMeters),
       currentManeuver: {
-        instruction: startStep?.instruction || initialInstruction,
-        instructionKa: startStep?.instructionKa || initialInstruction,
+        instruction: startStep?.instruction || followRoute,
+        instructionKa: startStep?.instructionKa || startStep?.instruction || followRoute,
         roadName: startStep?.name || route.via || 'Route',
         distanceMeters: startStep?.distanceMeters ?? 0,
         maneuverType: startStep?.maneuverType ?? 'depart',
