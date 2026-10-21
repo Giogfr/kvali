@@ -6,7 +6,7 @@
  * This file is part of Kvali, free software under the GNU General Public
  * License version 3 or later. See the LICENSE file for the full text.
  */
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Search,
   SlidersHorizontal,
@@ -28,6 +28,7 @@ import { useApp } from '../context/AppContext';
 import { MapView, type MapViewHandle } from '../components/map/MapView';
 import { PinCallout } from '../components/map/PinCallout';
 import { useToast } from '../context/ToastContext';
+import { ensureNotificationPermission } from '../lib/notifications';
 
 export const MapScreen: React.FC = () => {
   const {
@@ -58,6 +59,17 @@ export const MapScreen: React.FC = () => {
   const [showCallout, setShowCallout] = useState(true);
   const [showLocationBanner, setShowLocationBanner] = useState(true);
   const mapRef = useRef<MapViewHandle>(null);
+  const notificationAskedRef = useRef(false);
+
+  // The foreground service needs a visible notice on Android 13+. Ask once,
+  // after location is actually on, so the request has an obvious context.
+  useEffect(() => {
+    if (geolocationStatus !== 'granted' || notificationAskedRef.current) return;
+    notificationAskedRef.current = true;
+    void ensureNotificationPermission().then((granted) => {
+      if (granted === false) showToast(t('notificationsOff'), 'warn');
+    });
+  }, [geolocationStatus, showToast, t]);
 
   const controlButtonClass = `w-11 h-11 rounded-xl flex items-center justify-center border shadow-md press transition-colors ${
     theme === 'dark'
@@ -68,9 +80,7 @@ export const MapScreen: React.FC = () => {
   const handleToggleAlerts = () => {
     toggleLayer('speedCameras');
     showToast(
-      layers.speedCameras
-        ? t('alertOverlays') + ' hidden'
-        : t('alertOverlays') + ' visible',
+      layers.speedCameras ? t('alertOverlaysHidden') : t('alertOverlaysShown'),
       'info'
     );
   };
