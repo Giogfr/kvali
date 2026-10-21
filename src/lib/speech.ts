@@ -16,6 +16,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { TextToSpeech, QueueStrategy } from '@capacitor-community/text-to-speech';
+import { matchesLanguage, selectVoiceIndex } from './voiceSelection';
 
 export interface SpeechVoice {
   name: string;
@@ -46,45 +47,6 @@ export function setPreferredVoice(voiceURI: string | null): void {
   } catch {
     /* ignore */
   }
-}
-
-function matchesLanguage(voiceLang: string, lang: string): boolean {
-  const wanted = lang.toLowerCase();
-  const base = wanted.split('-')[0];
-  const candidate = voiceLang.toLowerCase();
-  return candidate === wanted || candidate.startsWith(`${base}-`) || candidate === base;
-}
-
-function pickVoiceIndex(voices: SpeechVoice[], lang: string): number | undefined {
-  if (voices.length === 0) return undefined;
-
-  const preferred = getPreferredVoice();
-  if (preferred) {
-    const preferredIndex = voices.findIndex((voice) => voice.voiceURI === preferred);
-    if (preferredIndex >= 0 && matchesLanguage(voices[preferredIndex].lang, lang)) {
-      return preferredIndex;
-    }
-  }
-
-  const wanted = lang.toLowerCase();
-  const base = wanted.split('-')[0];
-  let bestIndex: number | undefined;
-  let bestScore = -1;
-
-  voices.forEach((voice, index) => {
-    const candidate = voice.lang.toLowerCase();
-    if (!candidate.startsWith(base)) return;
-    let score = candidate === wanted ? 4 : 2;
-    // Local voices keep working without a connection, which matters for a
-    // navigation app; a better network voice can still be chosen in settings.
-    if (voice.localService) score += 1;
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = index;
-    }
-  });
-
-  return bestIndex;
 }
 
 function webVoices(): SpeechSynthesisVoice[] {
@@ -162,7 +124,11 @@ export async function speakText(
   if (Capacitor.isNativePlatform()) {
     try {
       const { voices } = await TextToSpeech.getSupportedVoices();
-      const voice = pickVoiceIndex(voices as SpeechVoice[], lang);
+      const voice = selectVoiceIndex(
+        voices as SpeechVoice[],
+        lang,
+        getPreferredVoice()
+      );
       await TextToSpeech.speak({
         text,
         lang,
@@ -188,10 +154,8 @@ export async function speakText(
     utterance.volume = volume;
 
     const voices = await getWebVoicesWhenReady();
-    const preferred = getPreferredVoice();
-    let selected = preferred ? voices.find((voice) => voice.voiceURI === preferred) : undefined;
-    if (!selected) selected = voices.find((voice) => matchesLanguage(voice.lang, lang));
-    if (selected) utterance.voice = selected;
+    const voiceIndex = selectVoiceIndex(voices, lang, getPreferredVoice());
+    if (voiceIndex !== undefined) utterance.voice = voices[voiceIndex];
 
     synth.speak(utterance);
     return true;
