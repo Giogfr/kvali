@@ -918,7 +918,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
     const destination = { latitude: destLat, longitude: destLon };
     const offline = airplaneOfflineMode || !isOnline;
-    const cached = loadSavedRoute(origin, destination, waypoints, travelMode);
+    const cached = loadSavedRoute(origin, destination, waypoints, travelMode, routePreferences);
 
     if (offline) {
       if (cached) {
@@ -953,7 +953,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRouteAlternatives(osrmRoutes);
         setSelectedRouteAlternative(osrmRoutes[0]);
         setRouteFromCache(false);
-        saveRoute(origin, destination, waypoints, travelMode, osrmRoutes);
+        saveRoute(origin, destination, waypoints, travelMode, osrmRoutes, routePreferences);
         return;
       }
 

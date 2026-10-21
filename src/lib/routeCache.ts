@@ -13,6 +13,7 @@
  */
 
 import type { RealRouteResult } from './services';
+import type { RoutePreferences } from '../types';
 
 export type TravelModeKey = 'car' | 'walking' | 'cycling';
 
@@ -77,13 +78,29 @@ function pointKey(point: LatLng): string {
   return `${rounded(point.latitude)},${rounded(point.longitude)}`;
 }
 
+function preferenceKey(preferences?: RoutePreferences): string {
+  if (!preferences) return 'default';
+  return [
+    preferences.avoidTolls ? 1 : 0,
+    preferences.avoidHighways ? 1 : 0,
+    preferences.avoidUnpaved ? 1 : 0,
+  ].join('');
+}
+
 export function routeCacheKey(
   origin: LatLng,
   destination: LatLng,
   waypoints: LatLng[],
-  mode: TravelModeKey
+  mode: TravelModeKey,
+  preferences?: RoutePreferences
 ): string {
-  return [mode, pointKey(origin), ...waypoints.map(pointKey), pointKey(destination)].join('|');
+  return [
+    mode,
+    preferenceKey(preferences),
+    pointKey(origin),
+    ...waypoints.map(pointKey),
+    pointKey(destination),
+  ].join('|');
 }
 
 function readAll(): SavedRoute[] {
@@ -115,9 +132,10 @@ export function loadSavedRoute(
   origin: LatLng,
   destination: LatLng,
   waypoints: LatLng[],
-  mode: TravelModeKey
+  mode: TravelModeKey,
+  preferences?: RoutePreferences
 ): RealRouteResult[] | null {
-  const key = routeCacheKey(origin, destination, waypoints, mode);
+  const key = routeCacheKey(origin, destination, waypoints, mode, preferences);
   const entry = readAll().find((item) => item.key === key);
   return entry ? entry.routes : null;
 }
@@ -127,10 +145,11 @@ export function saveRoute(
   destination: LatLng,
   waypoints: LatLng[],
   mode: TravelModeKey,
-  routes: RealRouteResult[]
+  routes: RealRouteResult[],
+  preferences?: RoutePreferences
 ): void {
   if (routes.length === 0) return;
-  const key = routeCacheKey(origin, destination, waypoints, mode);
+  const key = routeCacheKey(origin, destination, waypoints, mode, preferences);
   const entries = readAll().filter((entry) => entry.key !== key);
   entries.unshift({
     key,

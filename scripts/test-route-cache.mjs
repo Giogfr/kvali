@@ -64,6 +64,22 @@ check('mode and waypoint order change the key', () => {
   assert.notEqual(base, routeCacheKey(kutaisi, tbilisi, [kutaisi], 'car'));
 });
 
+check('avoid preferences cannot reuse a route built without them', () => {
+  const preferences = { avoidTolls: true, avoidHighways: false, avoidUnpaved: true };
+  assert.notEqual(
+    routeCacheKey(kutaisi, tbilisi, [], 'car'),
+    routeCacheKey(kutaisi, tbilisi, [], 'car', preferences)
+  );
+  assert.equal(
+    routeCacheKey(kutaisi, tbilisi, [], 'car', preferences),
+    routeCacheKey(kutaisi, tbilisi, [], 'car', { ...preferences })
+  );
+
+  reset();
+  saveRoute(kutaisi, tbilisi, [], 'car', [route]);
+  assert.equal(loadSavedRoute(kutaisi, tbilisi, [], 'car', preferences), null);
+});
+
 check('a saved route can be loaded again', () => {
   reset();
   saveRoute(kutaisi, tbilisi, [], 'car', [route]);
