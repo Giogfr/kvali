@@ -149,7 +149,7 @@ export const RoadAlertsScreen: React.FC = () => {
 
   const handleTestAudio = () => {
     playTestBeep();
-    showToast('Synthesized warning chime preview', 'info');
+    showToast(t('chimePreview'), 'info');
   };
 
   return (

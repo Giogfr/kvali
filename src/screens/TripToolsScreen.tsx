@@ -14,6 +14,7 @@ import { useToast } from '../context/ToastContext';
 import { formatDistance, formatSpeed } from '../lib/geo';
 import { formatDurationMinutes } from '../lib/time';
 import { parseGpx, trackToGpx } from '../lib/gpx';
+import { fillTemplate } from '../lib/i18n';
 import { RecordedTrack } from '../types';
 
 export const TripToolsScreen: React.FC = () => {
@@ -57,9 +58,9 @@ export const TripToolsScreen: React.FC = () => {
       downloadAnchor.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      showToast(`Exported ${track.title} as GPX`, 'success');
+      showToast(fillTemplate(t('exportedGpx'), { name: track.title }), 'success');
     } catch {
-      showToast('Export failed', 'warn');
+      showToast(t('exportFailed'), 'warn');
     }
   };
 
@@ -69,24 +70,29 @@ export const TripToolsScreen: React.FC = () => {
 
     try {
       if (file.size > 10 * 1024 * 1024) {
-        showToast('GPX file is too large (limit 10 MB)', 'warn');
+        showToast(t('gpxTooLarge'), 'warn');
         return;
       }
       const result = parseGpx(await file.text(), file.name);
       if (result.tracks.length === 0) {
-        showToast('No tracks with at least two points were found in this GPX file', 'warn');
+        showToast(t('gpxNoTracks'), 'warn');
         return;
       }
       result.tracks.forEach(addRecordedTrack);
       showToast(
         result.skipped > 0
-          ? `Imported ${result.tracks.length} track(s), skipped ${result.skipped} empty one(s)`
-          : `Imported ${result.tracks.length} track(s)`,
+          ? fillTemplate(t('gpxImportedSkipped'), {
+              count: result.tracks.length,
+              skipped: result.skipped,
+            })
+          : fillTemplate(t('gpxImported'), { count: result.tracks.length }),
         'success'
       );
     } catch (error) {
       showToast(
-        error instanceof Error ? `Could not import GPX: ${error.message}` : 'Could not import GPX',
+        error instanceof Error
+          ? fillTemplate(t('gpxImportFailed'), { reason: error.message })
+          : t('gpxImportFailedPlain'),
         'warn'
       );
     } finally {
@@ -217,7 +223,7 @@ export const TripToolsScreen: React.FC = () => {
                         <button
                           onClick={() => {
                             deleteTrack(track.id);
-                            showToast('Track deleted', 'info');
+                            showToast(t('trackDeleted'), 'info');
                           }}
                           className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors"
                           title={t('deleteTrack')}

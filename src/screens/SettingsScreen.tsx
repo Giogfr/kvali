@@ -187,7 +187,7 @@ export const SettingsScreen: React.FC = () => {
             <button
               onClick={() => {
                 setLanguage('en');
-                showToast('Language: English', 'info');
+                showToast(`${t('language')}: ${t('english')}`, 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
                 language === 'en' ? optionActive : optionInactive
@@ -203,7 +203,7 @@ export const SettingsScreen: React.FC = () => {
             <button
               onClick={() => {
                 setLanguage('ka');
-                showToast('ენა: ქართული', 'info');
+                showToast(`${t('language')}: ${t('georgian')}`, 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
                 language === 'ka' ? optionActive : optionInactive
@@ -225,7 +225,7 @@ export const SettingsScreen: React.FC = () => {
             <button
               onClick={() => {
                 setUnits('metric');
-                showToast('Units: Metric (km, m, km/h)', 'info');
+                showToast(t('unitsSetMetric'), 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
                 units === 'metric' ? optionActive : optionInactive
@@ -233,7 +233,7 @@ export const SettingsScreen: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <Gauge size={14} />
-                <span>Metric (km, m)</span>
+                <span>{t('metricUnits')}</span>
               </div>
               {units === 'metric' && <Check size={14} className="text-[#2F6FEB]" />}
             </button>
@@ -241,7 +241,7 @@ export const SettingsScreen: React.FC = () => {
             <button
               onClick={() => {
                 setUnits('imperial');
-                showToast('Units: Imperial (mi, ft, mph)', 'info');
+                showToast(t('unitsSetImperial'), 'info');
               }}
               className={`py-2.5 px-3 rounded-xl border flex items-center justify-between text-[12px] font-medium transition-all ${
                 units === 'imperial' ? optionActive : optionInactive
@@ -249,7 +249,7 @@ export const SettingsScreen: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <Gauge size={14} />
-                <span>Imperial (mi, ft)</span>
+                <span>{t('imperialUnits')}</span>
               </div>
               {units === 'imperial' && <Check size={14} className="text-[#2F6FEB]" />}
             </button>

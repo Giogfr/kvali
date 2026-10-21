@@ -59,7 +59,7 @@ export const MapLayersScreen: React.FC = () => {
             <button
               onClick={() => {
                 setTheme('light');
-                showToast('Switched to Positron Light map style', 'info');
+                showToast(t('mapStyleLight'), 'info');
               }}
               className={`p-3 rounded-xl border text-left transition-all ${
                 theme === 'light'
@@ -70,7 +70,7 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center justify-between mb-2">
                 <Sun size={17} className={theme === 'light' ? 'text-[#2F6FEB]' : 'text-neutral-400'} />
                 {theme === 'light' && (
-                  <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">Active</span>
+                  <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">{t('active')}</span>
                 )}
               </div>
               <span className="text-[13px] font-semibold block leading-tight">Positron Light</span>
@@ -80,7 +80,7 @@ export const MapLayersScreen: React.FC = () => {
             <button
               onClick={() => {
                 setTheme('dark');
-                showToast('Switched to Dark map style', 'info');
+                showToast(t('mapStyleDark'), 'info');
               }}
               className={`p-3 rounded-xl border text-left transition-all ${
                 theme === 'dark'
@@ -91,7 +91,7 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center justify-between mb-2">
                 <Moon size={17} className={theme === 'dark' ? 'text-[#2F6FEB]' : 'text-neutral-400'} />
                 {theme === 'dark' && (
-                  <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">Active</span>
+                  <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">{t('active')}</span>
                 )}
               </div>
               <span className="text-[13px] font-semibold block leading-tight">Dark Night</span>

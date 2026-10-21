@@ -20,6 +20,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { useToast } from '../context/ToastContext';
+import { fillTemplate } from '../lib/i18n';
 import { SavedPlace } from '../types';
 
 export const SavedPlacesScreen: React.FC = () => {
@@ -69,7 +70,10 @@ export const SavedPlacesScreen: React.FC = () => {
   const handleCreateCollection = () => {
     if (!newCollectionName.trim()) return;
     createCollection(newCollectionName.trim());
-    showToast(`Collection "${newCollectionName.trim()}" created`, 'success');
+    showToast(
+      fillTemplate(t('collectionCreated'), { name: newCollectionName.trim() }),
+      'success'
+    );
     setNewCollectionName('');
     setShowNewCollectionModal(false);
   };
