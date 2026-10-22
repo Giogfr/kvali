@@ -287,6 +287,35 @@ function shortestPath(
   return { nodes, edges };
 }
 
+function bearing(from: [number, number], to: [number, number]): number | null {
+  const lat1 = (from[1] * Math.PI) / 180;
+  const lat2 = (to[1] * Math.PI) / 180;
+  const deltaLon = ((to[0] - from[0]) * Math.PI) / 180;
+  if (from[0] === to[0] && from[1] === to[1]) return null;
+  const y = Math.sin(deltaLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+function maneuverFor(turn: number | null) {
+  if (turn === null || Math.abs(turn) <= 20) {
+    return { type: 'continue', modifier: undefined, en: 'Continue', ka: 'გააგრძელეთ' };
+  }
+  const side = turn > 0 ? 'right' : 'left';
+  const kaSide = turn > 0 ? 'მარჯვნივ' : 'მარცხნივ';
+  const size = Math.abs(turn);
+  if (size > 160) {
+    return { type: 'uturn', modifier: 'uturn', en: 'Make a U-turn', ka: 'შემოუხვიეთ' };
+  }
+  if (size > 135) {
+    return { type: 'turn', modifier: `sharp ${side}`, en: `Turn sharply ${side}`, ka: `მკვეთრად ${kaSide}` };
+  }
+  if (size > 45) {
+    return { type: 'turn', modifier: side, en: `Turn ${side}`, ka: `მოუხვიეთ ${kaSide}` };
+  }
+  return { type: 'turn', modifier: `slight ${side}`, en: `Keep ${side}`, ka: `ოდნავ ${kaSide}` };
+}
+
 export function routePackedOffline(
   graph: PackedRoutingGraph,
   origin: { latitude: number; longitude: number },
@@ -314,7 +343,32 @@ export function routePackedOffline(
     if (coordinates.length === 0) {
       coordinates.push([graph.nodeLon[start] / 1_000_000, graph.nodeLat[start] / 1_000_000]);
     }
-    for (const edge of path.edges) {
+    for (let edgeIndex = 0; edgeIndex < path.edges.length; edgeIndex += 1) {
+      const edge = path.edges[edgeIndex];
+      const entry = coordinates[coordinates.length - 1];
+      const firstGeometry = graph.geometryOffsets[edge];
+      const targetLon = graph.nodeLon[path.nodes[edgeIndex + 1]] / 1_000_000;
+      const targetLat = graph.nodeLat[path.nodes[edgeIndex + 1]] / 1_000_000;
+      let nextPoint: [number, number] = [targetLon, targetLat];
+      for (let point = firstGeometry; point < graph.geometryOffsets[edge + 1]; point += 1) {
+        const candidate: [number, number] = [
+          graph.geometryLon[point] / 1_000_000,
+          graph.geometryLat[point] / 1_000_000,
+        ];
+        if (candidate[0] !== entry[0] || candidate[1] !== entry[1]) {
+          nextPoint = candidate;
+          break;
+        }
+      }
+      const outgoing = bearing(entry, nextPoint);
+      const previousBearing =
+        coordinates.length >= 2 ? bearing(coordinates[coordinates.length - 2], entry) : null;
+      const turn =
+        edgeIndex === 0 || previousBearing === null || outgoing === null
+          ? null
+          : ((outgoing - previousBearing + 540) % 360) - 180;
+      const maneuver = maneuverFor(turn);
+      const isDepart = steps.length === 0;
       for (let point = graph.geometryOffsets[edge]; point < graph.geometryOffsets[edge + 1]; point += 1) {
         coordinates.push([
           graph.geometryLon[point] / 1_000_000,
@@ -331,13 +385,29 @@ export function routePackedOffline(
         longestName = name;
       }
       const target = graph.targets[edge];
+      const onto = name === 'Road' ? '' : ` onto ${name}`;
+      const ontoKa = name === 'Road' ? '' : ` ${name}-ზე`;
+      const headOnto = name === 'Road' ? '' : ` on ${name}`;
+      const lastStep = steps[steps.length - 1];
+      if (
+        !isDepart &&
+        maneuver.type === 'continue' &&
+        lastStep?.maneuverType === 'continue' &&
+        lastStep.name === name
+      ) {
+        lastStep.distanceMeters += distance;
+        lastStep.durationSeconds += duration;
+        lastStep.location = [graph.nodeLon[target] / 1_000_000, graph.nodeLat[target] / 1_000_000];
+        continue;
+      }
       steps.push({
-        instruction: `Continue on ${name}`,
-        instructionKa: `${name}-ზე გააგრძელეთ`,
+        instruction: isDepart ? `Head${headOnto}` : `${maneuver.en}${onto}`,
+        instructionKa: isDepart ? `გაემართეთ${ontoKa}` : `${maneuver.ka}${ontoKa}`,
         name,
         distanceMeters: distance,
         durationSeconds: duration,
-        maneuverType: 'continue',
+        maneuverType: isDepart ? 'depart' : maneuver.type,
+        maneuverModifier: isDepart ? undefined : maneuver.modifier,
         location: [graph.nodeLon[target] / 1_000_000, graph.nodeLat[target] / 1_000_000],
       });
     }

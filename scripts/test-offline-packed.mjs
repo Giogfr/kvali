@@ -130,4 +130,61 @@ assert.equal(
   'avoiding tolls must skip a toll road'
 );
 
+const mergeGraph = parsePackedRoutingGraph(
+  packGraph({
+    nodes: [
+      [41.0, 44.0],
+      [41.01, 44.0],
+      [41.02, 44.0],
+      [41.03, 44.0],
+    ],
+    names: ['Long road'],
+    bbox: [41, 44, 41.03, 44],
+    edges: [
+      { from: 0, to: 1, distance: 1112, duration: 134, name: 0, geometry: [[41.01, 44.0]] },
+      { from: 1, to: 2, distance: 1112, duration: 134, name: 0, geometry: [[41.02, 44.0]] },
+      { from: 2, to: 3, distance: 1112, duration: 134, name: 0, geometry: [[41.03, 44.0]] },
+    ],
+  })
+);
+assert.ok(mergeGraph);
+const mergeRoute = routePackedOffline(
+  mergeGraph,
+  { latitude: 41.0, longitude: 44.0 },
+  { latitude: 41.03, longitude: 44.0 },
+  'car',
+  { avoidTolls: false, avoidHighways: false, avoidUnpaved: false }
+);
+assert.ok(mergeRoute);
+assert.equal(mergeRoute.steps.length, 2, 'continuing on the same road should merge steps');
+assert.equal(mergeRoute.steps[1].distanceMeters, 2224, 'merged step should cover both following edges');
+
+const turnGraph = parsePackedRoutingGraph(
+  packGraph({
+    nodes: [
+      [41.0, 44.0],
+      [41.0, 44.01],
+      [41.01, 44.01],
+    ],
+    names: ['East road', 'North road'],
+    bbox: [41, 44, 41.01, 44.01],
+    edges: [
+      { from: 0, to: 1, distance: 839, duration: 100, name: 0, geometry: [[41.0, 44.01]] },
+      { from: 1, to: 2, distance: 1112, duration: 134, name: 1, geometry: [[41.01, 44.01]] },
+    ],
+  })
+);
+assert.ok(turnGraph);
+const turnRoute = routePackedOffline(
+  turnGraph,
+  { latitude: 41.0, longitude: 44.0 },
+  { latitude: 41.01, longitude: 44.01 },
+  'car',
+  { avoidTolls: false, avoidHighways: false, avoidUnpaved: false }
+);
+assert.ok(turnRoute, 'turn graph should route');
+assert.match(turnRoute.steps[0].instruction, /^Head on East road$/, 'first instruction should be a departure');
+assert.match(turnRoute.steps[1].instruction, /^Turn left onto North road$/, 'east-to-north should turn left');
+assert.match(turnRoute.steps[1].instructionKa, /მოუხვიეთ მარცხნივ/, 'Georgian turn instruction should match');
+
 console.log('Offline packed routing tests passed');
