@@ -10,7 +10,7 @@ caches recent routes, but it cannot calculate a new route offline.
 
 Georgia is a small extract, so a country-sized graph is practical:
 
-- Source: Geofabrik, `https://download.geofabrik.de/asia/georgia-latest.osm.pbf`
+- Source: Geofabrik, `https://download.geofabrik.de/europe/georgia-latest.osm.pbf`
 - License: ODbL, attribution to OpenStreetMap contributors.
 - Approximate download: 45 MB at the time of writing. Check the server's
   `.md5` file before building.
