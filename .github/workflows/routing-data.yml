@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to create, for example routing-data-2026-10-22'
+        description: 'Release tag to publish, for example routing-data-latest'
         required: true
+        default: 'routing-data-latest'
         type: string
 
 permissions:
@@ -34,9 +35,9 @@ jobs:
           mkdir -p artifacts
           python scripts/build-georgia-routing-graph.py \
             --pbf georgia-latest.osm.pbf \
-            --output artifacts/georgia-routing-graph-v2.json.gz
-          test -s artifacts/georgia-routing-graph-v2.json.gz
-          test -s artifacts/georgia-routing-graph-v2.json.gz.sha256
+            --output artifacts/georgia-routing-graph-v3.kvr.gz
+          test -s artifacts/georgia-routing-graph-v3.kvr.gz
+          test -s artifacts/georgia-routing-graph-v3.kvr.gz.sha256
 
       - name: Publish graph release
         env:
@@ -47,9 +48,17 @@ jobs:
             routing-data-*) ;;
             *) echo "release_tag must start with routing-data-"; exit 1 ;;
           esac
-          gh release create "$RELEASE_TAG" \
-            artifacts/georgia-routing-graph-v2.json.gz \
-            artifacts/georgia-routing-graph-v2.json.gz.sha256 \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Nationwide Georgia routing data $RELEASE_TAG" \
-            --notes "Generated from the current Geofabrik Georgia OpenStreetMap extract. The app verifies the SHA-256 sidecar before installing it."
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              artifacts/georgia-routing-graph-v3.kvr.gz \
+              artifacts/georgia-routing-graph-v3.kvr.gz.sha256 \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              artifacts/georgia-routing-graph-v3.kvr.gz \
+              artifacts/georgia-routing-graph-v3.kvr.gz.sha256 \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Nationwide Georgia routing data" \
+              --notes "Generated from the current Geofabrik Georgia OpenStreetMap extract. The app verifies the SHA-256 sidecar before installing it."
+          fi
