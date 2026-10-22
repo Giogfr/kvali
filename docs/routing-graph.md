@@ -50,6 +50,11 @@ successful build must report non-zero country-wide node, edge, and way counts;
 the app must not silently substitute the nearby browser graph when this
 package is missing.
 
+`.github/workflows/routing-data.yml` performs the same build on GitHub-hosted
+Linux and publishes the two files as a release. Run it manually with a tag
+such as `routing-data-2026-10-22`; the app's default installer reads the latest
+release and verifies the sidecar before storing the package.
+
 Valhalla is the best fit because one graph serves car, bicycle and pedestrian
 costing, and its guidance output already matches what the app consumes.
 
