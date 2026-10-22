@@ -53,6 +53,7 @@ import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
 import { loadOfflineRoutingGraph, routeOffline } from '../lib/offlineRouting';
 import { hasInstalledNationwideGraph, loadInstalledNationwideGraph } from '../lib/nationwideRouting';
+import { hasInstalledBasemap, loadInstalledBasemap } from '../lib/offlineBasemap';
 import { routePackedOffline, type PackedRoutingGraph } from '../lib/offlinePackedRouting';
 
 type RouteSource = 'online' | 'cached' | 'offline-graph' | 'offline-national' | null;
@@ -191,6 +192,9 @@ interface AppContextType {
   setAirplaneOfflineMode: (offline: boolean) => void;
   nationwideGraphInstalled: boolean;
   reloadNationwideGraph: () => Promise<boolean>;
+  basemapInstalled: boolean;
+  basemapReady: boolean;
+  reloadBasemap: () => Promise<boolean>;
 
   // Saved Places & Collections
   savedPlaces: SavedPlace[];
@@ -338,6 +342,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // The package is large, so only check its marker at startup and load the
     // graph itself when an offline route actually needs it.
     void hasInstalledNationwideGraph().then(setNationwideInstalled);
+  }, []);
+
+  const [basemapInstalled, setBasemapInstalled] = useState(false);
+  const [basemapReady, setBasemapReady] = useState(false);
+
+  const reloadBasemap = useCallback(async () => {
+    const blob = await loadInstalledBasemap();
+    setBasemapInstalled(blob !== null);
+    setBasemapReady(blob !== null);
+    return blob !== null;
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      if (!(await hasInstalledBasemap())) return;
+      const blob = await loadInstalledBasemap();
+      setBasemapInstalled(blob !== null);
+      setBasemapReady(blob !== null);
+    })();
   }, []);
 
   useEffect(() => {
@@ -1805,6 +1828,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAirplaneOfflineMode,
         nationwideGraphInstalled: nationwideInstalled,
         reloadNationwideGraph,
+        basemapInstalled,
+        basemapReady,
+        reloadBasemap,
         savedPlaces,
         collections,
         savePlace,

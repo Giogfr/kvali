@@ -1,61 +1,55 @@
 # Offline tiles
 
-## What works today
+## What ships
 
-Kvali's offline map is a **request cache**, not a downloaded region:
+Kvali downloads a real **Georgia basemap**, not just an HTTP cache:
 
-- `src/lib/offline.ts` resolves the style, sprites, fonts and TileJSON for every
-  configured style, then stores them in the browser Cache API.
-- `public/sw.js` serves cached tile and style requests when the network is
-  unavailable.
-- The tile cache only contains tiles the user has actually viewed or that the
-  download pass fetched. It is not a complete map of Georgia.
+- `.github/workflows/offline-map.yml` downloads the Protomaps planet build, cuts
+  Georgia (`39.9,41.0,46.8,43.6`, zoom 0-13), rewrites tile IDs, and publishes
+  `georgia-basemap-z13.pmtiles` plus its `.sha256` sidecar to GitHub Pages.
+- `src/lib/offlineBasemap.ts` downloads that PMTiles file into IndexedDB as a
+  Blob, verifies its SHA-256, and registers a MapLibre `pmtiles://` protocol that
+  reads ranges from the Blob. Nothing is served over the network after install.
+- `src/lib/offlineBasemapStyle.ts` builds the Protomaps style for light/dark and
+  EN/KA labels from `@protomaps/basemaps`. Its glyphs, sprites, and TileJSON are
+  cached during install so labels work without a connection.
+- `MapView` uses the installed basemap whenever it is ready, both online and
+  offline. Uninstalling it switches back to the online OpenFreeMap styles.
+- The service-worker request cache in `src/lib/offline.ts` remains as a fallback
+  for online styles and areas that were only browsed, not installed.
 
-This is useful on a commute with a patchy signal, but it is not a maps.me-style
-offline region. The UI says "saved on this device" rather than "offline map
-installed".
+The published file is about 96 MiB (100,891,800 bytes). It contains streets,
+water, land use, buildings, boundaries, and labels down to zoom 13; zooms above
+13 are overzoomed from the z13 tiles.
 
-## Native tile store
+## Install and storage
 
-A complete region needs an MBTiles file on the device and a native way to serve
-it to MapLibre inside the WebView.
+The Offline Maps screen shows the download size, real progress, and a Remove
+action. Removal is blocked while offline-only mode is active so the user cannot
+delete the only working basemap without a connection. Nationwide routing has the
+same install/remove flow.
 
-### Yermo plugin license review
+The basemap is stored in `kvali_offline_basemap_v1`; the routing package uses
+`kvali_nationwide_routing_v3`. Both are separate from route and tile caches.
 
-`@yermo/maplibre-gl-capacitor-offline` 1.15.6 was downloaded from npm and its
-`LICENSE.txt` was read before any integration decision.
+## Licensing
 
-- The plugin itself is **BSD-3-Clause** ("Copyright (c) 2017-2018, Oscar
-  Fonts").
-- Bundled components: mapbox-gl.js (BSD-3), glmatrix (BSD-3), glfx (MIT),
-  d3-color (BSD-3).
-- BSD-3-Clause is compatible with Kvali's GPL-3.0-or-later license.
-- npm reports `SEE LICENSE IN LICENSE.txt`, which is why the file was read
-  directly instead of trusting the package metadata.
+The basemap is derived from OpenStreetMap data via Protomaps. The map keeps
+OpenStreetMap and Protomaps attribution visible. The PMTiles client
+(`pmtiles`, BSD-3-Clause) and Protomaps style package (`@protomaps/basemaps`,
+BSD-3-Clause) are compatible with Kvali's GPL-3.0-or-later license.
 
-The plugin is acceptable from a licensing point of view. It has not been
-installed, because the native build and a physical-device test are required.
+The previously evaluated `@yermo/maplibre-gl-capacitor-offline` plugin is not
+used. PMTiles plus IndexedDB avoids a native plugin and keeps the WebView as the
+only map renderer.
 
-### Build outline
+## Remaining limits
 
-1. Build an MBTiles file for Georgia at zoom 0 to 14 with a vector schema that
-   the existing style understands (OpenMapTiles-compatible).
-2. Keep the output out of git. Publish it as a release artifact with a SHA-256
-   checksum.
-3. Add the Yermo plugin, point it at the downloaded `.mbtiles` file, and switch
-   MapLibre to the local tile URL when a region is installed.
-4. Keep the current Cache API path as the fallback for people who have not
-   downloaded a region. Do not delete it.
-5. Show real file sizes and free-space checks before downloading.
-
-### Open questions
-
-- Tile size and build time for a Georgia z0–14 extract have not been measured.
-  Do not publish a size until they are.
-- The style's glyphs and sprites must ship with the region, otherwise labels
-  disappear offline.
-- Attribution for OpenStreetMap and the style must remain visible in the
-  offline view.
-
-None of the native tile work is complete. The app does not claim a downloaded
-region when only the HTTP cache is populated.
+- No z14-z16 Georgia extract is published; very close zoom levels are
+  overzoomed and less detailed than maps.me.
+- Android WebView storage of a 96 MiB Blob has been exercised in desktop Chrome
+  but not yet on a physical device.
+- GitHub Pages currently serves the 96 MiB file, but that per-file limit is not
+  a documented guarantee. The workflow fails if the file reaches 100 MiB.
+- Offline search and a nationwide offline POI index are not part of this
+  basemap; search still needs a connection unless the data is already cached.

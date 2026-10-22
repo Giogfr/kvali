@@ -12,6 +12,7 @@ import maplibreglWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&
 import { useApp } from '../../context/AppContext';
 import { FallbackMap } from './FallbackMap';
 import { MAP_STYLES } from '../../lib/offline';
+import { buildBasemapStyle } from '../../lib/offlineBasemapStyle';
 import { snapToRoute } from '../../lib/navigation';
 import { Place } from '../../types';
 
@@ -59,6 +60,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
 ) {
   const {
     theme,
+    language,
     satelliteMode,
     effectiveCenter,
     userLocation,
@@ -77,6 +79,8 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     navView,
     northUpLock,
     setIsFollowing,
+    basemapInstalled,
+    basemapReady,
   } = useApp();
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -125,9 +129,37 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
   const [hasInitError, setHasInitError] = useState(false);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
 
+  const useOfflineBasemap = basemapInstalled && basemapReady;
+  const attributionRef = useRef<maplibregl.AttributionControl | null>(null);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (attributionRef.current) {
+      try {
+        map.removeControl(attributionRef.current);
+      } catch {}
+    }
+    const control = new maplibregl.AttributionControl({
+      compact: true,
+      customAttribution: useOfflineBasemap
+        ? '© OpenStreetMap contributors · Protomaps'
+        : '© OpenStreetMap · OpenFreeMap · © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    });
+    map.addControl(control, 'bottom-right');
+    attributionRef.current = control;
+    return () => {
+      try {
+        map.removeControl(control);
+      } catch {}
+      if (attributionRef.current === control) attributionRef.current = null;
+    };
+  }, [useOfflineBasemap, isStyleLoaded]);
+
   const getTargetStyle = useCallback(() => {
+    if (useOfflineBasemap) return buildBasemapStyle(theme, language);
     return theme === 'dark' ? MAP_STYLES.dark : MAP_STYLES.light;
-  }, [theme]);
+  }, [theme, language, useOfflineBasemap]);
 
   const dropPin = useCallback(
     (lngLat: { lng: number; lat: number }) => {
@@ -170,15 +202,6 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
         zoom: 14,
         attributionControl: false,
       });
-
-      map.addControl(
-        new maplibregl.AttributionControl({
-          compact: true,
-          customAttribution:
-            '© OpenStreetMap · OpenFreeMap · © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-        }),
-        'bottom-right'
-      );
 
       // Only downgrade to the schematic map for problems that make the map unusable.
       // Transient tile/sprite 404s and network hiccups must never kill the real map.
@@ -288,7 +311,8 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Swap the style only when the theme actually changed (avoids a mount-time reload flash)
+  // Swap the style only when the theme or the available basemap changed
+  // (avoids a mount-time reload flash).
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || hasInitError) return;
@@ -300,7 +324,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       map.setStyle(target, { diff: false });
       map.once('style.load', () => setIsStyleLoaded(true));
     } catch {}
-  }, [theme, getTargetStyle, hasInitError]);
+  }, [getTargetStyle, hasInitError]);
 
   // Satellite imagery is an optional raster overlay. Keeping it separate from
   // the vector base style makes toggling reliable even when the raster provider
@@ -701,7 +725,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
   // 3D buildings (fill-extrusion from the OpenMapTiles building layer)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !isStyleLoaded || hasInitError || !layers.buildings3d) {
+    if (!map || !isStyleLoaded || hasInitError || !layers.buildings3d || useOfflineBasemap) {
       try {
         if (map?.getLayer('kvali-3d-buildings')) map.removeLayer('kvali-3d-buildings');
       } catch {}
@@ -754,7 +778,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
         map.off('style.load', addExtrusion);
       } catch {}
     };
-  }, [isStyleLoaded, layers.buildings3d, theme, hasInitError]);
+  }, [isStyleLoaded, layers.buildings3d, theme, hasInitError, useOfflineBasemap]);
 
   // Draw active route polyline on MapLibre
   useEffect(() => {

@@ -29,12 +29,13 @@ That runs the pure-module suites:
 | `test:offline-cache` | cached POI collections, expiry and corruption |
 | `test:offline-routing` | validated local graph routes and exclusions |
 | `test:offline-packed` | binary country graph reader, validation and route flags |
+| `test:offline-basemap` | PMTiles style layers, sources and cached asset URLs |
 | `test:speech` | voice/language matching, including Georgian |
 | `test:speed` | speed/limit display, tolerance and limit scope |
 
-That is nineteen suites; the numeric suites report 127 checks, and the
-packed-package suite reports pass or fail. Each suite exits non-zero on the
-first failure, so `test:units` stops at the broken module.
+That is twenty suites; the numeric suites report 127 checks, and the
+packed-package and basemap suites report pass or fail. Each suite exits non-zero
+on the first failure, so `test:units` stops at the broken module.
 
 The CI workflow runs `bun run test:units` on every push and pull request.
 
@@ -65,6 +66,20 @@ bun run test:offline                             # terminal 2
 Use `vite preview --host 127.0.0.1`. The plain `bun run preview` may bind only
 `localhost`/IPv6, and the test connects to `127.0.0.1`.
 
+## Offline basemap test
+
+```sh
+bun run build
+bunx vite preview --host 127.0.0.1 --port 4174   # terminal 1
+bun run test:offline-basemap                     # style and asset units
+```
+
+The published basemap has also been installed through the Offline Maps UI in
+headless Chrome, downloaded in full (100,891,800 bytes), SHA-256 verified, kept
+in IndexedDB across a reload, and rendered after the browser was switched fully
+offline (roads, water, buildings, and labels visible). Georgia's PMTiles file
+and routing package are both hosted on GitHub Pages with CORS enabled.
+
 ## Nationwide graph test
 
 An installed or downloaded routing package can be validated outside the app:
@@ -86,7 +101,9 @@ install, page reload, and a 364.47 km Tbilisi-to-Batumi route all passed.
 - The published Georgia routing package on a physical device in airplane mode.
   Its download, checksum, install, persistence and routing are covered in a
   headless browser, but not yet through the Android WebView and storage layer.
-- Native MBTiles.
+- The 96 MiB offline basemap on a physical device. Desktop Chrome covers
+  download, IndexedDB persistence, and a fully offline reload, but Android
+  WebView Blob storage and memory use are not verified.
 - Voice quality, which depends on the installed TTS engine and language pack.
 - Flaky upstream services. Overpass 429/502 responses are logged as warnings,
   not failures, because the app handles them by showing cached or empty data.

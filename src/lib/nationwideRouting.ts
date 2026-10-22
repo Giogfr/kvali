@@ -151,3 +151,16 @@ export async function downloadNationwideGraph(
   await writePackage({ key: PACKAGE_KEY, bytes: bytes.buffer, sha256: actual, savedAt: Date.now() });
   return graph;
 }
+
+export async function removeNationwideGraph(): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+  const database = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const store = database.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+    store.delete(PACKAGE_KEY);
+    const request = store.delete(META_KEY);
+    request.onsuccess = () => resolve();
+    request.onerror = () =>
+      reject(request.error || new Error('Nationwide routing package could not be removed'));
+  });
+}

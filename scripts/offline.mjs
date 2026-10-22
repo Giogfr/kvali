@@ -39,6 +39,23 @@ async function clickText(page, selector, text) {
   await sleep(500);
 }
 
+async function clickExactText(page, selector, text) {
+  const clicked = await page.evaluate(
+    (sel, needle) => {
+      const element = [...document.querySelectorAll(sel)].find(
+        (node) => (node.textContent || '').trim() === needle
+      );
+      if (!element) return false;
+      element.click();
+      return true;
+    },
+    selector,
+    text
+  );
+  if (!clicked) throw new Error(`Could not find exact "${text}" in ${selector}`);
+  await sleep(500);
+}
+
 async function tileCount(page) {
   return page.evaluate(async () => {
     if (!(await caches.has('kvali-tiles-v1'))) return 0;
@@ -150,7 +167,7 @@ try {
   );
   await sleep(1000);
   const tilesBeforeDownload = await tileCount(page);
-  await clickText(page, 'button', 'Download');
+  await clickExactText(page, 'button', 'Download');
   await page.waitForFunction(
     () =>
       [...document.querySelectorAll('span')].some(

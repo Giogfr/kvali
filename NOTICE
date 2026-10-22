@@ -31,6 +31,8 @@ Third-party components
 Runtime dependencies:
 
   MapLibre GL JS                       BSD-3-Clause
+  pmtiles                              BSD-3-Clause
+  @protomaps/basemaps                  BSD-3-Clause
   React, React DOM                     MIT
   Lucide                               ISC
   @capacitor/core                      MIT
@@ -54,7 +56,7 @@ Map data and services
 ---------------------
 
   Map data © OpenStreetMap contributors, ODbL.
-  Tiles by OpenFreeMap.
+  Tiles by OpenFreeMap and Protomaps.
   Geocoding by Nominatim.
   Routing by FOSSGIS OSRM and Valhalla.
   Points of interest and road alerts by Overpass.

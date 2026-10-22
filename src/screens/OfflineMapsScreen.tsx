@@ -34,7 +34,8 @@ import {
   loadOfflineRoutingGraph,
   saveOfflineRoutingGraph,
 } from '../lib/offlineRouting';
-import { downloadNationwideGraph } from '../lib/nationwideRouting';
+import { downloadNationwideGraph, removeNationwideGraph } from '../lib/nationwideRouting';
+import { downloadBasemap, removeBasemap } from '../lib/offlineBasemap';
 import {
   MAP_STYLES,
   clearTileCache,
@@ -64,6 +65,8 @@ export const OfflineMapsScreen: React.FC = () => {
     isOnline,
     nationwideGraphInstalled,
     reloadNationwideGraph,
+    basemapInstalled,
+    reloadBasemap,
   } = useApp();
 
   const { showToast } = useToast();
@@ -75,6 +78,8 @@ export const OfflineMapsScreen: React.FC = () => {
   const [isPreparingRouting, setIsPreparingRouting] = useState(false);
   const [isInstallingNationwide, setIsInstallingNationwide] = useState(false);
   const [nationwideProgress, setNationwideProgress] = useState(0);
+  const [isInstallingBasemap, setIsInstallingBasemap] = useState(false);
+  const [basemapProgress, setBasemapProgress] = useState(0);
   const [routingGraphInstalled, setRoutingGraphInstalled] = useState(
     () => loadOfflineRoutingGraph() !== null
   );
@@ -256,6 +261,45 @@ export const OfflineMapsScreen: React.FC = () => {
     }
   };
 
+  const handleInstallBasemap = async () => {
+    if (isInstallingBasemap || airplaneOfflineMode || !isOnline) return;
+    setIsInstallingBasemap(true);
+    setBasemapProgress(0);
+    try {
+      await downloadBasemap((received, total) => {
+        setBasemapProgress(total ? Math.min(100, Math.round((received / total) * 100)) : 0);
+      });
+      await reloadBasemap();
+      showToast(t('basemapReady'), 'success');
+    } catch (error) {
+      if ((error as Error)?.name !== 'AbortError') showToast(t('basemapFailed'), 'warn');
+    } finally {
+      setIsInstallingBasemap(false);
+    }
+  };
+
+  const handleRemoveBasemap = async () => {
+    if (!window.confirm(t('basemapRemoveConfirm'))) return;
+    try {
+      await removeBasemap();
+      await reloadBasemap();
+      showToast(t('basemapRemoved'), 'success');
+    } catch {
+      showToast(t('basemapFailed'), 'warn');
+    }
+  };
+
+  const handleRemoveNationwide = async () => {
+    if (!window.confirm(t('nationwideRoutingRemoveConfirm'))) return;
+    try {
+      await removeNationwideGraph();
+      await reloadNationwideGraph();
+      showToast(t('nationwideRoutingRemoved'), 'success');
+    } catch {
+      showToast(t('nationwideRoutingFailed'), 'warn');
+    }
+  };
+
   const handleAddArea = async () => {
     if (isAddingArea) return;
     setIsAddingArea(true);
@@ -292,9 +336,9 @@ export const OfflineMapsScreen: React.FC = () => {
   const quotaBytes = storage?.quota ?? 0;
   const usedPercent = quotaBytes ? Math.min(100, (usageBytes / quotaBytes) * 100) : 0;
   const downloadedBytes = offlineRegions.reduce((sum, r) => sum + (r.bytes ?? 0), 0);
-  const hasOfflineMap = offlineRegions.some(
-    (region) => region.status === 'downloaded' && !region.partial
-  );
+  const hasOfflineMap =
+    basemapInstalled ||
+    offlineRegions.some((region) => region.status === 'downloaded' && !region.partial);
   const hasOfflineRoute = savedRoutes > 0 || routingGraphInstalled || nationwideGraphInstalled;
   const hasLocation = geolocationStatus === 'granted' || !!manualLocation || !!userLocation;
   const hasGuidance = voiceMode !== 'muted';
@@ -362,7 +406,43 @@ export const OfflineMapsScreen: React.FC = () => {
           )}
         </div>
 
-        {/* Nearby real road graph for new routes without a connection */}
+        {/* Whole-country visual map */}
+        <div className={`p-3.5 ${cardClass}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[13px] font-semibold block text-neutral-800 dark:text-neutral-200 leading-tight">
+                {t('basemapTitle')}
+              </span>
+              <span className={`text-[11px] ${mutedText} leading-tight block mt-0.5`}>
+                {basemapInstalled ? t('basemapInstalled') : t('basemapDesc')}
+              </span>
+              {isInstallingBasemap && (
+                <span className={`text-[10px] ${mutedText} block mt-1`}>
+                  {t('basemapProgress').replace('{progress}', `${basemapProgress}%`)}
+                </span>
+              )}
+            </div>
+            {basemapInstalled ? (
+              <button
+                onClick={handleRemoveBasemap}
+                disabled={airplaneOfflineMode || !isOnline}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {t('remove')}
+              </button>
+            ) : (
+              <button
+                onClick={handleInstallBasemap}
+                disabled={isInstallingBasemap || airplaneOfflineMode || !isOnline}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] text-white text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isInstallingBasemap ? t('basemapInstalling') : t('basemapInstall')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Nationwide routing for new car routes without a connection */}
         <div className={`p-3.5 ${cardClass}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -378,13 +458,23 @@ export const OfflineMapsScreen: React.FC = () => {
                 </span>
               )}
             </div>
-            <button
-              onClick={handleInstallNationwide}
-              disabled={isInstallingNationwide || airplaneOfflineMode || !isOnline}
-              className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] text-white text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isInstallingNationwide ? t('nationwideRoutingInstalling') : t('nationwideRoutingInstall')}
-            </button>
+            {nationwideGraphInstalled ? (
+              <button
+                onClick={handleRemoveNationwide}
+                disabled={airplaneOfflineMode || !isOnline}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {t('remove')}
+              </button>
+            ) : (
+              <button
+                onClick={handleInstallNationwide}
+                disabled={isInstallingNationwide || airplaneOfflineMode || !isOnline}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] text-white text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isInstallingNationwide ? t('nationwideRoutingInstalling') : t('nationwideRoutingInstall')}
+              </button>
+            )}
           </div>
         </div>
 

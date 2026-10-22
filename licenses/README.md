@@ -9,6 +9,8 @@ for packages that do not ship a license file).
 | `react.txt` | react | MIT |
 | `react-dom.txt` | react-dom | MIT |
 | `maplibre-gl.txt` | maplibre-gl | BSD-3-Clause |
+| `pmtiles.txt` | pmtiles | BSD-3-Clause |
+| `protomaps-basemaps.txt` | @protomaps/basemaps | BSD-3-Clause |
 | `lucide-react.txt` | lucide-react | ISC |
 | `capacitor-core.txt` | @capacitor/core | MIT |
 | `capacitor-android.txt` | @capacitor/android | MIT |

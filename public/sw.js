@@ -17,6 +17,7 @@ const ASSET_CACHE = `kvali-assets-${VERSION}`;
 const MAP_HOSTS = [
   'tiles.openfreemap.org',
   'fonts.openfreemap.org',
+  'protomaps.github.io',
   'server.arcgisonline.com',
   'services.arcgisonline.com',
   'ibasemaps-api.arcgis.com',

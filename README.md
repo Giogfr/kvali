@@ -9,7 +9,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB"></a>
   <a href="https://github.com/Giogfr/kvali/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Giogfr/kvali/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.1-2F6FEB">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.4-2F6FEB">
   <br />
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
@@ -22,11 +22,11 @@
 
 Kvali is an open-source navigation app for Georgia. It is a React + TypeScript app that runs in the browser and on Android through Capacitor. Maps are OpenStreetMap vector tiles rendered with MapLibre GL; search and reverse geocoding come from Nominatim, routes from OSRM, and nearby points of interest from Overpass.
 
-> **Status: public beta (1.0.0-beta.3).** Kvali does real routing, GPS guidance, Georgian voice, offline maps and nationwide offline car routing, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
+> **Status: public beta (1.0.0-beta.4).** Kvali does real routing, GPS guidance, Georgian voice, a downloadable whole-country visual map, and nationwide offline car routing, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
 
 ## Download & install
 
-- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.3](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.3), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
+- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.4](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.4), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
 - **Web / PWA:** run `bun run build` and serve `dist/`, or deploy it anywhere static. In Chrome or Edge, use **Install app** in the address bar to add it as a standalone app with offline support.
 
 ## Table of contents
@@ -84,6 +84,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 
 ### Offline & device
 
+- A downloadable 96 MB whole-country Georgia visual basemap (PMTiles, zooms 0–13, English/Georgian labels) stored on the device, so streets, buildings, water, and labels render with no connection. Its SHA-256 is verified before install and it can be removed from **Offline Maps**.
 - Offline map areas that cache real vector tiles (zooms 9–14, both map styles, sprites and fonts) in device storage through a service worker, so the map keeps rendering without a connection.
 - A 39 MB nationwide Georgia road package (411,520 junctions, 996,569 road edges) that builds new car routes with turn instructions anywhere in the country without a connection. The app verifies its SHA-256 before installing and uses a compact binary format, so it does not need a server.
 - Routes you have calculated once are saved on the device (to roughly 110 m) and work again offline; nearby POIs and alert data are cached for a week.
@@ -104,7 +105,7 @@ Architecture notes and honest status reports live in [`docs/`](docs/):
 - [Navigation engine](docs/navigation-engine.md) — projection, snapping, off-route detection.
 - [Georgian addresses](docs/georgian-addresses.md) — script and postcode normalization.
 - [Background location](docs/background-location.md) — plugin licenses and the integration plan.
-- [Offline routing](docs/routing-graph.md) and [offline tiles](docs/offline-tiles.md) — what is still missing.
+- [Offline routing](docs/routing-graph.md) and [offline tiles](docs/offline-tiles.md) — the nationwide packages, storage, and remaining limits.
 - [Data sources](docs/data-sources.md), [privacy](docs/privacy.md) and [testing](docs/testing.md).
 
 ## Tech stack
@@ -158,6 +159,7 @@ bun run preview
 | `bun run clean` | Remove the `dist/` directory. |
 | `bun run test:units` | Pure-module unit checks (navigation, geo, addresses, time, alerts, routing preferences, GPX, translations). |
 | `bun run test:smoke` | End-to-end browser checks (map, routing, preferences); needs the dev server on :3000. |
+| `bun run test:offline-basemap` | Checks the Protomaps style, sources and cached glyph/sprite URLs. |
 | `bun run test:offline` | Same idea with the network switched off; needs `bun run preview` on :4173. |
 | `bun run icons` | Regenerate the PWA and Android launcher icons from the built-in SVG. |
 
@@ -173,7 +175,8 @@ src/
 │  └─ map/       # MapView (MapLibre), FallbackMap (SVG), PinCallout
 ├─ context/      # AppContext (app state), ToastContext
 ├─ lib/          # geo.ts, navigation.ts, services.ts, location.ts, offline.ts,
-│                # routeCache.ts, offlineCache.ts, speech.ts, wakeLock.ts, translations.ts
+│                # routeCache.ts, offlineCache.ts, offlineBasemap.ts, nationwideRouting.ts,
+│                # speech.ts, wakeLock.ts, translations.ts
 ├─ screens/      # One component per screen (lazy-loaded)
 ├─ types/        # Shared TypeScript types
 ├─ index.css     # Tailwind entry + design tokens, keyframes, utilities
@@ -227,21 +230,23 @@ Persisted to `localStorage`: theme, language, units, voice mode, travel mode, ro
 
 ## Offline behaviour
 
-The app is offline-first. The shell, the downloaded map tiles, and any route you have already calculated are served from the device cache, so the map keeps drawing and a known route keeps guiding without a connection — even if you still have a little internet. If you install the Georgia roads package from **Offline Maps**, new car routes also work anywhere in the country without a connection.
+The app is offline-first. The shell and any route you have already calculated are served from the device, so a known route keeps guiding without a connection — even if you still have a little internet. Install the 96 MB Georgia map from **Offline Maps** to draw the whole country's streets, buildings, water, and labels offline; install the Georgia roads package to create new car routes anywhere in the country. Both packages are checksum-verified and can be removed from the same screen.
 
 What still needs a connection:
 
 - Search and reverse geocoding (Nominatim).
 - Point-of-interest and alert lookups (Overpass).
 - A **new** car route when the nationwide package is not installed, and any new bike or walking route.
-- The one-time 39 MB nationwide package download itself.
+- The one-time 96 MB basemap and 39 MB road-package downloads.
+- Map detail above zoom 13, which is overzoomed from the z13 basemap.
 
 Voice guidance uses the device speech synthesiser, so the available voices and languages depend on the platform.
 
 ## Data & attribution
 
 - Map data © OpenStreetMap contributors, available under the ODbL.
-- Vector tiles served by OpenFreeMap.
+- Map data © OpenStreetMap contributors, available under the ODbL.
+- Vector tiles served by OpenFreeMap online; the downloaded basemap is derived from Protomaps.
 - Geocoding and reverse geocoding by Nominatim.
 - Routing by OSRM.
 - Points of interest by Overpass.
@@ -255,6 +260,8 @@ Kvali is distributed under the GNU General Public License, version 3 or later. T
 | Component | License | Used for |
 | --- | --- | --- |
 | [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) | BSD-3-Clause | Map rendering, gestures, offline tile sources |
+| [PMTiles](https://github.com/protomaps/PMTiles) | BSD-3-Clause | Range requests against the downloaded basemap |
+| [Protomaps basemaps](https://github.com/protomaps/basemaps) | BSD-3-Clause | Offline basemap style and layers |
 | [React](https://github.com/facebook/react) / [React DOM](https://github.com/facebook/react) | MIT | UI |
 | [Lucide](https://github.com/lucide-icons/lucide) | ISC | Icons |
 | [Capacitor core / Android / Geolocation](https://github.com/ionic-team/capacitor) | MIT | Android shell and location bridge |
@@ -265,10 +272,11 @@ Kvali is distributed under the GNU General Public License, version 3 or later. T
 
 The full license text for each component is kept in [`licenses/`](licenses/). The [`NOTICE`](NOTICE) file records the same information for redistribution and will also list any source ported from other GPL projects.
 
-Map data © OpenStreetMap contributors (ODbL); vector tiles by OpenFreeMap;
-satellite imagery by Esri and its imagery providers; geocoding by Nominatim;
-routing by OSRM and Valhalla; points of interest and alerts by Overpass. Those
-services are not bundled with the app and are used under their own terms.
+Map data © OpenStreetMap contributors (ODbL); vector tiles by OpenFreeMap and
+Protomaps; satellite imagery by Esri and its imagery providers; geocoding by
+Nominatim; routing by OSRM and Valhalla; points of interest and alerts by
+Overpass. Those services are not bundled with the app and are used under their
+own terms.
 
 Kvali does not include code from OsmAnd, Navi, Organic Maps, or other navigation projects at this time. Organic Maps was consulted for interaction design only.
 
@@ -318,7 +326,7 @@ Tagged builds attach the signed release APK, so you can download and sideload it
 - On the phone, allow installs from your browser, then open the downloaded APK.
 - Grant location permission on first launch and choose precise location where offered.
 
-Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.3` (`versionCode` 5).
+Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.4` (`versionCode` 6).
 
 ## How to test
 
@@ -332,7 +340,7 @@ The quickest loop is the web build, but native location, the screen wake lock, a
 4. Open a result's directions button, pick a route alternative, then **Start navigation**. Without a GPS fix the banner stays on the first instruction; with a fix the banner, remaining distance, and ETA update as you move.
 5. Switch **Settings → Distance units** to imperial and confirm speed, distance, and speed-limit values change to mph/mi.
 6. In **Settings → Voice guidance**, pick *Spoken*, *Chime*, or *Muted* and confirm guidance speaks, chimes, or stays silent.
-7. **Offline Maps**: download an area and watch real tiles cache. Go offline (DevTools → Network → Offline) and confirm the map still renders; search stops, while a new car route still works if the Georgia roads package is installed.
+7. **Offline Maps**: download the 96 MB Georgia map and the Georgia roads package. Go offline (DevTools → Network → Offline), reload, and confirm the whole-country basemap still draws with labels; search stops, while a new car route still works.
 8. **Road alerts**: add a report and confirm a marker appears on the map.
 
 To exercise location screens without moving, use your browser's sensor override (Chrome DevTools → Sensors → Location) and set a custom position.
@@ -343,7 +351,7 @@ To exercise location screens without moving, use your browser's sensor override 
 2. Grant location permission — choose "While using the app" and allow precise location if asked.
 3. Move a short distance and confirm the blue dot follows you and the guidance banner advances.
 4. Start navigation and leave the screen on: the display should stay awake while guidance is active.
-5. Airplane-mode test: download an offline area and the Georgia roads package first, switch to airplane mode, then confirm the downloaded tiles still draw and a new Tbilisi-to-Batumi car route is calculated on the device.
+5. Airplane-mode test: download the Georgia map and the Georgia roads package first, switch to airplane mode, then confirm streets and labels still draw across the country and a new Tbilisi-to-Batumi car route is calculated on the device.
 
 ### Checking a build
 

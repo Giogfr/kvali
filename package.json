@@ -1,7 +1,7 @@
 {
   "name": "kvali",
   "private": true,
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -29,11 +29,12 @@
     "test:offline-cache": "bun scripts/test-offline-cache.mjs",
     "test:offline-routing": "bun scripts/test-offline-routing.mjs",
     "test:offline-packed": "bun scripts/test-offline-packed.mjs",
+    "test:offline-basemap": "bun scripts/test-offline-basemap.mjs",
     "test:nationwide-graph": "bun scripts/test-nationwide-graph.mjs",
     "build:routing-graph": "python scripts/build-georgia-routing-graph.py",
     "test:speech": "bun scripts/test-speech.mjs",
     "test:speed": "bun scripts/test-speed.mjs",
-    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs && bun scripts/test-route-preferences.mjs && bun scripts/test-gpx-export.mjs && bun scripts/test-i18n.mjs && bun scripts/test-i18n-template.mjs && bun scripts/test-location.mjs && bun scripts/test-track.mjs && bun scripts/test-route-cache.mjs && bun scripts/test-offline-cache.mjs && bun scripts/test-offline-routing.mjs && bun scripts/test-offline-packed.mjs && bun scripts/test-speech.mjs && bun scripts/test-speed.mjs",
+    "test:units": "bun scripts/test-navigation-engine.mjs && bun scripts/test-geo.mjs && bun scripts/test-navigation.mjs && bun scripts/test-address.mjs && bun scripts/test-time.mjs && bun scripts/test-alert-schedule.mjs && bun scripts/test-nearby-alerts.mjs && bun scripts/test-route-preferences.mjs && bun scripts/test-gpx-export.mjs && bun scripts/test-i18n.mjs && bun scripts/test-i18n-template.mjs && bun scripts/test-location.mjs && bun scripts/test-track.mjs && bun scripts/test-route-cache.mjs && bun scripts/test-offline-cache.mjs && bun scripts/test-offline-routing.mjs && bun scripts/test-offline-packed.mjs && bun scripts/test-offline-basemap.mjs && bun scripts/test-speech.mjs && bun scripts/test-speed.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
@@ -43,11 +44,13 @@
     "@capacitor/core": "^8.5.3",
     "@capacitor/geolocation": "^8.2.4",
     "@capacitor/local-notifications": "^8.3.1",
+    "@protomaps/basemaps": "5.7.2",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "fflate": "^0.8.3",
     "lucide-react": "^0.546.0",
     "maplibre-gl": "^6.14.0",
+    "pmtiles": "4.5.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^8.3.0"
