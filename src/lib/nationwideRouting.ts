@@ -1,11 +1,11 @@
 import { parsePackedRoutingGraph, type PackedRoutingGraph } from './offlinePackedRouting';
 import { gunzipSync } from 'fflate';
 
-const DATABASE_NAME = 'kvali_nationwide_routing_v2';
+const DATABASE_NAME = 'kvali_nationwide_routing_v3';
 const STORE_NAME = 'packages';
 const PACKAGE_KEY = 'georgia-car';
 export const DEFAULT_NATIONWIDE_GRAPH_URL =
-  'https://github.com/Giogfr/kvali/releases/latest/download/georgia-routing-graph-v2.json.gz';
+  'https://github.com/Giogfr/kvali/releases/download/routing-data-latest/georgia-routing-graph-v3.kvr.gz';
 
 interface StoredPackage {
   key: string;
@@ -47,16 +47,13 @@ async function sha256(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(digest)].map((part) => part.toString(16).padStart(2, '0')).join('');
 }
 
-async function decodePackage(bytes: ArrayBuffer, compressed: boolean): Promise<unknown> {
-  let decoded: string;
-  if (!compressed) {
-    decoded = new TextDecoder().decode(bytes);
-  } else if ('DecompressionStream' in window) {
-    decoded = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-  } else {
-    decoded = new TextDecoder().decode(gunzipSync(new Uint8Array(bytes)));
+async function decodePackage(bytes: ArrayBuffer, compressed: boolean): Promise<ArrayBuffer> {
+  if (!compressed) return bytes;
+  if ('DecompressionStream' in window) {
+    return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   }
-  return JSON.parse(decoded);
+  const unpacked = gunzipSync(new Uint8Array(bytes));
+  return unpacked.buffer.slice(unpacked.byteOffset, unpacked.byteOffset + unpacked.byteLength) as ArrayBuffer;
 }
 
 function parseSha256(text: string): string | null {

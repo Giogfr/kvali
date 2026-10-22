@@ -1,64 +1,160 @@
 /**
- * Reader and route engine for the nationwide graph emitted by
- * scripts/build-georgia-routing-graph.py.
+ * Kvali.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
  */
 
 import type { RealRouteResult, RouteStep } from './services';
 import type { RoutePreferences, TravelMode } from '../types';
 import { calculateDistanceKm } from './geo';
 
-export const PACKED_GRAPH_VERSION = 2;
+export const PACKED_GRAPH_VERSION = 3;
 export const PACKED_EDGE_HIGHWAY = 1;
 export const PACKED_EDGE_UNPAVED = 2;
 export const PACKED_EDGE_TOLL = 4;
 
+const MAGIC = 'KVRG';
+const HEADER_BYTES = 60;
+const PROFILE_CAR = 1;
+const MAX_SNAP_DISTANCE_KM = 5;
+
 export interface PackedRoutingGraph {
-  version: 2;
+  version: 3;
   country: 'GE';
   profile: 'car';
-  nodes: [number, number][];
-  offsets: number[];
-  edges: [number, number, number, number, number][];
+  nodeCount: number;
+  edgeCount: number;
+  nodeLat: Int32Array;
+  nodeLon: Int32Array;
+  offsets: Uint32Array;
+  targets: Uint32Array;
+  distances: Uint32Array;
+  durations: Uint32Array;
+  nameIndexes: Uint32Array;
+  geometryOffsets: Uint32Array;
+  geometryLat: Int32Array;
+  geometryLon: Int32Array;
+  flags: Uint8Array;
   names: string[];
   bbox: [number, number, number, number];
-  stats?: { nodes: number; edges: number; ways: number };
   grid: Map<string, number[]>;
-}
-
-function isIntegerArray(value: unknown, length: number): value is number[] {
-  return Array.isArray(value) && value.length === length && value.every((item) => Number.isInteger(item));
 }
 
 function gridKey(latitude: number, longitude: number): string {
   return `${Math.floor(latitude * 10)}:${Math.floor(longitude * 10)}`;
 }
 
-function validPackedGraph(value: unknown): value is Omit<PackedRoutingGraph, 'grid'> {
-  if (!value || typeof value !== 'object') return false;
-  const graph = value as Partial<PackedRoutingGraph>;
-  if (graph.version !== PACKED_GRAPH_VERSION || graph.country !== 'GE' || graph.profile !== 'car') return false;
-  if (!Array.isArray(graph.nodes) || graph.nodes.some((node) => !isIntegerArray(node, 2))) return false;
-  if (!Array.isArray(graph.offsets) || graph.offsets.length !== graph.nodes.length + 1) return false;
-  if (!graph.offsets.every((offset) => Number.isInteger(offset) && offset >= 0)) return false;
-  if (!Array.isArray(graph.edges) || !graph.edges.every((edge) => isIntegerArray(edge, 5))) return false;
-  if (graph.offsets.at(-1) !== graph.edges.length) return false;
-  if (!Array.isArray(graph.names) || !graph.names.every((name) => typeof name === 'string')) return false;
-  if (!Array.isArray(graph.bbox) || graph.bbox.length !== 4 || !graph.bbox.every(Number.isFinite)) return false;
-  return graph.edges.every(([target, distance, duration, flags, name]) => (
-    target >= 0 && target < graph.nodes!.length && distance >= 1 && duration >= 1 && flags >= 0 && name >= 0 && name < graph.names!.length
-  ));
-}
+/** Reads the binary KVRG v3 package produced by the routing graph builder. */
+export function parsePackedRoutingGraph(buffer: ArrayBuffer): PackedRoutingGraph | null {
+  try {
+    if (buffer.byteLength < HEADER_BYTES) return null;
+    const header = new DataView(buffer, 0, HEADER_BYTES);
+    const magic = new TextDecoder().decode(new Uint8Array(buffer, 0, 4));
+    if (magic !== MAGIC) return null;
+    const version = header.getUint16(4, true);
+    const profile = header.getUint8(6);
+    if (version !== PACKED_GRAPH_VERSION || profile !== PROFILE_CAR) return null;
 
-export function parsePackedRoutingGraph(value: unknown): PackedRoutingGraph | null {
-  if (!validPackedGraph(value)) return null;
-  const graph: PackedRoutingGraph = { ...value, grid: new Map() };
-  graph.nodes.forEach(([latMicro, lonMicro], index) => {
-    const key = gridKey(latMicro / 1_000_000, lonMicro / 1_000_000);
-    const bucket = graph.grid.get(key) || [];
-    bucket.push(index);
-    graph.grid.set(key, bucket);
-  });
-  return graph;
+    const nodeCount = header.getUint32(8, true);
+    const edgeCount = header.getUint32(12, true);
+    const nameCount = header.getUint32(16, true);
+    const geometryPointCount = header.getUint32(20, true);
+    const bbox: [number, number, number, number] = [
+      header.getFloat64(24, true),
+      header.getFloat64(32, true),
+      header.getFloat64(40, true),
+      header.getFloat64(48, true),
+    ];
+    const namesByteLength = header.getUint32(56, true);
+    if (nodeCount === 0 || edgeCount === 0 || nameCount === 0 || geometryPointCount === 0) return null;
+
+    const expected =
+      HEADER_BYTES +
+      nodeCount * 8 +
+      (nodeCount + 1) * 4 +
+      edgeCount * 4 * 4 +
+      (edgeCount + 1) * 4 +
+      geometryPointCount * 8 +
+      edgeCount +
+      namesByteLength;
+    if (buffer.byteLength !== expected) return null;
+
+    let cursor = HEADER_BYTES;
+    const take = (bytes: number): number => {
+      const start = cursor;
+      cursor += bytes;
+      return start;
+    };
+
+    const nodeLat = new Int32Array(buffer, take(nodeCount * 4), nodeCount);
+    const nodeLon = new Int32Array(buffer, take(nodeCount * 4), nodeCount);
+    const offsets = new Uint32Array(buffer, take((nodeCount + 1) * 4), nodeCount + 1);
+    const targets = new Uint32Array(buffer, take(edgeCount * 4), edgeCount);
+    const distances = new Uint32Array(buffer, take(edgeCount * 4), edgeCount);
+    const durations = new Uint32Array(buffer, take(edgeCount * 4), edgeCount);
+    const nameIndexes = new Uint32Array(buffer, take(edgeCount * 4), edgeCount);
+    const geometryOffsets = new Uint32Array(buffer, take((edgeCount + 1) * 4), edgeCount + 1);
+    const geometryLat = new Int32Array(buffer, take(geometryPointCount * 4), geometryPointCount);
+    const geometryLon = new Int32Array(buffer, take(geometryPointCount * 4), geometryPointCount);
+    const flags = new Uint8Array(buffer, take(edgeCount), edgeCount);
+    const names = new TextDecoder().decode(new Uint8Array(buffer, cursor, namesByteLength)).split('\0');
+
+    if (names.length !== nameCount) return null;
+    if (offsets[0] !== 0 || offsets[nodeCount] !== edgeCount) return null;
+    if (geometryOffsets[0] !== 0 || geometryOffsets[edgeCount] !== geometryPointCount) return null;
+
+    for (let index = 0; index < nodeCount; index += 1) {
+      if (offsets[index] > offsets[index + 1]) return null;
+    }
+    for (let index = 0; index < edgeCount; index += 1) {
+      if (
+        targets[index] >= nodeCount ||
+        distances[index] < 1 ||
+        durations[index] < 1 ||
+        nameIndexes[index] >= nameCount ||
+        (flags[index] & ~(PACKED_EDGE_HIGHWAY | PACKED_EDGE_UNPAVED | PACKED_EDGE_TOLL)) !== 0 ||
+        geometryOffsets[index] >= geometryOffsets[index + 1]
+      ) {
+        return null;
+      }
+    }
+    if (bbox.some((value) => !Number.isFinite(value))) return null;
+
+    const grid = new Map<string, number[]>();
+    for (let index = 0; index < nodeCount; index += 1) {
+      const key = gridKey(nodeLat[index] / 1_000_000, nodeLon[index] / 1_000_000);
+      const bucket = grid.get(key);
+      if (bucket) bucket.push(index);
+      else grid.set(key, [index]);
+    }
+
+    return {
+      version: 3,
+      country: 'GE',
+      profile: 'car',
+      nodeCount,
+      edgeCount,
+      nodeLat,
+      nodeLon,
+      offsets,
+      targets,
+      distances,
+      durations,
+      nameIndexes,
+      geometryOffsets,
+      geometryLat,
+      geometryLon,
+      flags,
+      names,
+      bbox,
+      grid,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function nearestNode(graph: PackedRoutingGraph, point: { latitude: number; longitude: number }): number | null {
@@ -72,8 +168,12 @@ function nearestNode(graph: PackedRoutingGraph, point: { latitude: number; longi
     for (let lat = centerLat - radius; lat <= centerLat + radius; lat += 1) {
       for (let lon = centerLon - radius; lon <= centerLon + radius; lon += 1) {
         for (const index of graph.grid.get(`${lat}:${lon}`) || []) {
-          const [latMicro, lonMicro] = graph.nodes[index];
-          const distanceKm = calculateDistanceKm(point.latitude, point.longitude, latMicro / 1_000_000, lonMicro / 1_000_000);
+          const distanceKm = calculateDistanceKm(
+            point.latitude,
+            point.longitude,
+            graph.nodeLat[index] / 1_000_000,
+            graph.nodeLon[index] / 1_000_000
+          );
           if (distanceKm < bestKm) {
             bestKm = distanceKm;
             best = index;
@@ -81,13 +181,13 @@ function nearestNode(graph: PackedRoutingGraph, point: { latitude: number; longi
         }
       }
     }
-    if (best !== null && bestKm <= 5) return best;
+    if (best !== null && bestKm <= MAX_SNAP_DISTANCE_KM) return best;
   }
-  return bestKm <= 5 ? best : null;
+  return bestKm <= MAX_SNAP_DISTANCE_KM ? best : null;
 }
 
-function edgeAllowed(edge: [number, number, number, number, number], preferences: RoutePreferences): boolean {
-  const flags = edge[3];
+function edgeAllowed(graph: PackedRoutingGraph, edge: number, preferences: RoutePreferences): boolean {
+  const flags = graph.flags[edge];
   return !(
     (preferences.avoidTolls && (flags & PACKED_EDGE_TOLL) !== 0) ||
     (preferences.avoidHighways && (flags & PACKED_EDGE_HIGHWAY) !== 0) ||
@@ -95,70 +195,96 @@ function edgeAllowed(edge: [number, number, number, number, number], preferences
   );
 }
 
-type QueueItem = [distance: number, node: number];
+/**
+ * Dijkstra over travel time. The heap and the visited arrays are typed or
+ * numeric so a country-sized graph does not allocate per-node objects.
+ */
+function shortestPath(
+  graph: PackedRoutingGraph,
+  start: number,
+  goal: number,
+  preferences: RoutePreferences
+): { nodes: number[]; edges: number[] } | null {
+  const distances = new Float64Array(graph.nodeCount);
+  distances.fill(Infinity);
+  const previousNode = new Int32Array(graph.nodeCount);
+  previousNode.fill(-1);
+  const previousEdge = new Int32Array(graph.nodeCount);
+  previousEdge.fill(-1);
 
-function pushQueue(queue: QueueItem[], item: QueueItem): void {
-  queue.push(item);
-  let child = queue.length - 1;
-  while (child > 0) {
-    const parent = Math.floor((child - 1) / 2);
-    if (queue[parent][0] <= queue[child][0]) break;
-    [queue[parent], queue[child]] = [queue[child], queue[parent]];
-    child = parent;
-  }
-}
-
-function popQueue(queue: QueueItem[]): QueueItem | undefined {
-  if (queue.length === 0) return undefined;
-  const result = queue[0];
-  const last = queue.pop()!;
-  if (queue.length > 0) {
-    queue[0] = last;
+  const heapDistance: number[] = [];
+  const heapNode: number[] = [];
+  const push = (distance: number, node: number) => {
+    let child = heapDistance.length;
+    heapDistance.push(distance);
+    heapNode.push(node);
+    while (child > 0) {
+      const parent = (child - 1) >> 1;
+      if (heapDistance[parent] <= heapDistance[child]) break;
+      [heapDistance[parent], heapDistance[child]] = [heapDistance[child], heapDistance[parent]];
+      [heapNode[parent], heapNode[child]] = [heapNode[child], heapNode[parent]];
+      child = parent;
+    }
+  };
+  const pop = (): boolean => {
+    if (heapDistance.length === 0) return false;
+    const lastDistance = heapDistance.pop()!;
+    const lastNode = heapNode.pop()!;
+    if (heapDistance.length === 0) return true;
+    heapDistance[0] = lastDistance;
+    heapNode[0] = lastNode;
     let parent = 0;
+    const length = heapDistance.length;
     while (true) {
       const left = parent * 2 + 1;
       const right = left + 1;
       let smallest = parent;
-      if (left < queue.length && queue[left][0] < queue[smallest][0]) smallest = left;
-      if (right < queue.length && queue[right][0] < queue[smallest][0]) smallest = right;
+      if (left < length && heapDistance[left] < heapDistance[smallest]) smallest = left;
+      if (right < length && heapDistance[right] < heapDistance[smallest]) smallest = right;
       if (smallest === parent) break;
-      [queue[parent], queue[smallest]] = [queue[smallest], queue[parent]];
+      [heapDistance[parent], heapDistance[smallest]] = [heapDistance[smallest], heapDistance[parent]];
+      [heapNode[parent], heapNode[smallest]] = [heapNode[smallest], heapNode[parent]];
       parent = smallest;
     }
-  }
-  return result;
-}
+    return true;
+  };
 
-function shortestPath(graph: PackedRoutingGraph, start: number, goal: number, preferences: RoutePreferences): number[] | null {
-  const distances = new Float64Array(graph.nodes.length);
-  distances.fill(Infinity);
-  const previous = new Int32Array(graph.nodes.length);
-  previous.fill(-1);
-  const pending: QueueItem[] = [];
-  pushQueue(pending, [0, start]);
   distances[start] = 0;
-  while (pending.length > 0) {
-    const [distance, current] = popQueue(pending)!;
+  push(0, start);
+  while (heapDistance.length > 0) {
+    const distance = heapDistance[0];
+    const current = heapNode[0];
+    pop();
     if (distance !== distances[current]) continue;
     if (current === goal) break;
-    for (let position = graph.offsets[current]; position < graph.offsets[current + 1]; position += 1) {
-      const edge = graph.edges[position];
-      if (!edgeAllowed(edge, preferences)) continue;
-      const nextDistance = distance + edge[2];
-      if (nextDistance >= distances[edge[0]]) continue;
-      distances[edge[0]] = nextDistance;
-      previous[edge[0]] = current;
-      pushQueue(pending, [nextDistance, edge[0]]);
+    const end = graph.offsets[current + 1];
+    for (let edge = graph.offsets[current]; edge < end; edge += 1) {
+      if (!edgeAllowed(graph, edge, preferences)) continue;
+      const next = graph.targets[edge];
+      const nextDistance = distance + graph.durations[edge];
+      if (nextDistance >= distances[next]) continue;
+      distances[next] = nextDistance;
+      previousNode[next] = current;
+      previousEdge[next] = edge;
+      push(nextDistance, next);
     }
   }
+
   if (!Number.isFinite(distances[goal])) return null;
-  const path = [goal];
-  while (path[0] !== start) {
-    const parent = previous[path[0]];
-    if (parent < 0) return null;
-    path.unshift(parent);
+  const nodes = [goal];
+  const edges: number[] = [];
+  let current = goal;
+  while (current !== start) {
+    const edge = previousEdge[current];
+    const parent = previousNode[current];
+    if (edge < 0 || parent < 0) return null;
+    edges.push(edge);
+    nodes.push(parent);
+    current = parent;
   }
-  return path;
+  nodes.reverse();
+  edges.reverse();
+  return { nodes, edges };
 }
 
 export function routePackedOffline(
@@ -175,37 +301,49 @@ export function routePackedOffline(
   const steps: RouteStep[] = [];
   let distanceMeters = 0;
   let durationSeconds = 0;
+  let longestName = '';
+  let longestDistance = 0;
+
   for (let segmentIndex = 0; segmentIndex < points.length - 1; segmentIndex += 1) {
     const start = nearestNode(graph, points[segmentIndex]);
     const goal = nearestNode(graph, points[segmentIndex + 1]);
     if (start === null || goal === null) return null;
     const path = shortestPath(graph, start, goal, preferences);
     if (!path) return null;
-    path.forEach((node, index) => {
-      if (segmentIndex > 0 && index === 0) return;
-      const [lat, lon] = graph.nodes[node];
-      coordinates.push([lon / 1_000_000, lat / 1_000_000]);
-    });
-    for (let index = 0; index < path.length - 1; index += 1) {
-      const from = path[index];
-      const to = path[index + 1];
-      const edge = graph.edges.slice(graph.offsets[from], graph.offsets[from + 1]).find((candidate) => candidate[0] === to && edgeAllowed(candidate, preferences));
-      if (!edge) return null;
-      const [lat, lon] = graph.nodes[to];
-      const name = graph.names[edge[4]] || 'Road';
-      distanceMeters += edge[1];
-      durationSeconds += edge[2];
+
+    if (coordinates.length === 0) {
+      coordinates.push([graph.nodeLon[start] / 1_000_000, graph.nodeLat[start] / 1_000_000]);
+    }
+    for (const edge of path.edges) {
+      for (let point = graph.geometryOffsets[edge]; point < graph.geometryOffsets[edge + 1]; point += 1) {
+        coordinates.push([
+          graph.geometryLon[point] / 1_000_000,
+          graph.geometryLat[point] / 1_000_000,
+        ]);
+      }
+      const name = graph.names[graph.nameIndexes[edge]] || 'Road';
+      const distance = graph.distances[edge];
+      const duration = graph.durations[edge];
+      distanceMeters += distance;
+      durationSeconds += duration;
+      if (distance > longestDistance && name !== 'Road') {
+        longestDistance = distance;
+        longestName = name;
+      }
+      const target = graph.targets[edge];
       steps.push({
         instruction: `Continue on ${name}`,
         instructionKa: `${name}-ზე გააგრძელეთ`,
         name,
-        distanceMeters: edge[1],
-        durationSeconds: edge[2],
+        distanceMeters: distance,
+        durationSeconds: duration,
         maneuverType: 'continue',
-        location: [lon / 1_000_000, lat / 1_000_000],
+        location: [graph.nodeLon[target] / 1_000_000, graph.nodeLat[target] / 1_000_000],
       });
     }
   }
+
+  if (coordinates.length < 2) return null;
   return {
     id: `offline-national-${Date.now()}`,
     name: 'Offline route',
@@ -214,8 +352,8 @@ export function routePackedOffline(
     durationMinutes: Math.ceil(durationSeconds / 60),
     coordinates,
     steps,
-    via: steps.find((step) => step.name !== 'Road')?.name || 'mapped roads',
-    viaKa: steps.find((step) => step.name !== 'Road')?.name || 'მონიშნული გზები',
+    via: longestName || 'mapped roads',
+    viaKa: longestName || 'მონიშნული გზები',
     isRealService: false,
   };
 }

@@ -1,27 +1,133 @@
+/**
+ * Kvali — unit checks for the packed nationwide routing graph.
+ *
+ * Copyright (C) 2026 Kvali contributors
+ *
+ * This file is part of Kvali, free software under the GNU General Public
+ * License version 3 or later. See the LICENSE file for the full text.
+ */
+
 import assert from 'node:assert/strict';
 import { parsePackedRoutingGraph, routePackedOffline } from '../src/lib/offlinePackedRouting.ts';
 
-const graph = parsePackedRoutingGraph({
-  version: 2,
-  country: 'GE',
-  profile: 'car',
-  nodes: [[41000000, 44000000], [41001000, 44000000], [41002000, 44000000]],
-  offsets: [0, 1, 2, 2],
-  edges: [[1, 100, 10, 0, 0], [2, 100, 10, 0, 0]],
-  names: ['Test road'],
+const HEADER_BYTES = 60;
+
+function packGraph({ nodes, edges, names, bbox, version = 3 }) {
+  const geometryPointCount = edges.reduce((total, edge) => total + edge.geometry.length, 0);
+  const namesBytes = new TextEncoder().encode(names.join('\0'));
+  const size =
+    HEADER_BYTES +
+    nodes.length * 8 +
+    (nodes.length + 1) * 4 +
+    edges.length * 4 * 4 +
+    (edges.length + 1) * 4 +
+    geometryPointCount * 8 +
+    edges.length +
+    namesBytes.length;
+  const buffer = new ArrayBuffer(size);
+  const view = new DataView(buffer);
+  new Uint8Array(buffer, 0, 4).set(new TextEncoder().encode('KVRG'));
+  view.setUint16(4, version, true);
+  view.setUint8(6, 1);
+  view.setUint32(8, nodes.length, true);
+  view.setUint32(12, edges.length, true);
+  view.setUint32(16, names.length, true);
+  view.setUint32(20, geometryPointCount, true);
+  view.setFloat64(24, bbox[0], true);
+  view.setFloat64(32, bbox[1], true);
+  view.setFloat64(40, bbox[2], true);
+  view.setFloat64(48, bbox[3], true);
+  view.setUint32(56, namesBytes.length, true);
+
+  let cursor = HEADER_BYTES;
+  const writeInt32 = (values) => {
+    new Int32Array(buffer, cursor, values.length).set(values);
+    cursor += values.length * 4;
+  };
+  const writeUint32 = (values) => {
+    new Uint32Array(buffer, cursor, values.length).set(values);
+    cursor += values.length * 4;
+  };
+  const bySource = nodes.map(() => []);
+  edges.forEach((edge) => bySource[edge.from].push(edge));
+  const offsets = [0];
+  for (const list of bySource) offsets.push(offsets[offsets.length - 1] + list.length);
+  const rows = bySource.flat();
+  const geometryOffsets = [0];
+  for (const edge of rows) geometryOffsets.push(geometryOffsets[geometryOffsets.length - 1] + edge.geometry.length);
+
+  writeInt32(nodes.map((node) => Math.round(node[0] * 1_000_000)));
+  writeInt32(nodes.map((node) => Math.round(node[1] * 1_000_000)));
+  writeUint32(offsets);
+  writeUint32(rows.map((edge) => edge.to));
+  writeUint32(rows.map((edge) => edge.distance));
+  writeUint32(rows.map((edge) => edge.duration));
+  writeUint32(rows.map((edge) => edge.name));
+  writeUint32(geometryOffsets);
+  writeInt32(rows.flatMap((edge) => edge.geometry.map((point) => Math.round(point[0] * 1_000_000))));
+  writeInt32(rows.flatMap((edge) => edge.geometry.map((point) => Math.round(point[1] * 1_000_000))));
+  new Uint8Array(buffer, cursor, rows.length).set(rows.map((edge) => edge.flags || 0));
+  cursor += rows.length;
+  new Uint8Array(buffer, cursor, namesBytes.length).set(namesBytes);
+  return buffer;
+}
+
+const nodes = [
+  [41.0, 44.0],
+  [41.01, 44.0],
+  [41.02, 44.0],
+];
+const names = ['Test road'];
+const buffer = packGraph({
+  nodes,
+  names,
   bbox: [41, 44, 41.02, 44],
-  stats: { nodes: 3, edges: 2, ways: 1 },
+  edges: [
+    { from: 0, to: 1, distance: 1112, duration: 134, name: 0, geometry: [[41.01, 44.0]] },
+    { from: 1, to: 2, distance: 1112, duration: 134, name: 0, geometry: [[41.02, 44.0]] },
+  ],
 });
 
+const graph = parsePackedRoutingGraph(buffer);
 assert.ok(graph, 'valid nationwide graph should parse');
-const route = routePackedOffline(graph, { latitude: 41, longitude: 44 }, { latitude: 41.02, longitude: 44 }, 'car', {
-  avoidTolls: false,
-  avoidHighways: false,
-  avoidUnpaved: false,
-});
+assert.equal(graph.nodeCount, 3);
+assert.equal(graph.edgeCount, 2);
+
+const route = routePackedOffline(
+  graph,
+  { latitude: 41, longitude: 44 },
+  { latitude: 41.02, longitude: 44 },
+  'car',
+  { avoidTolls: false, avoidHighways: false, avoidUnpaved: false }
+);
 assert.ok(route, 'packed graph should route');
 assert.equal(route.coordinates.length, 3);
-assert.equal(route.distanceKm, 0.2);
+assert.ok(route.distanceKm > 2 && route.distanceKm < 2.5);
 assert.equal(route.steps.length, 2);
-assert.equal(parsePackedRoutingGraph({ ...graph, version: 1 }), null, 'wrong graph version must be rejected');
+assert.equal(route.via, 'Test road');
+
+assert.equal(parsePackedRoutingGraph(packGraph({ nodes, names, bbox: [41, 44, 41.02, 44], version: 2, edges: [] })), null);
+assert.equal(parsePackedRoutingGraph(buffer.slice(0, buffer.byteLength - 1)), null, 'truncated package must be rejected');
+
+const withToll = packGraph({
+  nodes,
+  names,
+  bbox: [41, 44, 41.02, 44],
+  edges: [
+    { from: 0, to: 1, distance: 1112, duration: 134, name: 0, flags: 4, geometry: [[41.01, 44.0]] },
+    { from: 1, to: 2, distance: 1112, duration: 134, name: 0, geometry: [[41.02, 44.0]] },
+  ],
+});
+const tollGraph = parsePackedRoutingGraph(withToll);
+assert.ok(tollGraph);
+assert.equal(
+  routePackedOffline(tollGraph, { latitude: 41, longitude: 44 }, { latitude: 41.02, longitude: 44 }, 'car', {
+    avoidTolls: true,
+    avoidHighways: false,
+    avoidUnpaved: false,
+  }),
+  null,
+  'avoiding tolls must skip a toll road'
+);
+
 console.log('Offline packed routing tests passed');
