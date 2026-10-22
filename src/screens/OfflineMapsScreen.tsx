@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Info,
   CheckCircle2,
+  AlertCircle,
   MapPin,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -48,6 +49,8 @@ export const OfflineMapsScreen: React.FC = () => {
     userLocation,
     manualLocation,
     effectiveCenter,
+    geolocationStatus,
+    voiceMode,
   } = useApp();
 
   const { showToast } = useToast();
@@ -218,6 +221,13 @@ export const OfflineMapsScreen: React.FC = () => {
   const quotaBytes = storage?.quota ?? 0;
   const usedPercent = quotaBytes ? Math.min(100, (usageBytes / quotaBytes) * 100) : 0;
   const downloadedBytes = offlineRegions.reduce((sum, r) => sum + (r.bytes ?? 0), 0);
+  const hasOfflineMap = offlineRegions.some(
+    (region) => region.status === 'downloaded' && !region.partial
+  );
+  const hasOfflineRoute = savedRoutes > 0;
+  const hasLocation = geolocationStatus === 'granted' || !!manualLocation || !!userLocation;
+  const hasGuidance = voiceMode !== 'muted';
+  const tripReady = hasOfflineMap && hasOfflineRoute && hasLocation && hasGuidance;
 
   return (
     <div
@@ -279,6 +289,39 @@ export const OfflineMapsScreen: React.FC = () => {
               {t('clear')}
             </button>
           )}
+        </div>
+
+        <div className={`p-3.5 ${cardClass}`}>
+          <div className="flex items-start gap-2.5">
+            {tripReady ? (
+              <CheckCircle2 size={17} className="text-emerald-500 shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle size={17} className="text-[#C9973F] shrink-0 mt-0.5" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
+                  {t('tripReadinessTitle')}
+                </span>
+                <span className={`text-[10px] font-semibold ${tripReady ? 'text-emerald-500' : 'text-[#C9973F]'}`}>
+                  {tripReady ? t('tripReady') : t('tripNotReady')}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1.5 text-[11px]">
+                {[
+                  [hasOfflineMap, hasOfflineMap ? t('tripMapReady') : t('tripMapMissing')],
+                  [hasOfflineRoute, hasOfflineRoute ? t('tripRouteReady') : t('tripRouteMissing')],
+                  [hasLocation, hasLocation ? t('tripLocationReady') : t('tripLocationMissing')],
+                  [hasGuidance, hasGuidance ? t('tripVoiceReady') : t('tripVoiceMissing')],
+                ].map(([ready, label]) => (
+                  <div key={label as string} className="flex items-center gap-2">
+                    <span className={ready ? 'text-emerald-500' : 'text-[#C9973F]'}>{ready ? '✓' : '!'}</span>
+                    <span className={mutedText}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Offline / fallback render toggle */}
