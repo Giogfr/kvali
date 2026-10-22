@@ -59,11 +59,12 @@ A successful build prints the node, edge, way, and geometry point counts. Do not
 publish a package whose counts are zero or implausibly small.
 
 `.github/workflows/routing-data.yml` performs the same build on GitHub-hosted
-Linux and publishes the two files to a `routing-data-*` release. The default tag
-is `routing-data-latest`. The app's installer reads:
+Linux, publishes the two files to a `routing-data-*` release, and deploys them to
+GitHub Pages so the browser download is not blocked by cross-origin rules. The
+app's installer reads:
 
 ```
-https://github.com/Giogfr/kvali/releases/download/routing-data-latest/georgia-routing-graph-v3.kvr.gz
+https://giogfr.github.io/kvali/georgia-routing-graph-v3.kvr.gz
 ```
 
 and verifies the `.sha256` sidecar before storing the package in IndexedDB.

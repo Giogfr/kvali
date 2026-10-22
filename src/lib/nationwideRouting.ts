@@ -6,7 +6,7 @@ const STORE_NAME = 'packages';
 const PACKAGE_KEY = 'georgia-car';
 const META_KEY = 'georgia-car-meta';
 export const DEFAULT_NATIONWIDE_GRAPH_URL =
-  'https://github.com/Giogfr/kvali/releases/download/routing-data-latest/georgia-routing-graph-v3.kvr.gz';
+  'https://giogfr.github.io/kvali/georgia-routing-graph-v3.kvr.gz';
 
 interface StoredPackage {
   key: string;

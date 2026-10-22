@@ -62,3 +62,34 @@ jobs:
               --title "Nationwide Georgia routing data" \
               --notes "Generated from the current Geofabrik Georgia OpenStreetMap extract. The app verifies the SHA-256 sidecar before installing it."
           fi
+
+      - name: Prepare Pages site
+        run: |
+          mkdir -p _site
+          cp artifacts/georgia-routing-graph-v3.kvr.gz _site/
+          cp artifacts/georgia-routing-graph-v3.kvr.gz.sha256 _site/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>Kvali routing data</title>
+          <p>Nationwide Georgia routing package for the Kvali Android app.</p>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy routing data to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
