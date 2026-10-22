@@ -95,16 +95,50 @@ function edgeAllowed(edge: [number, number, number, number, number], preferences
   );
 }
 
+type QueueItem = [distance: number, node: number];
+
+function pushQueue(queue: QueueItem[], item: QueueItem): void {
+  queue.push(item);
+  let child = queue.length - 1;
+  while (child > 0) {
+    const parent = Math.floor((child - 1) / 2);
+    if (queue[parent][0] <= queue[child][0]) break;
+    [queue[parent], queue[child]] = [queue[child], queue[parent]];
+    child = parent;
+  }
+}
+
+function popQueue(queue: QueueItem[]): QueueItem | undefined {
+  if (queue.length === 0) return undefined;
+  const result = queue[0];
+  const last = queue.pop()!;
+  if (queue.length > 0) {
+    queue[0] = last;
+    let parent = 0;
+    while (true) {
+      const left = parent * 2 + 1;
+      const right = left + 1;
+      let smallest = parent;
+      if (left < queue.length && queue[left][0] < queue[smallest][0]) smallest = left;
+      if (right < queue.length && queue[right][0] < queue[smallest][0]) smallest = right;
+      if (smallest === parent) break;
+      [queue[parent], queue[smallest]] = [queue[smallest], queue[parent]];
+      parent = smallest;
+    }
+  }
+  return result;
+}
+
 function shortestPath(graph: PackedRoutingGraph, start: number, goal: number, preferences: RoutePreferences): number[] | null {
   const distances = new Float64Array(graph.nodes.length);
   distances.fill(Infinity);
   const previous = new Int32Array(graph.nodes.length);
   previous.fill(-1);
-  const pending: [number, number][] = [[0, start]];
+  const pending: QueueItem[] = [];
+  pushQueue(pending, [0, start]);
   distances[start] = 0;
   while (pending.length > 0) {
-    pending.sort((a, b) => a[0] - b[0]);
-    const [distance, current] = pending.shift()!;
+    const [distance, current] = popQueue(pending)!;
     if (distance !== distances[current]) continue;
     if (current === goal) break;
     for (let position = graph.offsets[current]; position < graph.offsets[current + 1]; position += 1) {
@@ -114,7 +148,7 @@ function shortestPath(graph: PackedRoutingGraph, start: number, goal: number, pr
       if (nextDistance >= distances[edge[0]]) continue;
       distances[edge[0]] = nextDistance;
       previous[edge[0]] = current;
-      pending.push([nextDistance, edge[0]]);
+      pushQueue(pending, [nextDistance, edge[0]]);
     }
   }
   if (!Number.isFinite(distances[goal])) return null;
