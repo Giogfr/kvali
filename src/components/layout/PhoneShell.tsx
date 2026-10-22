@@ -11,7 +11,7 @@ import { WifiOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const PhoneShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { airplaneOfflineMode, theme } = useApp();
+  const { airplaneOfflineMode, theme, t } = useApp();
 
   return (
     <div className="w-full h-full min-h-screen flex items-center justify-center select-none bg-[#0D0D0D] sm:portrait:p-3">
@@ -23,7 +23,7 @@ export const PhoneShell: React.FC<{ children: React.ReactNode }> = ({ children }
         {airplaneOfflineMode && (
           <div className="bg-[#C9973F] text-black px-3 py-1 text-[11px] font-semibold flex items-center gap-1.5 z-30 shrink-0 safe-top">
             <WifiOff size={12} />
-            <span>Offline map rendering</span>
+            <span>{t('offlineMapRendering')}</span>
           </div>
         )}
 

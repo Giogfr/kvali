@@ -34,7 +34,7 @@ export const BottomNav: React.FC = () => {
           ? 'bg-[#181818]/95 border-neutral-800 text-neutral-400'
           : 'bg-white/95 border-neutral-200 text-neutral-500'
       } backdrop-blur-md`}
-      aria-label="Main Navigation"
+      aria-label={t('mainNavigation')}
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;

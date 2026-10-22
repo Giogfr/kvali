@@ -23,7 +23,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   rightAction,
   subtitle,
 }) => {
-  const { goBack, theme } = useApp();
+  const { goBack, theme, t } = useApp();
 
   const handleBack = onBack || goBack;
 
@@ -41,7 +41,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               ? 'hover:bg-neutral-800 text-neutral-300'
               : 'hover:bg-neutral-100 text-neutral-700'
           }`}
-          aria-label="Back"
+          aria-label={t('back')}
         >
           <ArrowLeft size={20} />
         </button>

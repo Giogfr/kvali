@@ -9,6 +9,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Plus, Minus, RotateCcw, Compass } from 'lucide-react';
 import { Place, RoadAlert, SavedPlace, TemporaryPin } from '../../types';
+import { useApp } from '../../context/AppContext';
 
 interface FallbackMapProps {
   onTapLocation: (coords: { latitude: number; longitude: number }) => void;
@@ -27,6 +28,7 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
   alerts,
   routeCoordinates,
 }) => {
+  const { t } = useApp();
   // Kutaisi center approx: lng 42.6946, lat 42.2679
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -339,9 +341,9 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
       <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto bg-[#181818]/90 text-neutral-300 text-[11px] px-2.5 py-1.5 rounded-lg border border-neutral-700/80 shadow-md backdrop-blur-md flex items-center gap-1.5">
           <Compass size={13} className="text-[#C9973F]" />
-          <span className="font-medium">Offline schematic map</span>
+          <span className="font-medium">{t('offlineSchematicMap')}</span>
           <span className="text-neutral-500">·</span>
-          <span className="text-neutral-400">Approximate streets</span>
+          <span className="text-neutral-400">{t('approximateStreets')}</span>
         </div>
       </div>
 
@@ -350,21 +352,21 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
         <button
           onClick={() => setZoom((z) => Math.min(3, z + 0.3))}
           className="w-8 h-8 rounded-lg bg-[#242424] hover:bg-[#2e2e2e] text-white flex items-center justify-center border border-neutral-700 shadow-sm"
-          aria-label="Zoom in"
+          aria-label={t('zoomIn')}
         >
           <Plus size={16} />
         </button>
         <button
           onClick={() => setZoom((z) => Math.max(0.5, z - 0.3))}
           className="w-8 h-8 rounded-lg bg-[#242424] hover:bg-[#2e2e2e] text-white flex items-center justify-center border border-neutral-700 shadow-sm"
-          aria-label="Zoom out"
+          aria-label={t('zoomOut')}
         >
           <Minus size={16} />
         </button>
         <button
           onClick={resetView}
           className="w-8 h-8 rounded-lg bg-[#242424] hover:bg-[#2e2e2e] text-white flex items-center justify-center border border-neutral-700 shadow-sm"
-          aria-label="Reset orientation"
+          aria-label={t('resetOrientation')}
         >
           <RotateCcw size={14} />
         </button>
@@ -372,7 +374,7 @@ export const FallbackMap: React.FC<FallbackMapProps> = ({
 
       {/* Hint at bottom */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-neutral-500 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
-        Drag to pan · Long-press to drop a pin
+        {t('mapPanHint')}
       </div>
     </div>
   );

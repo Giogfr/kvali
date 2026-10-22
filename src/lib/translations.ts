@@ -327,6 +327,17 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Dialogs & Toasts
     close: 'Close',
     confirm: 'Confirm',
+    back: 'Back',
+    mainNavigation: 'Main navigation',
+    offlineMapRendering: 'Offline map rendering',
+    offlineSchematicMap: 'Offline schematic map',
+    approximateStreets: 'Approximate streets',
+    mapPanHint: 'Drag to pan · Long-press to drop a pin',
+    resetOrientation: 'Reset orientation',
+    displayRecovery: 'Display recovery',
+    displayRecoveryDesc: 'The interface recovered gracefully from a component issue.',
+    reloadMapInterface: 'Reload map interface',
+    viewOnMap: 'View on map',
   },
 
   ka: {
@@ -647,5 +658,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Dialogs & Toasts
     close: 'დახურვა',
     confirm: 'დადასტურება',
+    back: 'უკან',
+    mainNavigation: 'მთავარი ნავიგაცია',
+    offlineMapRendering: 'ოფლაინ რუკის ჩვენება',
+    offlineSchematicMap: 'ოფლაინ სქემატური რუკა',
+    approximateStreets: 'მიახლოებითი ქუჩები',
+    mapPanHint: 'გადაათრიეთ რუკა · დიდხანს შეეხეთ წერტილის დასამატებლად',
+    resetOrientation: 'ორიენტაციის განულება',
+    displayRecovery: 'ჩვენების აღდგენა',
+    displayRecoveryDesc: 'ინტერფეისი კომპონენტის შეცდომის შემდეგ აღდგა.',
+    reloadMapInterface: 'რუკის ინტერფეისის გადატვირთვა',
+    viewOnMap: 'რუკაზე ნახვა',
   },
 };
