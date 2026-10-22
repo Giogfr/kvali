@@ -34,6 +34,7 @@ import {
   loadOfflineRoutingGraph,
   saveOfflineRoutingGraph,
 } from '../lib/offlineRouting';
+import { downloadNationwideGraph } from '../lib/nationwideRouting';
 import {
   MAP_STYLES,
   clearTileCache,
@@ -61,6 +62,8 @@ export const OfflineMapsScreen: React.FC = () => {
     geolocationStatus,
     voiceMode,
     isOnline,
+    nationwideGraphInstalled,
+    reloadNationwideGraph,
   } = useApp();
 
   const { showToast } = useToast();
@@ -70,6 +73,8 @@ export const OfflineMapsScreen: React.FC = () => {
   const [savedRoutes, setSavedRoutes] = useState(() => savedRouteCount());
   const [isAddingArea, setIsAddingArea] = useState(false);
   const [isPreparingRouting, setIsPreparingRouting] = useState(false);
+  const [isInstallingNationwide, setIsInstallingNationwide] = useState(false);
+  const [nationwideProgress, setNationwideProgress] = useState(0);
   const [routingGraphInstalled, setRoutingGraphInstalled] = useState(
     () => loadOfflineRoutingGraph() !== null
   );
@@ -234,6 +239,23 @@ export const OfflineMapsScreen: React.FC = () => {
     }
   };
 
+  const handleInstallNationwide = async () => {
+    if (isInstallingNationwide || airplaneOfflineMode || !isOnline) return;
+    setIsInstallingNationwide(true);
+    setNationwideProgress(0);
+    try {
+      await downloadNationwideGraph(undefined, (received, total) => {
+        setNationwideProgress(total ? Math.min(100, Math.round((received / total) * 100)) : 0);
+      });
+      await reloadNationwideGraph();
+      showToast(t('nationwideRoutingReady'), 'success');
+    } catch (error) {
+      if ((error as Error)?.name !== 'AbortError') showToast(t('nationwideRoutingFailed'), 'warn');
+    } finally {
+      setIsInstallingNationwide(false);
+    }
+  };
+
   const handleAddArea = async () => {
     if (isAddingArea) return;
     setIsAddingArea(true);
@@ -273,7 +295,7 @@ export const OfflineMapsScreen: React.FC = () => {
   const hasOfflineMap = offlineRegions.some(
     (region) => region.status === 'downloaded' && !region.partial
   );
-  const hasOfflineRoute = savedRoutes > 0 || routingGraphInstalled;
+  const hasOfflineRoute = savedRoutes > 0 || routingGraphInstalled || nationwideGraphInstalled;
   const hasLocation = geolocationStatus === 'granted' || !!manualLocation || !!userLocation;
   const hasGuidance = voiceMode !== 'muted';
   const tripReady = hasOfflineMap && hasOfflineRoute && hasLocation && hasGuidance;
@@ -345,6 +367,32 @@ export const OfflineMapsScreen: React.FC = () => {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <span className="text-[13px] font-semibold block text-neutral-800 dark:text-neutral-200 leading-tight">
+                {t('nationwideRoutingTitle')}
+              </span>
+              <span className={`text-[11px] ${mutedText} leading-tight block mt-0.5`}>
+                {nationwideGraphInstalled ? t('nationwideRoutingInstalled') : t('nationwideRoutingDesc')}
+              </span>
+              {isInstallingNationwide && (
+                <span className={`text-[10px] ${mutedText} block mt-1`}>
+                  {t('nationwideRoutingProgress').replace('{progress}', `${nationwideProgress}%`)}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handleInstallNationwide}
+              disabled={isInstallingNationwide || airplaneOfflineMode || !isOnline}
+              className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] text-white text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isInstallingNationwide ? t('nationwideRoutingInstalling') : t('nationwideRoutingInstall')}
+            </button>
+          </div>
+        </div>
+
+        {/* Nearby real road graph for new routes without a connection */}
+        <div className={`p-3.5 ${cardClass}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[13px] font-semibold block text-neutral-800 dark:text-neutral-200 leading-tight">
                 {t('offlineRoutingTitle')}
               </span>
               <span className={`text-[11px] ${mutedText} leading-tight block mt-0.5`}>
@@ -384,9 +432,11 @@ export const OfflineMapsScreen: React.FC = () => {
                   [
                     hasOfflineRoute,
                     hasOfflineRoute
-                      ? routingGraphInstalled
-                        ? t('tripLocalRouteReady')
-                        : t('tripRouteReady')
+                      ? nationwideGraphInstalled
+                        ? t('nationwideRoutingInstalled')
+                        : routingGraphInstalled
+                          ? t('tripLocalRouteReady')
+                          : t('tripRouteReady')
                       : t('tripRouteMissing'),
                   ],
                   [hasLocation, hasLocation ? t('tripLocationReady') : t('tripLocationMissing')],

@@ -189,6 +189,8 @@ interface AppContextType {
   removeRegion: (id: string) => void;
   airplaneOfflineMode: boolean;
   setAirplaneOfflineMode: (offline: boolean) => void;
+  nationwideGraphInstalled: boolean;
+  reloadNationwideGraph: () => Promise<boolean>;
 
   // Saved Places & Collections
   savedPlaces: SavedPlace[];
@@ -324,15 +326,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [nationwideGraph, setNationwideGraph] = useState<PackedRoutingGraph | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    loadInstalledNationwideGraph().then((graph) => {
-      if (active) setNationwideGraph(graph);
-    });
-    return () => {
-      active = false;
-    };
+  const reloadNationwideGraph = useCallback(async () => {
+    const graph = await loadInstalledNationwideGraph();
+    setNationwideGraph(graph);
+    return graph !== null;
   }, []);
+
+  useEffect(() => {
+    void reloadNationwideGraph();
+  }, [reloadNationwideGraph]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -1787,6 +1789,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeRegion,
         airplaneOfflineMode,
         setAirplaneOfflineMode,
+        nationwideGraphInstalled: nationwideGraph !== null,
+        reloadNationwideGraph,
         savedPlaces,
         collections,
         savePlace,
