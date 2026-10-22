@@ -62,6 +62,7 @@ export const OfflineMapsScreen: React.FC = () => {
   const [savedRoutes, setSavedRoutes] = useState(() => savedRouteCount());
   const [isAddingArea, setIsAddingArea] = useState(false);
   const controllersRef = useRef<Record<string, AbortController>>({});
+  const recoveredDownloadsRef = useRef(false);
 
   const cardClass = 'rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50';
   const rowClass = 'rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50';
@@ -81,6 +82,25 @@ export const OfflineMapsScreen: React.FC = () => {
   useEffect(() => {
     refreshStorage();
   }, [refreshStorage]);
+
+  // A browser or Android process can be killed while a download is running.
+  // The AbortController cannot survive that restart, so make the persisted
+  // record resumable instead of leaving the area in a permanent spinner state.
+  useEffect(() => {
+    if (recoveredDownloadsRef.current) return;
+    recoveredDownloadsRef.current = true;
+    offlineRegions
+      .filter((region) => region.status === 'downloading')
+      .forEach((region) => patchRegion(region.id, { status: 'paused' }));
+  }, [offlineRegions, patchRegion]);
+
+  useEffect(
+    () => () => {
+      Object.values(controllersRef.current).forEach((controller) => controller.abort());
+      controllersRef.current = {};
+    },
+    []
+  );
 
   useEffect(() => {
     try {
