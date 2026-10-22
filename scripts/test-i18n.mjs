@@ -50,6 +50,7 @@ check('no Georgian string is left in English', () => {
     'OSRM',
     'OpenStreetMap',
     'English',
+    'Android Auto',
     '3D',
     '2D',
   ]);
