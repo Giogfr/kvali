@@ -100,6 +100,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     calculatingRoutes: 'Calculating routes…',
     savedRouteNotice: 'Offline: using a route saved on this device.',
     savedRouteLabel: 'Saved',
+    offlineGraphNotice: 'Offline: calculated from installed local routing data.',
+    offlineRouteLabel: 'Offline',
     routeDisclaimer: 'Route data © OpenStreetMap contributors. Travel times are estimates.',
 
     // Active Navigation
@@ -455,6 +457,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     calculatingRoutes: 'მარშრუტების გამოთვლა…',
     savedRouteNotice: 'ოფლაინ რეჟიმი: გამოიყენება ამ მოწყობილობაზე შენახული მარშრუტი.',
     savedRouteLabel: 'შენახული',
+    offlineGraphNotice: 'ოფლაინი: მარშრუტი დაყენებული ლოკალური მონაცემებით გამოითვალა.',
+    offlineRouteLabel: 'ოფლაინი',
     routeDisclaimer: 'მარშრუტის მონაცემები © OpenStreetMap contributors. დროები მიახლოებითია.',
 
     // Active Navigation

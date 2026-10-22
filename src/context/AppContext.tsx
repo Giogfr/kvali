@@ -50,6 +50,9 @@ import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
 import { isOverspeeding, limitInScope } from '../lib/speed';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
+import { loadOfflineRoutingGraph, routeOffline } from '../lib/offlineRouting';
+
+type RouteSource = 'online' | 'cached' | 'offline-graph' | null;
 
 interface ActiveNavState {
   isActive: boolean;
@@ -141,6 +144,7 @@ interface AppContextType {
   isCalculatingRoute: boolean;
   routeError: string | null;
   routeFromCache: boolean;
+  routeSource: RouteSource;
   isOnline: boolean;
   calculateRoutes: () => Promise<void>;
   getShareableRouteUrl: () => string;
@@ -417,6 +421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeFromCache, setRouteFromCache] = useState(false);
+  const [routeSource, setRouteSource] = useState<RouteSource>(null);
   const routeRequestIdRef = useRef(0);
 
   // Road Alerts
@@ -920,6 +925,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!origin) {
       setRouteAlternatives([]);
       setSelectedRouteAlternative(null);
+      setRouteFromCache(false);
+      setRouteSource(null);
       setRouteError(
         language === 'ka'
           ? 'დასაწყისი წერტილი არ არის მითითებული. ჩართეთ მდებარეობა ან აირჩიეთ ის ხელით.'
@@ -943,15 +950,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cached = loadSavedRoute(origin, destination, waypoints, travelMode, routePreferences);
 
     if (offline) {
-      if (cached) {
+      const offlineGraph = loadOfflineRoutingGraph();
+      const graphRoute = offlineGraph
+        ? routeOffline(offlineGraph, origin, destination, travelMode, routePreferences, waypoints)
+        : null;
+
+      if (graphRoute) {
+        setRouteAlternatives([graphRoute]);
+        setSelectedRouteAlternative(graphRoute);
+        setRouteFromCache(false);
+        setRouteSource('offline-graph');
+        setRouteError(null);
+      } else if (cached) {
         setRouteAlternatives(cached);
         setSelectedRouteAlternative(cached[0]);
         setRouteFromCache(true);
+        setRouteSource('cached');
         setRouteError(null);
       } else {
         setRouteAlternatives([]);
         setSelectedRouteAlternative(null);
         setRouteFromCache(false);
+        setRouteSource(null);
         setRouteError(
           language === 'ka'
             ? 'ამ მარშრუტის შენახული ასლი არ არის. გამორთეთ ოფლაინ რეჟიმი, გამოთვალეთ მარშრუტი ერთხელ და შემდეგ ის ოფლაინაც იმუშავებს.'
@@ -977,6 +997,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRouteAlternatives(osrmRoutes);
         setSelectedRouteAlternative(osrmRoutes[0]);
         setRouteFromCache(false);
+        setRouteSource('online');
         saveRoute(origin, destination, waypoints, travelMode, osrmRoutes, routePreferences);
         return;
       }
@@ -984,6 +1005,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRouteAlternatives([]);
       setSelectedRouteAlternative(null);
       setRouteFromCache(false);
+      setRouteSource(null);
       setRouteError(
         language === 'ka' ? 'ამ მოგზაურობისთვის მარშრუტი ვერ მოიძებნა.' : 'No route found for this trip.'
       );
@@ -994,11 +1016,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRouteAlternatives(cached);
         setSelectedRouteAlternative(cached[0]);
         setRouteFromCache(true);
+        setRouteSource('cached');
         setRouteError(null);
       } else {
         setRouteAlternatives([]);
         setSelectedRouteAlternative(null);
         setRouteFromCache(false);
+        setRouteSource(null);
         setRouteError(
           language === 'ka'
             ? 'მარშრუტის სერვისი მიუწვდომელია. შეამოწმეთ კავშირი და სცადეთ თავიდან.'
@@ -1029,6 +1053,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedRouteAlternative(null);
       setRouteError(null);
       setRouteFromCache(false);
+      setRouteSource(null);
     },
     []
   );
@@ -1041,6 +1066,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedRouteAlternative(null);
       setRouteError(null);
       setRouteFromCache(false);
+      setRouteSource(null);
     },
     []
   );
@@ -1664,6 +1690,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isCalculatingRoute,
         routeError,
         routeFromCache,
+        routeSource,
         isOnline,
         calculateRoutes,
         getShareableRouteUrl,

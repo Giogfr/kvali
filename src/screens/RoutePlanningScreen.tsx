@@ -47,7 +47,7 @@ export const RoutePlanningScreen: React.FC = () => {
     setSelectedRouteAlternative,
     isCalculatingRoute,
     routeError,
-    routeFromCache,
+    routeSource,
     startNavigation,
     navigateTo,
     effectiveCenter,
@@ -256,10 +256,10 @@ export const RoutePlanningScreen: React.FC = () => {
             <div className="text-[12px] text-red-500 py-2">{routeError}</div>
           )}
 
-          {alternatives.length > 0 && routeFromCache && (
+          {alternatives.length > 0 && routeSource && routeSource !== 'online' && (
             <div className="flex items-start gap-2 p-2 mb-2 rounded-lg bg-[#C9973F]/10 border border-[#C9973F]/40 text-[11px] text-[#C9973F]">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-              <span>{t('savedRouteNotice')}</span>
+              <span>{routeSource === 'cached' ? t('savedRouteNotice') : t('offlineGraphNotice')}</span>
             </div>
           )}
 
@@ -307,9 +307,11 @@ export const RoutePlanningScreen: React.FC = () => {
 
                   <div className="mt-2 pt-1.5 border-t border-neutral-200 dark:border-neutral-800/60 text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
                     <span>{language === 'ka' ? alt.preferenceNoteKa : alt.preferenceNote}</span>
-                    <span className={`font-mono ${routeFromCache ? 'text-[#C9973F]' : 'text-emerald-500 dark:text-emerald-400'}`}>
-                      {routeFromCache
+                    <span className={`font-mono ${routeSource !== 'online' ? 'text-[#C9973F]' : 'text-emerald-500 dark:text-emerald-400'}`}>
+                      {routeSource === 'cached'
                         ? t('savedRouteLabel')
+                        : routeSource === 'offline-graph'
+                        ? t('offlineRouteLabel')
                         : travelMode === 'walking'
                         ? 'Valhalla'
                         : 'OSRM'}
