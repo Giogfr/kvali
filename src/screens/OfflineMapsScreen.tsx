@@ -273,7 +273,7 @@ export const OfflineMapsScreen: React.FC = () => {
   const hasOfflineMap = offlineRegions.some(
     (region) => region.status === 'downloaded' && !region.partial
   );
-  const hasOfflineRoute = savedRoutes > 0;
+  const hasOfflineRoute = savedRoutes > 0 || routingGraphInstalled;
   const hasLocation = geolocationStatus === 'granted' || !!manualLocation || !!userLocation;
   const hasGuidance = voiceMode !== 'muted';
   const tripReady = hasOfflineMap && hasOfflineRoute && hasLocation && hasGuidance;
@@ -381,7 +381,14 @@ export const OfflineMapsScreen: React.FC = () => {
               <div className="mt-2 space-y-1.5 text-[11px]">
                 {[
                   [hasOfflineMap, hasOfflineMap ? t('tripMapReady') : t('tripMapMissing')],
-                  [hasOfflineRoute, hasOfflineRoute ? t('tripRouteReady') : t('tripRouteMissing')],
+                  [
+                    hasOfflineRoute,
+                    hasOfflineRoute
+                      ? routingGraphInstalled
+                        ? t('tripLocalRouteReady')
+                        : t('tripRouteReady')
+                      : t('tripRouteMissing'),
+                  ],
                   [hasLocation, hasLocation ? t('tripLocationReady') : t('tripLocationMissing')],
                   [hasGuidance, hasGuidance ? t('tripVoiceReady') : t('tripVoiceMissing')],
                 ].map(([ready, label]) => (
