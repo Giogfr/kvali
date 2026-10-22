@@ -89,7 +89,7 @@ export const MapScreen: React.FC = () => {
     const next = !airplaneOfflineMode;
     setAirplaneOfflineMode(next);
     showToast(
-      next ? 'Offline rendering forced' : 'Back to online map tiles',
+      next ? t('offlineRenderingForced') : t('onlineMapTilesRestored'),
       next ? 'warn' : 'info'
     );
   };
