@@ -1,4 +1,5 @@
 import { parsePackedRoutingGraph, type PackedRoutingGraph } from './offlinePackedRouting';
+import { gunzipSync } from 'fflate';
 
 const DATABASE_NAME = 'kvali_nationwide_routing_v2';
 const STORE_NAME = 'packages';
@@ -47,9 +48,14 @@ async function sha256(bytes: ArrayBuffer): Promise<string> {
 }
 
 async function decodePackage(bytes: ArrayBuffer, compressed: boolean): Promise<unknown> {
-  const decoded = compressed && 'DecompressionStream' in window
-    ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
-    : new TextDecoder().decode(bytes);
+  let decoded: string;
+  if (!compressed) {
+    decoded = new TextDecoder().decode(bytes);
+  } else if ('DecompressionStream' in window) {
+    decoded = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  } else {
+    decoded = new TextDecoder().decode(gunzipSync(new Uint8Array(bytes)));
+  }
   return JSON.parse(decoded);
 }
 
