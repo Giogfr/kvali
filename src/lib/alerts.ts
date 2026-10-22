@@ -14,6 +14,11 @@ export interface NearbyAlert extends RoadAlert {
   distanceM: number;
 }
 
+/** Keeps permanent map data and only currently valid temporary reports. */
+export function activeAlerts(alerts: RoadAlert[], now = Date.now()): RoadAlert[] {
+  return alerts.filter((alert) => !Number.isFinite(alert.expiresAt) || (alert.expiresAt as number) > now);
+}
+
 /**
  * Returns the closest alerts to a position, up to `limit`, ignoring anything
  * farther than `maxM`. The input array is not mutated.

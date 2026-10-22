@@ -8,7 +8,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { nearbyAlerts } from '../src/lib/alerts.ts';
+import { activeAlerts, nearbyAlerts } from '../src/lib/alerts.ts';
 
 let passed = 0;
 function check(name, fn) {
@@ -94,6 +94,22 @@ check('the input array is not mutated', () => {
 check('distance is reported in metres', () => {
   const [result] = nearbyAlerts([alert('a', 42.001, 44)], origin);
   assert.ok(result.distanceM > 100 && result.distanceM < 120, `got ${result.distanceM}`);
+});
+
+check('expired user reports are removed', () => {
+  const result = activeAlerts(
+    [
+      { ...alert('expired', 42, 44, 'community_reports'), source: 'user', expiresAt: 100 },
+      { ...alert('current', 42, 44, 'community_reports'), source: 'user', expiresAt: 300 },
+      alert('permanent', 42, 44),
+    ],
+    200
+  );
+  assert.deepEqual(result.map((item) => item.id), ['current', 'permanent']);
+});
+
+check('reports without an expiry remain valid for legacy data', () => {
+  assert.equal(activeAlerts([alert('legacy', 42, 44)], 10).length, 1);
 });
 
 console.log(`\n${passed} checks passed`);

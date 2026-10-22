@@ -90,6 +90,7 @@ export interface RoadAlert {
   lastUpdatedText: string;
   description: string;
   descriptionKa: string;
+  expiresAt?: number;
 }
 
 export interface RouteAlternative {

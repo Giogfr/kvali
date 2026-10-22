@@ -48,6 +48,7 @@ import { OffRouteDetector } from '../lib/navigationEngine';
 import { calculateDistanceKm } from '../lib/geo';
 import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
 import { isOverspeeding, limitInScope } from '../lib/speed';
+import { activeAlerts } from '../lib/alerts';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
 import { loadOfflineRoutingGraph, routeOffline } from '../lib/offlineRouting';
@@ -428,7 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [roadAlerts, setRoadAlerts] = useState<RoadAlert[]>(() => {
     try {
       const saved = localStorage.getItem('kvali_road_reports');
-      return saved ? JSON.parse(saved) : [];
+      return saved ? activeAlerts(JSON.parse(saved)) : [];
     } catch {
       return [];
     }
@@ -835,7 +836,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const allAlerts = useMemo<RoadAlert[]>(() => {
     const userIds = new Set(roadAlerts.map((a) => a.id));
-    return [...mappedAlerts.filter((a) => !userIds.has(a.id)), ...roadAlerts];
+    return [...mappedAlerts.filter((a) => !userIds.has(a.id)), ...activeAlerts(roadAlerts)];
   }, [mappedAlerts, roadAlerts]);
 
   // Live Track Recording methods
@@ -1205,6 +1206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastUpdatedText: new Date().toLocaleString(),
       description: input.description?.trim() || 'Reported by you',
       descriptionKa: input.description?.trim() || 'თქვენ მიერ მოხსენებული',
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
     };
     setRoadAlerts((prev) => {
       const next = [report, ...prev];
