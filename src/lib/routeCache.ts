@@ -67,7 +67,8 @@ function isSavedRoute(value: unknown): value is SavedRoute {
         Array.isArray(route.coordinates) &&
         route.coordinates.length > 1 &&
         Number.isFinite(route.distanceKm) &&
-        Number.isFinite(route.durationMinutes)
+        Number.isFinite(route.durationMinutes) &&
+        route.isRealService !== false
     )
   );
 }
@@ -171,7 +172,8 @@ export function saveRoute(
   routes: RealRouteResult[],
   preferences?: RoutePreferences
 ): void {
-  if (routes.length === 0) return;
+  const realRoutes = routes.filter((route) => route.isRealService !== false);
+  if (realRoutes.length === 0) return;
   const key = routeCacheKey(origin, destination, waypoints, mode, preferences);
   const entries = readAll().filter((entry) => entry.key !== key);
   entries.unshift({
@@ -181,7 +183,7 @@ export function saveRoute(
     destination,
     waypoints,
     mode,
-    routes,
+    routes: realRoutes,
   });
   writeAll(entries);
 }

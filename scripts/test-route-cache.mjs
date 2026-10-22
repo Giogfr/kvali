@@ -118,6 +118,13 @@ check('saving the same key replaces instead of duplicating', () => {
   assert.equal(savedRouteCount(), 1);
 });
 
+check('offline-generated routes are never saved for later replay', () => {
+  reset();
+  saveRoute(kutaisi, tbilisi, [], 'car', [{ ...route, isRealService: false }]);
+  assert.equal(savedRouteCount(), 0);
+  assert.equal(loadSavedRoute(kutaisi, tbilisi, [], 'car'), null);
+});
+
 check('the cache keeps at most ten routes, newest first', () => {
   reset();
   for (let i = 0; i < 12; i++) {
