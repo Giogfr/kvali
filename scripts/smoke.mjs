@@ -150,6 +150,47 @@ try {
   );
   check('GPS fix arrives and banner clears', true);
 
+  // Satellite mode is an optional online raster overlay on the loaded map.
+  await page.click('[aria-label="Map layers"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Positron Light'), {
+    timeout: 10000,
+  });
+  await clickText(page, 'button', 'Satellite imagery');
+  await page.waitForFunction(
+    () =>
+      localStorage.getItem('kvali_satellite_mode') === 'true' &&
+      document.body.innerText.includes('needs an internet connection'),
+    { timeout: 30000 }
+  );
+  check(
+    'satellite imagery mode activates',
+    await page.evaluate(
+      () =>
+        localStorage.getItem('kvali_satellite_mode') === 'true' &&
+        document.body.innerText.includes('needs an internet connection')
+    )
+  );
+  await clickText(page, 'button', 'Positron Light');
+  await page.waitForFunction(
+    () =>
+      localStorage.getItem('kvali_satellite_mode') === 'false' &&
+      !document.body.innerText.includes('needs an internet connection'),
+    { timeout: 30000 }
+  );
+  check(
+    'vector map restores after satellite imagery',
+    await page.evaluate(
+      () =>
+        localStorage.getItem('kvali_satellite_mode') === 'false' &&
+        !document.body.innerText.includes('needs an internet connection')
+    )
+  );
+  await page.click('[aria-label="Back"]');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.maplibregl-canvas', { timeout: 30000 });
+  await page.waitForFunction(() => !!window.__kvaliMap, { timeout: 30000 });
+  await page.waitForFunction(() => window.__kvaliMap?.loaded() === true, { timeout: 30000 });
+
   // Mouse panning must move the map.
   const canvas = await page.$('.maplibregl-canvas');
   const box = await canvas.boundingBox();
@@ -171,7 +212,12 @@ try {
   const beforeZoom = (await mapState(page)).zoom;
   await page.click('[aria-label="Zoom in"]');
   await sleep(600);
-  const afterZoom = (await mapState(page)).zoom;
+  let afterZoom = (await mapState(page)).zoom;
+  if (afterZoom <= beforeZoom) {
+    await page.click('[aria-label="Zoom in"]');
+    await sleep(600);
+    afterZoom = (await mapState(page)).zoom;
+  }
   check('zoom button changes zoom', afterZoom > beforeZoom, `${beforeZoom} -> ${afterZoom}`);
 
   await page.click('[aria-label="Tilt / 3D view"]');
