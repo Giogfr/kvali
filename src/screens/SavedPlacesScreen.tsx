@@ -126,7 +126,7 @@ export const SavedPlacesScreen: React.FC = () => {
       downloadAnchor.remove();
       showToast(t('backupSuccess'), 'success');
     } catch {
-      showToast('Export failed', 'warn');
+      showToast(t('exportFailedShort'), 'warn');
     }
   };
 
@@ -141,7 +141,7 @@ export const SavedPlacesScreen: React.FC = () => {
       if (success) {
         showToast(t('importSuccess'), 'success');
       } else {
-        showToast('Invalid backup file format', 'warn');
+        showToast(t('invalidBackup'), 'warn');
       }
     };
     reader.readAsText(file);
@@ -272,14 +272,14 @@ export const SavedPlacesScreen: React.FC = () => {
                   <button
                     onClick={() => startEdit(place)}
                     className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
-                    title="Edit"
+                    title={t('editPlace')}
                   >
                     <Edit2 size={13} />
                   </button>
                   <button
                     onClick={() => {
                       deleteSavedPlace(place.id);
-                      showToast('Place deleted', 'info');
+                      showToast(t('placeDeleted'), 'info');
                     }}
                     className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors"
                     title={t('deletePlace')}

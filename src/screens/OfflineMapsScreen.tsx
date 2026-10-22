@@ -250,7 +250,7 @@ export const OfflineMapsScreen: React.FC = () => {
           </div>
 
           <div className={`flex justify-between text-[10px] ${mutedText} mt-1.5 font-mono`}>
-            <span>Kvali offline: {formatBytes(downloadedBytes)}</span>
+            <span>{t('offlineDownloadedSize').replace('{size}', formatBytes(downloadedBytes))}</span>
             <button onClick={handleClearCache} className="underline hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors">
               {t('clearCache')}
             </button>
@@ -308,7 +308,7 @@ export const OfflineMapsScreen: React.FC = () => {
             onChange={(checked) => {
               setAirplaneOfflineMode(checked);
               showToast(
-                checked ? 'Offline-only rendering on' : 'Online map rendering restored',
+                checked ? t('offlineRenderingOn') : t('onlineRenderingRestored'),
                 checked ? 'warn' : 'info'
               );
             }}
@@ -403,7 +403,7 @@ export const OfflineMapsScreen: React.FC = () => {
                             <button
                               onClick={() => handleCancel(region.id)}
                               className="p-2 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-red-500"
-                              title="Cancel"
+                              title={t('cancelDownload')}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -420,7 +420,7 @@ export const OfflineMapsScreen: React.FC = () => {
                             <button
                               onClick={() => handleCancel(region.id)}
                               className="p-2 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-red-500"
-                              title="Cancel"
+                              title={t('cancelDownload')}
                             >
                               <Trash2 size={14} />
                             </button>

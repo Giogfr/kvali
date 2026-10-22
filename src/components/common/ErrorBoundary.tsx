@@ -8,6 +8,7 @@
  */
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { TRANSLATIONS } from '../../lib/translations';
 
 interface Props {
   children: ReactNode;
@@ -44,9 +45,9 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-[#C9973F] flex items-center justify-center mb-3 border border-[#C9973F]/30 shadow-lg">
             <AlertTriangle size={24} />
           </div>
-          <h3 className="text-[16px] font-semibold text-neutral-100">Display Recovery</h3>
+          <h3 className="text-[16px] font-semibold text-neutral-100">{copy('displayRecovery')}</h3>
           <p className="text-[12px] text-neutral-400 mt-1.5 max-w-[280px] leading-relaxed">
-            The interface recovered gracefully from a component issue.
+            {copy('displayRecoveryDesc')}
           </p>
           <button
             onClick={() => {
@@ -56,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="mt-4 px-4 py-2 rounded-xl bg-[#2F6FEB] hover:bg-[#2563EB] text-white text-[12px] font-semibold flex items-center gap-2 shadow-md transition-colors"
           >
             <RotateCcw size={14} />
-            <span>Reload Map Interface</span>
+            <span>{copy('reloadMapInterface')}</span>
           </button>
         </div>
       );
@@ -64,4 +65,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
+}
+
+function copy(key: string): string {
+  const language = document.documentElement.lang === 'ka' ? 'ka' : 'en';
+  return TRANSLATIONS[language][key] || TRANSLATIONS.en[key] || key;
 }

@@ -209,7 +209,7 @@ export const TripToolsScreen: React.FC = () => {
                         <button
                           onClick={() => handleViewOnMap(track)}
                           className="p-2 rounded-lg bg-[#2F6FEB]/15 hover:bg-[#2F6FEB]/25 text-[#2F6FEB] transition-colors"
-                          title="View on Map"
+                          title={t('viewOnMap')}
                         >
                           <Compass size={14} />
                         </button>

@@ -73,7 +73,7 @@ export const MapLayersScreen: React.FC = () => {
                   <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">{t('active')}</span>
                 )}
               </div>
-              <span className="text-[13px] font-semibold block leading-tight">Positron Light</span>
+              <span className="text-[13px] font-semibold block leading-tight">{t('mapStylePositron')}</span>
             </button>
 
             {/* Dark Night */}
@@ -94,7 +94,7 @@ export const MapLayersScreen: React.FC = () => {
                   <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">{t('active')}</span>
                 )}
               </div>
-              <span className="text-[13px] font-semibold block leading-tight">Dark Night</span>
+              <span className="text-[13px] font-semibold block leading-tight">{t('mapStyleNight')}</span>
             </button>
           </div>
         </div>
@@ -110,7 +110,7 @@ export const MapLayersScreen: React.FC = () => {
                     {t('terrainNoticeTitle')}
                   </span>
                   <span className="text-[9px] font-mono bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 px-1.5 py-0.2 rounded border border-neutral-300 dark:border-neutral-700">
-                    Unavailable
+                    {t('terrainUnavailable')}
                   </span>
                 </div>
                 <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
@@ -122,7 +122,7 @@ export const MapLayersScreen: React.FC = () => {
               checked={false}
               disabled={true}
               onChange={() => {}}
-              label="Terrain layer unavailable"
+              label={t('terrainNoticeUnavailable')}
             />
           </div>
         </div>
@@ -137,16 +137,16 @@ export const MapLayersScreen: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Box size={16} className="text-[#2F6FEB]" />
                 <div>
-                  <span className={rowTitle}>3D buildings</span>
+                  <span className={rowTitle}>{t('layerBuildings')}</span>
                   <span className="text-[11px] text-neutral-500">
-                    Extruded buildings at street level
+                    {t('layerBuildingsDesc')}
                   </span>
                 </div>
               </div>
               <ToggleSwitch
                 checked={layers.buildings3d}
                 onChange={() => toggleLayer('buildings3d')}
-                label="3D buildings"
+                label={t('layerBuildings')}
               />
             </div>
 

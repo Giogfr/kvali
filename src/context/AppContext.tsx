@@ -583,6 +583,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [theme]);
 
   useEffect(() => {
+    document.documentElement.lang = language;
     try {
       localStorage.setItem('kvali_lang', language);
     } catch {}

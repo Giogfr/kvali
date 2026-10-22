@@ -209,7 +209,7 @@ export const SearchScreen: React.FC = () => {
             <button
               onClick={() => setQuery('')}
               className="p-1 text-neutral-400 hover:text-black dark:hover:text-white"
-              aria-label="Clear search"
+              aria-label={t('clearSearch')}
             >
               <X size={15} />
             </button>
