@@ -43,7 +43,7 @@ import {
   type LocationResult,
 } from '../lib/location';
 import { speakText, stopSpeaking } from '../lib/speech';
-import { computeProgress } from '../lib/navigation';
+import { computeProgress, hasReachedDestination } from '../lib/navigation';
 import { OffRouteDetector } from '../lib/navigationEngine';
 import { calculateDistanceKm } from '../lib/geo';
 import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
@@ -57,6 +57,7 @@ type RouteSource = 'online' | 'cached' | 'offline-graph' | null;
 
 interface ActiveNavState {
   isActive: boolean;
+  arrived: boolean;
   route: RouteAlternative | null;
   gpsActive: boolean;
   offRouteM: number;
@@ -559,6 +560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Active Navigation State
   const [activeNav, setActiveNav] = useState<ActiveNavState>({
     isActive: false,
+    arrived: false,
     route: null,
     gpsActive: false,
     offRouteM: 0,
@@ -1427,7 +1429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // The GPS speed wobbles around the tolerance, so a naive effect would beep
   // constantly at the boundary.
   useEffect(() => {
-    if (!activeNav.isActive) {
+    if (!activeNav.isActive || activeNav.arrived) {
       lastOverSpeedBeepRef.current = 0;
       return;
     }
@@ -1438,6 +1440,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     playTestBeep();
   }, [
     activeNav.isActive,
+    activeNav.arrived,
     activeNav.currentSpeedKmh,
     activeNav.speedLimitKmh,
     playTestBeep,
@@ -1478,6 +1481,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setActiveNav({
       isActive: true,
+      arrived: false,
       route,
       gpsActive: userLocation !== null,
       offRouteM: 0,
@@ -1504,7 +1508,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const endNavigation = () => {
     void stopSpeaking();
     setIsFollowing(true);
-    setActiveNav((prev) => ({ ...prev, isActive: false, route: null, gpsActive: false, offRouteM: 0 }));
+    setActiveNav((prev) => ({ ...prev, isActive: false, arrived: false, route: null, gpsActive: false, offRouteM: 0 }));
     navigateTo('map');
   };
 
@@ -1513,6 +1517,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!activeNav.isActive || !activeNav.route || !userLocation) return;
 
     const progress = computeProgress(activeNav.route, userLocation);
+    const reachedDestination = hasReachedDestination(progress);
     const upcoming = findUpcomingAlert(userLocation);
     const upcomingMeters = upcoming
       ? calculateDistanceKm(
@@ -1524,7 +1529,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : Infinity;
     setActiveNav((prev) => {
       if (!prev.isActive || !prev.route) return prev;
+      if (prev.arrived) return prev;
       const step = progress.nextStep;
+      if (reachedDestination) {
+        void stopSpeaking();
+        return {
+          ...prev,
+          arrived: true,
+          gpsActive: true,
+          offRouteM: Math.round(progress.offRouteM),
+          remainingDistanceKm: 0,
+          remainingDurationMinutes: 0,
+          currentSpeedKmh: userLocation.speedKmh ?? prev.currentSpeedKmh,
+          currentManeuver: {
+            instruction: TRANSLATIONS.en.arrivedTitle,
+            instructionKa: TRANSLATIONS.ka.arrivedTitle,
+            roadName: prev.route.via || TRANSLATIONS.en.arrivedTitle,
+            distanceMeters: 0,
+            maneuverType: 'arrive',
+          },
+        };
+      }
       return {
         ...prev,
         gpsActive: true,
@@ -1546,13 +1571,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : prev.currentManeuver,
       };
     });
-  }, [userLocation, activeNav.isActive, activeNav.route, findUpcomingAlert]);
+  }, [userLocation, activeNav.isActive, activeNav.route, activeNav.arrived, findUpcomingAlert]);
 
   // Re-route when the driver has clearly drifted off the current route.
   // OffRouteDetector owns the speed-dependent threshold, the three-second
   // debounce and the cooldown between reroutes.
   useEffect(() => {
-    if (!activeNav.isActive || !activeNav.route || !userLocation || !activeNav.gpsActive) {
+    if (!activeNav.isActive || activeNav.arrived || !activeNav.route || !userLocation || !activeNav.gpsActive) {
       offRouteDetectorRef.current.reset();
       return;
     }
@@ -1566,6 +1591,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     calculateRoutes({ latitude: userLocation.latitude, longitude: userLocation.longitude });
   }, [
     activeNav.isActive,
+    activeNav.arrived,
     activeNav.route,
     activeNav.gpsActive,
     activeNav.offRouteM,
@@ -1576,13 +1602,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Keep the active route in sync when a recalculation produces a new one.
   useEffect(() => {
-    if (!activeNav.isActive || !selectedRouteAlternative) return;
+    if (!activeNav.isActive || activeNav.arrived || !selectedRouteAlternative) return;
     setActiveNav((prev) => (prev.isActive ? { ...prev, route: selectedRouteAlternative } : prev));
-  }, [selectedRouteAlternative, activeNav.isActive]);
+  }, [selectedRouteAlternative, activeNav.isActive, activeNav.arrived]);
 
   // Announce each new maneuver when guidance is on.
   useEffect(() => {
-    if (!activeNav.isActive) {
+    if (!activeNav.isActive || activeNav.arrived) {
       lastSpokenRef.current = '';
       return;
     }
@@ -1602,6 +1628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [
     activeNav.isActive,
+    activeNav.arrived,
     activeNav.currentManeuver.instruction,
     activeNav.currentManeuver.instructionKa,
     voiceMode,

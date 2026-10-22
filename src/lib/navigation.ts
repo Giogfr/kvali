@@ -31,6 +31,15 @@ export interface NavigationProgress {
   offRouteM: number;
 }
 
+/** Arrival requires being close to the route end and still on the route. */
+export function hasReachedDestination(
+  progress: NavigationProgress,
+  arrivalDistanceKm = 0.03,
+  maxOffRouteM = 60
+): boolean {
+  return progress.remainingKm <= arrivalDistanceKm && progress.offRouteM <= maxOffRouteM;
+}
+
 const EARTH_RADIUS_KM = 6371;
 
 function segmentLengthKm(a: [number, number], b: [number, number]): number {

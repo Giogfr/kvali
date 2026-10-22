@@ -178,6 +178,12 @@ export const ActiveNavigationScreen: React.FC = () => {
             </div>
           </div>
 
+          {activeNav.arrived && (
+            <div className="mt-2 px-3 py-2 rounded-xl bg-emerald-500/95 text-black text-[13px] font-bold text-center shadow-lg">
+              {t('arrivedTitle')}
+            </div>
+          )}
+
           {/* Off-route notice */}
           {activeNav.gpsActive && activeNav.offRouteM > 60 && (
             <div className="mt-2 px-3 py-1.5 rounded-xl bg-[#C9973F]/90 text-black text-[12px] font-semibold text-center shadow-lg animate-fade-in">

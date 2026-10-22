@@ -12,6 +12,7 @@ import {
   computeProgress,
   cumulativeDistances,
   findSharpCurveAhead,
+  hasReachedDestination,
   projectOnRoute,
   snapToRoute,
 } from '../src/lib/navigation.ts';
@@ -101,6 +102,13 @@ check('progress reports remaining distance and the next maneuver', () => {
   const halfWay = computeProgress(route, { latitude: 42, longitude: 44.1 });
   assert.ok(halfWay.traveledKm > 8 && halfWay.traveledKm < 8.5);
   assert.equal(halfWay.nextStep?.instruction, 'Arrive');
+});
+
+check('arrival requires the route end and a safe route offset', () => {
+  const arrived = { remainingKm: 0.01, offRouteM: 20 };
+  assert.equal(hasReachedDestination(arrived), true);
+  assert.equal(hasReachedDestination({ ...arrived, offRouteM: 80 }), false);
+  assert.equal(hasReachedDestination({ ...arrived, remainingKm: 0.2 }), false);
 });
 
 check('a sharp bend is detected within the lookahead', () => {
