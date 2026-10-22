@@ -19,6 +19,13 @@ The PBF is build input only. It is not committed to this repository.
 
 ## Engine
 
+The repository now contains a small, versioned graph contract and a pure
+Dijkstra route engine in `src/lib/offlineRouting.ts`. It validates graph data,
+snaps only within a bounded distance, honours the avoid preferences encoded on
+edges, and produces the same route model used by the navigation screens. The
+engine is intentionally not given sample Georgian roads: shipping invented
+roads would make offline navigation look functional while being unsafe.
+
 Valhalla is the best fit because one graph serves car, bicycle and pedestrian
 costing, and its guidance output already matches what the app consumes.
 
@@ -83,5 +90,8 @@ matches.
 5. Test on a physical device in airplane mode, including a cold start with no
    network.
 
-None of these steps are complete yet. The app continues to label routes as
-coming from the live service.
+The graph engine is tested but no production Georgia graph is shipped yet. The
+next native integration step is to package a verified Valhalla graph and load
+it through a Capacitor plugin. Until that package is installed, the app keeps
+using saved real routes offline and says when a new offline route cannot be
+calculated.
