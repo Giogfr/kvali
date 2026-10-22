@@ -1,0 +1,97 @@
+name: Build offline basemap package
+
+on:
+  workflow_dispatch:
+    inputs:
+      planet_date:
+        description: 'Protomaps daily build date (YYYYMMDD); empty tries the last five days'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download PMTiles tools
+        run: |
+          curl --fail --location --retry 4 --retry-delay 5 -o pmtiles.tar.gz \
+            https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz
+          tar -xzf pmtiles.tar.gz
+          ./pmtiles version
+
+      - name: Extract Georgia tiles
+        env:
+          PLANET_DATE: ${{ inputs.planet_date }}
+        run: |
+          mkdir -p artifacts
+          if [ -z "$PLANET_DATE" ]; then
+            for offset in 0 1 2 3 4; do
+              candidate=$(date -u -d "-$offset day" +%Y%m%d)
+              url="https://build.protomaps.com/$candidate.pmtiles"
+              if curl --fail --silent --head "$url" >/dev/null; then
+                PLANET_DATE=$candidate
+                break
+              fi
+            done
+          fi
+          test -n "$PLANET_DATE"
+          echo "Using Protomaps build $PLANET_DATE"
+          ./pmtiles extract "https://build.protomaps.com/$PLANET_DATE.pmtiles" \
+            artifacts/georgia-basemap-z13.pmtiles \
+            --bbox=39.9,41.0,46.8,43.6 \
+            --maxzoom=13
+          size=$(stat -c%s artifacts/georgia-basemap-z13.pmtiles)
+          echo "Basemap bytes: $size"
+          test "$size" -gt 10000000
+          test "$size" -lt 104857600
+          sha256sum artifacts/georgia-basemap-z13.pmtiles | \
+            sed 's#  artifacts/#  #' > artifacts/georgia-basemap-z13.pmtiles.sha256
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site
+          cp artifacts/georgia-basemap-z13.pmtiles* _site/
+          curl --fail --location --retry 4 --retry-delay 5 \
+            -o _site/georgia-routing-graph-v3.kvr.gz \
+            https://giogfr.github.io/kvali/georgia-routing-graph-v3.kvr.gz || true
+          curl --fail --location --retry 4 --retry-delay 5 \
+            -o _site/georgia-routing-graph-v3.kvr.gz.sha256 \
+            https://giogfr.github.io/kvali/georgia-routing-graph-v3.kvr.gz.sha256 || true
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>Kvali offline data</title>
+          <p>Offline routing and basemap packages for the Kvali Android app.</p>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy offline data to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

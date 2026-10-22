@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -68,6 +72,12 @@ jobs:
           mkdir -p _site
           cp artifacts/georgia-routing-graph-v3.kvr.gz _site/
           cp artifacts/georgia-routing-graph-v3.kvr.gz.sha256 _site/
+          curl --fail --location --retry 4 --retry-delay 5 \
+            -o _site/georgia-basemap-z13.pmtiles \
+            https://giogfr.github.io/kvali/georgia-basemap-z13.pmtiles || true
+          curl --fail --location --retry 4 --retry-delay 5 \
+            -o _site/georgia-basemap-z13.pmtiles.sha256 \
+            https://giogfr.github.io/kvali/georgia-basemap-z13.pmtiles.sha256 || true
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
