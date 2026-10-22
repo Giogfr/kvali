@@ -222,6 +222,9 @@ export async function prefetchRegion(opts: {
   } = opts;
 
   const cache = await openCache();
+  if (!cache) {
+    throw new Error('Offline tile storage is unavailable on this device');
+  }
   const tileSources = new Map<string, TileSource>();
   const assets = new Set<string>();
 
