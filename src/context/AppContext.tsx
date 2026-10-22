@@ -716,7 +716,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!layers.pointsOfInterest) return;
 
     const cached = readCache<Place[]>(`poi:${poiAnchor}`, 7 * 24 * 60 * 60 * 1000);
-    const cachedAreas = readCachedValues<Place>('poi:', 7 * 24 * 60 * 60 * 1000);
+    const cachedAreas = airplaneOfflineMode || !isOnline
+      ? readCachedValues<Place>('poi:', 7 * 24 * 60 * 60 * 1000)
+      : [];
     const cachedPlaces = [...(cached || []), ...cachedAreas];
     if (cachedPlaces.length > 0) {
       const unique = Array.from(
@@ -783,7 +785,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Real mapped enforcement and hazards from OpenStreetMap, refreshed per area.
   useEffect(() => {
     const cached = readCache<RoadAlert[]>(`alerts:${poiAnchor}`, 7 * 24 * 60 * 60 * 1000);
-    const cachedAreas = readCachedValues<RoadAlert>('alerts:', 7 * 24 * 60 * 60 * 1000);
+    const cachedAreas = airplaneOfflineMode || !isOnline
+      ? readCachedValues<RoadAlert>('alerts:', 7 * 24 * 60 * 60 * 1000)
+      : [];
     const cachedAlerts = [...(cached || []), ...cachedAreas];
     const unique = Array.from(
       new Map(cachedAlerts.map((alert) => [alert.id, alert])).values()
