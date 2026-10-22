@@ -52,8 +52,10 @@ import { activeAlerts } from '../lib/alerts';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
 import { loadOfflineRoutingGraph, routeOffline } from '../lib/offlineRouting';
+import { loadInstalledNationwideGraph } from '../lib/nationwideRouting';
+import { routePackedOffline, type PackedRoutingGraph } from '../lib/offlinePackedRouting';
 
-type RouteSource = 'online' | 'cached' | 'offline-graph' | null;
+type RouteSource = 'online' | 'cached' | 'offline-graph' | 'offline-national' | null;
 
 interface ActiveNavState {
   isActive: boolean;
@@ -320,6 +322,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === 'undefined' ? true : navigator.onLine
   );
+  const [nationwideGraph, setNationwideGraph] = useState<PackedRoutingGraph | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadInstalledNationwideGraph().then((graph) => {
+      if (active) setNationwideGraph(graph);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -962,12 +975,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cached = loadSavedRoute(origin, destination, waypoints, travelMode, routePreferences);
 
     if (offline) {
+      const nationalRoute = nationwideGraph
+        ? routePackedOffline(nationwideGraph, origin, destination, travelMode, routePreferences, waypoints)
+        : null;
       const offlineGraph = loadOfflineRoutingGraph();
       const graphRoute = offlineGraph
         ? routeOffline(offlineGraph, origin, destination, travelMode, routePreferences, waypoints)
         : null;
 
-      if (graphRoute) {
+      if (nationalRoute) {
+        setRouteAlternatives([nationalRoute]);
+        setSelectedRouteAlternative(nationalRoute);
+        setRouteFromCache(false);
+        setRouteSource('offline-national');
+        setRouteError(null);
+      } else if (graphRoute) {
         setRouteAlternatives([graphRoute]);
         setSelectedRouteAlternative(graphRoute);
         setRouteFromCache(false);
@@ -1055,6 +1077,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     airplaneOfflineMode,
     isOnline,
     routePreferences,
+    nationwideGraph,
   ]);
 
   const setRouteOrigin = useCallback(
