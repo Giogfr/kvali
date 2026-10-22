@@ -104,6 +104,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Active Navigation
     endNavigation: 'End Navigation',
+    confirmEndNavigation: 'Tap again to end',
+    etaLabel: 'ETA',
     cameraWarning: 'Camera Warning',
     gpsLive: 'Live GPS',
     gpsWaiting: 'Waiting for GPS…',
@@ -422,6 +424,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Active Navigation
     endNavigation: 'ნავიგაციის დასრულება',
+    confirmEndNavigation: 'დასასრულებლად კვლავ შეეხეთ',
+    etaLabel: 'ჩასვლა',
     cameraWarning: 'რადარის გაფრთხილება',
     gpsLive: 'პირდაპირი GPS',
     gpsWaiting: 'ველოდებით GPS-ს…',

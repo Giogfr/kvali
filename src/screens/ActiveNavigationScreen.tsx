@@ -6,7 +6,7 @@
  * This file is part of Kvali, free software under the GNU General Public
  * License version 3 or later. See the LICENSE file for the full text.
  */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CornerUpRight,
   CornerUpLeft,
@@ -87,6 +87,23 @@ export const ActiveNavigationScreen: React.FC = () => {
   const overspeeding = isOverspeeding(activeNav.currentSpeedKmh, activeNav.speedLimitKmh);
 
   const etaString = formatClockTime(etaFromNow(activeNav.remainingDurationMinutes));
+
+  // Ending guidance from a moving car should take two taps, not one.
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  useEffect(() => {
+    if (!confirmEnd) return;
+    const timer = setTimeout(() => setConfirmEnd(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmEnd]);
+
+  const handleEndPress = () => {
+    if (!confirmEnd) {
+      setConfirmEnd(true);
+      return;
+    }
+    setConfirmEnd(false);
+    endNavigation();
+  };
 
   // Nearest mapped alerts ahead of the driver, with live distance in metres.
   const aheadAlerts = useMemo(() => {
@@ -285,7 +302,7 @@ export const ActiveNavigationScreen: React.FC = () => {
                 {formatDurationMinutes(activeNav.remainingDurationMinutes)}
               </div>
               <div className="text-[12px] text-neutral-300 tabular-nums">
-                {distStr} · ETA {etaString}
+                {distStr} · {t('etaLabel')} {etaString}
               </div>
             </div>
           </div>
@@ -295,16 +312,20 @@ export const ActiveNavigationScreen: React.FC = () => {
             <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
               <Navigation size={13} className="text-[#2F6FEB]" />
               <span className="truncate max-w-[200px]">
-                {activeNav.route?.via || t('droppedPin')}
+                {language === 'ka'
+                  ? activeNav.route?.viaKa || activeNav.route?.via || t('droppedPin')
+                  : activeNav.route?.via || t('droppedPin')}
               </span>
             </div>
 
             <button
-              onClick={endNavigation}
-              className="px-4 py-2 min-h-[44px] rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[13px] font-semibold flex items-center gap-1.5 press shadow pointer-events-auto"
+              onClick={handleEndPress}
+              className={`px-4 py-2 min-h-[44px] rounded-lg text-white text-[13px] font-semibold flex items-center gap-1.5 press shadow pointer-events-auto ${
+                confirmEnd ? 'bg-red-500 ring-2 ring-red-300' : 'bg-red-600/90 hover:bg-red-500'
+              }`}
             >
               <X size={15} />
-              <span>{t('endNavigation')}</span>
+              <span>{confirmEnd ? t('confirmEndNavigation') : t('endNavigation')}</span>
             </button>
           </div>
         </div>

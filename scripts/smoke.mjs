@@ -535,6 +535,7 @@ try {
   );
 
   await clickText(page, 'button', 'End Navigation');
+  await clickText(page, 'button', 'Tap again to end');
   await page.waitForFunction(() => !document.body.innerText.includes('End Navigation'), {
     timeout: 10000,
   });
