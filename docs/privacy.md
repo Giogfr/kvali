@@ -26,7 +26,9 @@ in [Data sources](data-sources.md). Those requests necessarily reveal your IP
 address to the service, and routing, search and alert requests include
 coordinates.
 
-- Map tiles: OpenFreeMap receives the map area you are viewing.
+- Map tiles: OpenFreeMap receives the map area you are viewing. If satellite
+  imagery is selected, Esri's World Imagery service receives the viewed tile
+  requests instead.
 - Search: Nominatim receives the text you type and the result location.
 - Routing: OSRM or Valhalla receives the start and destination coordinates.
 - Alerts and POIs: Overpass receives a bounding box around your position.

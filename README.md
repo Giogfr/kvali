@@ -56,7 +56,8 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 
 ### Maps & layers
 
-- MapLibre GL map with light (Positron) and dark styles from OpenFreeMap.
+- MapLibre GL map with light (Positron), dark, and online satellite imagery
+  styles. Vector styles come from OpenFreeMap; imagery is attributed to Esri.
 - A schematic SVG fallback view for devices or browsers without WebGL.
 - Layer toggles for points of interest, speed/enforcement cameras, saved places, and recorded tracks.
 - Live location dot, recenter control, and long-press to drop pins anywhere on the map.
@@ -262,7 +263,10 @@ Kvali is distributed under the GNU General Public License, version 3 or later. T
 
 The full license text for each component is kept in [`licenses/`](licenses/). The [`NOTICE`](NOTICE) file records the same information for redistribution and will also list any source ported from other GPL projects.
 
-Map data © OpenStreetMap contributors (ODbL); tiles by OpenFreeMap; geocoding by Nominatim; routing by OSRM and Valhalla; points of interest and alerts by Overpass. Those services are not bundled with the app and are used under their own terms.
+Map data © OpenStreetMap contributors (ODbL); vector tiles by OpenFreeMap;
+satellite imagery by Esri and its imagery providers; geocoding by Nominatim;
+routing by OSRM and Valhalla; points of interest and alerts by Overpass. Those
+services are not bundled with the app and are used under their own terms.
 
 Kvali does not include code from OsmAnd, Navi, Organic Maps, or other navigation projects at this time. Organic Maps was consulted for interaction design only.
 

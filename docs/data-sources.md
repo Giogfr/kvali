@@ -6,6 +6,7 @@ community service, and every failure is shown honestly.
 | Purpose | Service | Endpoint |
 | --- | --- | --- |
 | Map tiles and styles | OpenFreeMap | `tiles.openfreemap.org` (`/styles/positron`, `/styles/dark`, `/planet`) |
+| Satellite imagery | Esri World Imagery | `server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile` |
 | Low-zoom relief | OpenFreeMap | `ne2_shaded` raster source, max zoom 6 |
 | Search and reverse geocoding | Nominatim | `nominatim.openstreetmap.org/search`, `/reverse` |
 | Car and bicycle routing | FOSSGIS OSRM | `routing.openstreetmap.de/routed-car`, `/routed-bike` |
@@ -18,6 +19,8 @@ community service, and every failure is shown honestly.
 
 - OpenStreetMap data is © OpenStreetMap contributors and is available under the
   ODbL. Attribution is shown in the app and in the README.
+- Satellite imagery is supplied by Esri and its imagery providers. It is an
+  online-only display mode and is not included in vector-tile region downloads.
 - Nominatim has a strict usage policy. Kvali sends one search at a time and
   debounces typing; it is not a bulk geocoder.
 - OSRM and Valhalla are shared FOSSGIS instances. The app must not be used to
