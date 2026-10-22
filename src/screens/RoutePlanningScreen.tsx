@@ -23,7 +23,7 @@ import { HeaderBar } from '../components/common/HeaderBar';
 import { ToggleSwitch } from '../components/common/Controls';
 import { formatDistance } from '../lib/geo';
 import { hasActiveRoutePreferences } from '../lib/routePreferences';
-import { formatDurationMinutes } from '../lib/time';
+import { etaFromNow, formatClockTime, formatDurationMinutes } from '../lib/time';
 import type { TravelMode } from '../types';
 
 export const RoutePlanningScreen: React.FC = () => {
@@ -301,6 +301,9 @@ export const RoutePlanningScreen: React.FC = () => {
                       </span>
                       <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block tabular-nums">
                         {distStr}
+                      </span>
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block tabular-nums">
+                        {t('etaLabel')} {formatClockTime(etaFromNow(alt.durationMinutes))}
                       </span>
                     </div>
                   </div>
