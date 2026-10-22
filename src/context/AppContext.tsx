@@ -52,7 +52,7 @@ import { activeAlerts } from '../lib/alerts';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
 import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
 import { loadOfflineRoutingGraph, routeOffline } from '../lib/offlineRouting';
-import { loadInstalledNationwideGraph } from '../lib/nationwideRouting';
+import { hasInstalledNationwideGraph, loadInstalledNationwideGraph } from '../lib/nationwideRouting';
 import { routePackedOffline, type PackedRoutingGraph } from '../lib/offlinePackedRouting';
 
 type RouteSource = 'online' | 'cached' | 'offline-graph' | 'offline-national' | null;
@@ -325,16 +325,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     typeof navigator === 'undefined' ? true : navigator.onLine
   );
   const [nationwideGraph, setNationwideGraph] = useState<PackedRoutingGraph | null>(null);
+  const [nationwideInstalled, setNationwideInstalled] = useState(false);
 
   const reloadNationwideGraph = useCallback(async () => {
     const graph = await loadInstalledNationwideGraph();
     setNationwideGraph(graph);
+    setNationwideInstalled(graph !== null);
     return graph !== null;
   }, []);
 
   useEffect(() => {
-    void reloadNationwideGraph();
-  }, [reloadNationwideGraph]);
+    // The package is large, so only check its marker at startup and load the
+    // graph itself when an offline route actually needs it.
+    void hasInstalledNationwideGraph().then(setNationwideInstalled);
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -977,8 +981,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cached = loadSavedRoute(origin, destination, waypoints, travelMode, routePreferences);
 
     if (offline) {
-      const nationalRoute = nationwideGraph
-        ? routePackedOffline(nationwideGraph, origin, destination, travelMode, routePreferences, waypoints)
+      let nationalGraph = nationwideGraph;
+      if (!nationalGraph && nationwideInstalled) {
+        nationalGraph = await loadInstalledNationwideGraph();
+        if (requestId !== routeRequestIdRef.current) return;
+        if (nationalGraph) {
+          setNationwideGraph(nationalGraph);
+          setNationwideInstalled(true);
+        }
+      }
+      const nationalRoute = nationalGraph
+        ? routePackedOffline(nationalGraph, origin, destination, travelMode, routePreferences, waypoints)
         : null;
       const offlineGraph = loadOfflineRoutingGraph();
       const graphRoute = offlineGraph
@@ -1080,6 +1093,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isOnline,
     routePreferences,
     nationwideGraph,
+    nationwideInstalled,
   ]);
 
   const setRouteOrigin = useCallback(
@@ -1789,7 +1803,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeRegion,
         airplaneOfflineMode,
         setAirplaneOfflineMode,
-        nationwideGraphInstalled: nationwideGraph !== null,
+        nationwideGraphInstalled: nationwideInstalled,
         reloadNationwideGraph,
         savedPlaces,
         collections,

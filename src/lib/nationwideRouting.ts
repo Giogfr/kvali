@@ -1,15 +1,23 @@
-import { parsePackedRoutingGraph, type PackedRoutingGraph } from './offlinePackedRouting';
+import { PACKED_GRAPH_VERSION, parsePackedRoutingGraph, type PackedRoutingGraph } from './offlinePackedRouting';
 import { gunzipSync } from 'fflate';
 
 const DATABASE_NAME = 'kvali_nationwide_routing_v3';
 const STORE_NAME = 'packages';
 const PACKAGE_KEY = 'georgia-car';
+const META_KEY = 'georgia-car-meta';
 export const DEFAULT_NATIONWIDE_GRAPH_URL =
   'https://github.com/Giogfr/kvali/releases/download/routing-data-latest/georgia-routing-graph-v3.kvr.gz';
 
 interface StoredPackage {
   key: string;
   bytes: ArrayBuffer;
+  sha256: string;
+  savedAt: number;
+}
+
+interface StoredMeta {
+  key: string;
+  version: number;
   sha256: string;
   savedAt: number;
 }
@@ -23,23 +31,37 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-async function readPackage(): Promise<StoredPackage | null> {
+async function readRecord<T>(key: string): Promise<T | null> {
   if (typeof indexedDB === 'undefined') return null;
   const database = await openDatabase();
   return new Promise((resolve, reject) => {
-    const request = database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(PACKAGE_KEY);
-    request.onsuccess = () => resolve((request.result as StoredPackage | undefined) || null);
+    const request = database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
+    request.onsuccess = () => resolve((request.result as T | undefined) || null);
     request.onerror = () => reject(request.error || new Error('Nationwide routing package could not be read'));
   });
 }
 
-async function writePackage(value: StoredPackage): Promise<void> {
+async function readPackage(): Promise<StoredPackage | null> {
+  return readRecord<StoredPackage>(PACKAGE_KEY);
+}
+
+async function writeRecord(value: StoredPackage | StoredMeta): Promise<void> {
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const request = database.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(value);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error || new Error('Nationwide routing package could not be stored'));
   });
+}
+
+async function writePackage(value: StoredPackage): Promise<void> {
+  await writeRecord(value);
+  await writeRecord({
+    key: META_KEY,
+    version: PACKED_GRAPH_VERSION,
+    sha256: value.sha256,
+    savedAt: value.savedAt,
+  } satisfies StoredMeta);
 }
 
 async function sha256(bytes: ArrayBuffer): Promise<string> {
@@ -60,11 +82,35 @@ function parseSha256(text: string): string | null {
   return text.trim().match(/^[a-f0-9]{64}/i)?.[0].toLowerCase() || null;
 }
 
+/** Checks the install marker without reading or parsing the whole package. */
+export async function hasInstalledNationwideGraph(): Promise<boolean> {
+  try {
+    const meta = await readRecord<StoredMeta>(META_KEY);
+    return (
+      !!meta &&
+      meta.version === PACKED_GRAPH_VERSION &&
+      typeof meta.sha256 === 'string' &&
+      /^[a-f0-9]{64}$/.test(meta.sha256)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function loadInstalledNationwideGraph(): Promise<PackedRoutingGraph | null> {
   try {
     const stored = await readPackage();
     if (!stored || (await sha256(stored.bytes)) !== stored.sha256) return null;
-    return parsePackedRoutingGraph(await decodePackage(stored.bytes, true));
+    const graph = parsePackedRoutingGraph(await decodePackage(stored.bytes, true));
+    if (graph && !(await hasInstalledNationwideGraph())) {
+      await writeRecord({
+        key: META_KEY,
+        version: PACKED_GRAPH_VERSION,
+        sha256: stored.sha256,
+        savedAt: stored.savedAt,
+      } satisfies StoredMeta);
+    }
+    return graph;
   } catch {
     return null;
   }
