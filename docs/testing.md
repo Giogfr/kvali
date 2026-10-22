@@ -31,7 +31,7 @@ That runs the pure-module suites:
 | `test:speech` | voice/language matching, including Georgian |
 | `test:speed` | speed/limit display, tolerance and limit scope |
 
-That is eighteen suites and 120 checks. Each suite exits
+That is eighteen suites and 121 checks. Each suite exits
 non-zero on the first failure, so `test:units` stops at the broken module.
 
 The CI workflow runs `bun run test:units` on every push and pull request.
