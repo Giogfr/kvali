@@ -39,6 +39,23 @@ export interface OfflineRoutingGraph {
 
 const MAX_SNAP_DISTANCE_KM = 5;
 const OFFLINE_GRAPH_STORAGE_KEY = 'kvali_offline_routing_graph_v1';
+const MAX_BUILT_GRAPH_NODES = 25000;
+
+interface OsmNodeElement {
+  type: 'node';
+  id: number;
+  lat: number;
+  lon: number;
+}
+
+interface OsmWayElement {
+  type: 'way';
+  id: number;
+  nodes: number[];
+  tags?: Record<string, string>;
+}
+
+type OsmRoadElement = OsmNodeElement | OsmWayElement;
 
 /**
  * Reads the staged graph adapter used by the web shell.
@@ -56,6 +73,149 @@ export function loadOfflineRoutingGraph(): OfflineRoutingGraph | null {
   } catch {
     return null;
   }
+}
+
+export function saveOfflineRoutingGraph(graph: OfflineRoutingGraph): boolean {
+  if (!isOfflineRoutingGraph(graph)) return false;
+  try {
+    window.localStorage.setItem(OFFLINE_GRAPH_STORAGE_KEY, JSON.stringify(graph));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const CAR_ROAD_TYPES = new Set([
+  'motorway',
+  'motorway_link',
+  'trunk',
+  'trunk_link',
+  'primary',
+  'primary_link',
+  'secondary',
+  'secondary_link',
+  'tertiary',
+  'tertiary_link',
+  'unclassified',
+  'residential',
+  'living_street',
+  'service',
+  'road',
+  'track',
+]);
+
+const ROAD_SPEED_KMH: Record<string, number> = {
+  motorway: 100,
+  motorway_link: 60,
+  trunk: 90,
+  trunk_link: 55,
+  primary: 70,
+  primary_link: 45,
+  secondary: 60,
+  secondary_link: 40,
+  tertiary: 45,
+  tertiary_link: 35,
+  unclassified: 35,
+  residential: 30,
+  living_street: 15,
+  service: 15,
+  road: 30,
+  track: 12,
+};
+
+const UNPAVED_SURFACES = new Set(['unpaved', 'gravel', 'dirt', 'ground', 'sand', 'mud', 'fine_gravel']);
+
+function osmDistanceMeters(a: OsmNodeElement, b: OsmNodeElement): number {
+  return calculateDistanceKm(a.lat, a.lon, b.lat, b.lon) * 1000;
+}
+
+/** Builds a small car graph from real Overpass OSM node/way elements. */
+export function buildOfflineRoutingGraph(elements: unknown): OfflineRoutingGraph | null {
+  if (!Array.isArray(elements)) return null;
+  const nodes = new Map<number, OsmNodeElement>();
+  const ways: OsmWayElement[] = [];
+  for (const element of elements as unknown[]) {
+    if (!element || typeof element !== 'object') continue;
+    const value = element as Partial<OsmRoadElement>;
+    if (value.type === 'node' && Number.isFinite(value.id) && Number.isFinite(value.lat) && Number.isFinite(value.lon)) {
+      nodes.set(value.id as number, value as OsmNodeElement);
+    } else if (
+      value.type === 'way' &&
+      Number.isFinite(value.id) &&
+      Array.isArray(value.nodes) &&
+      value.nodes.length > 1
+    ) {
+      const tags = value.tags || {};
+      if (CAR_ROAD_TYPES.has(tags.highway || '') && tags.access !== 'no' && tags.motor_vehicle !== 'no') {
+        ways.push(value as OsmWayElement);
+      }
+    }
+  }
+  if (nodes.size === 0 || ways.length === 0) return null;
+
+  const graphNodes: Record<string, OfflineGraphNode> = {};
+  const edges: Record<string, OfflineGraphEdge[]> = {};
+  const ensureNode = (node: OsmNodeElement) => {
+    const id = String(node.id);
+    if (!graphNodes[id]) {
+      graphNodes[id] = { latitude: node.lat, longitude: node.lon };
+      edges[id] = [];
+    }
+    return id;
+  };
+
+  for (const way of ways) {
+    const tags = way.tags || {};
+    const highway = tags.highway || 'road';
+    const speedKmh = Number(tags.maxspeed?.match(/[0-9]+(?:\.[0-9]+)?/)?.[0]) || ROAD_SPEED_KMH[highway] || 30;
+    const unpaved = UNPAVED_SURFACES.has(tags.surface || '') || tags.tracktype === 'grade5';
+    const highwayFlag = highway.includes('motorway') || highway === 'trunk' || highway === 'primary' || highway === 'secondary';
+    const addSegment = (from: OsmNodeElement, to: OsmNodeElement) => {
+      const distanceMeters = osmDistanceMeters(from, to);
+      if (!Number.isFinite(distanceMeters) || distanceMeters < 1) return;
+      const fromId = ensureNode(from);
+      const toId = ensureNode(to);
+      const edge: OfflineGraphEdge = {
+        to: toId,
+        distanceMeters,
+        durationSeconds: Math.max(1, (distanceMeters / 1000 / speedKmh) * 3600),
+        name: tags.name || tags.ref || 'Road',
+        highway: highwayFlag,
+        unpaved,
+        toll: tags.toll === 'yes',
+        instruction: `Continue on ${tags.name || tags.ref || 'the mapped road'}`,
+        instructionKa: `${tags.name || tags.ref || 'მონიშნულ გზაზე'}-ზე გააგრძელეთ`,
+      };
+      edges[fromId].push(edge);
+    };
+    const points = way.nodes.map((id) => nodes.get(id)).filter((node): node is OsmNodeElement => !!node);
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const from = points[index];
+      const to = points[index + 1];
+      addSegment(from, to);
+      if (tags.oneway !== 'yes' && tags.oneway !== '1') addSegment(to, from);
+      if (tags.oneway === '-1') {
+        const reverse = edges[String(from.id)].pop();
+        const forward = edges[String(to.id)].pop();
+        if (reverse) edges[String(to.id)].push(reverse);
+        if (forward) edges[String(from.id)].push(forward);
+      }
+    }
+  }
+
+  const usedNodeIds = Object.keys(edges).filter((id) => edges[id].length > 0);
+  if (usedNodeIds.length === 0 || usedNodeIds.length > MAX_BUILT_GRAPH_NODES) return null;
+  const used = new Set(usedNodeIds);
+  for (const id of Object.keys(graphNodes)) {
+    if (!used.has(id)) {
+      delete graphNodes[id];
+      delete edges[id];
+    } else {
+      edges[id] = edges[id].filter((edge) => used.has(edge.to));
+    }
+  }
+  const graph: OfflineRoutingGraph = { version: 1, modes: ['car'], nodes: graphNodes, edges };
+  return isOfflineRoutingGraph(graph) ? graph : null;
 }
 
 function validNode(node: unknown): node is OfflineGraphNode {

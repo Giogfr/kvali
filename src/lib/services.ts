@@ -556,6 +556,18 @@ async function overpassQuery(query: string, signal?: AbortSignal): Promise<any> 
   throw lastError || new Error('Overpass is unavailable');
 }
 
+export async function fetchOfflineRoadData(
+  latitude: number,
+  longitude: number,
+  radiusMeters = 5000,
+  signal?: AbortSignal
+): Promise<unknown[]> {
+  const radius = Math.max(1000, Math.min(5000, Math.round(radiusMeters)));
+  const query = `[out:json][timeout:60];way["highway"]["area"!="yes"](around:${radius},${latitude},${longitude});out body;>;out skel qt;`;
+  const result = await overpassQuery(query, signal);
+  return Array.isArray(result?.elements) ? result.elements : [];
+}
+
 const POI_QUERY = `[out:json][timeout:25];
 (
   nwr["amenity"~"^(fuel|parking|restaurant|cafe|fast_food|pharmacy|hospital|clinic|bank|atm|toilets|drinking_water|bus_stop)$"](around:RADIUS,LAT,LON);
