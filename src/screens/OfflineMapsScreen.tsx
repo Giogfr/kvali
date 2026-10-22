@@ -25,6 +25,7 @@ import { HeaderBar } from '../components/common/HeaderBar';
 import { ToggleSwitch } from '../components/common/Controls';
 import { useToast } from '../context/ToastContext';
 import { OfflineRegion } from '../types';
+import { TRANSLATIONS } from '../lib/translations';
 import { getCurrentLocation } from '../lib/location';
 import { clearSavedRoutes, savedRouteCount } from '../lib/routeCache';
 import {
@@ -38,6 +39,7 @@ import {
 export const OfflineMapsScreen: React.FC = () => {
   const {
     t,
+    language,
     theme,
     navigateTo,
     offlineRegions,
@@ -202,11 +204,10 @@ export const OfflineMapsScreen: React.FC = () => {
     }
     const dLon = 0.12;
     const dLat = 0.09;
-    const areaName = t('currentArea');
     addRegion({
       id: `region-${Date.now()}`,
-      name: areaName,
-      nameKa: areaName,
+      name: TRANSLATIONS.en.currentArea,
+      nameKa: TRANSLATIONS.ka.currentArea,
       sizeMb: 0,
       bbox: [lon - dLon, lat - dLat, lon + dLon, lat + dLat],
       status: 'not_downloaded',
@@ -392,7 +393,7 @@ export const OfflineMapsScreen: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 pr-2">
                         <span className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100 block truncate">
-                          {region.name}
+                          {language === 'ka' ? region.nameKa : region.name}
                         </span>
                         <div className={`flex items-center gap-2 text-[11px] ${mutedText} mt-0.5`}>
                           <span className="tabular-nums font-mono">
