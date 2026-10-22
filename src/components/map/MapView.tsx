@@ -59,6 +59,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
 ) {
   const {
     theme,
+    satelliteMode,
     effectiveCenter,
     userLocation,
     manualLocation,
@@ -87,7 +88,7 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
   const followRef = useRef(true);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pressTimerRef = useRef<number | null>(null);
-  const appliedStyleRef = useRef<string | null>(null);
+  const appliedStyleRef = useRef<unknown>(null);
   const onSelectPlaceRef = useRef(onSelectPlace);
   const onTapLocationRef = useRef(onTapLocation);
   const centerRef = useRef(effectiveCenter);
@@ -173,7 +174,8 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
       map.addControl(
         new maplibregl.AttributionControl({
           compact: true,
-          customAttribution: '© OpenStreetMap · OpenFreeMap',
+          customAttribution:
+            '© OpenStreetMap · OpenFreeMap · © Esri, Maxar, Earthstar Geographics, and the GIS User Community',
         }),
         'bottom-right'
       );
@@ -295,10 +297,62 @@ export const MapView = React.forwardRef<MapViewHandle, MapViewProps>(function Ma
     appliedStyleRef.current = target;
     try {
       setIsStyleLoaded(false);
-      map.setStyle(target);
+      map.setStyle(target, { diff: false });
       map.once('style.load', () => setIsStyleLoaded(true));
     } catch {}
   }, [theme, getTargetStyle, hasInitError]);
+
+  // Satellite imagery is an optional raster overlay. Keeping it separate from
+  // the vector base style makes toggling reliable even when the raster provider
+  // is slow or unavailable, and lets theme changes continue to use the normal
+  // OpenFreeMap style lifecycle.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || hasInitError) return;
+
+    const satelliteLayerId = 'kvali-satellite-imagery';
+    const satelliteSourceId = 'kvali-satellite-imagery';
+    const source = (MAP_STYLES.satellite.sources as Record<string, unknown>)?.satellite;
+
+    const removeSatellite = () => {
+      try {
+        if (map.getLayer(satelliteLayerId)) map.removeLayer(satelliteLayerId);
+        if (map.getSource(satelliteSourceId)) map.removeSource(satelliteSourceId);
+      } catch {}
+    };
+
+    const applySatellite = () => {
+      if (!satelliteMode) {
+        removeSatellite();
+        return;
+      }
+      if (!map.getStyle()?.layers?.length) return;
+      if (!source || map.getSource(satelliteSourceId)) return;
+      try {
+        map.addSource(satelliteSourceId, source as any);
+        map.addLayer({
+          id: satelliteLayerId,
+          type: 'raster',
+          source: satelliteSourceId,
+          paint: { 'raster-opacity': 1 },
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) console.error('Satellite overlay failed', error);
+      }
+    };
+
+    applySatellite();
+    map.once('style.load', applySatellite);
+    map.on('styledata', applySatellite);
+    const retryTimer = window.setInterval(applySatellite, 250);
+
+    return () => {
+      window.clearInterval(retryTimer);
+      map.off('style.load', applySatellite);
+      map.off('styledata', applySatellite);
+      if (!satelliteMode) removeSatellite();
+    };
+  }, [satelliteMode, theme, hasInitError]);
 
   // Recenter map animation — only when the user explicitly asks, not on every GPS fix
   useEffect(() => {

@@ -7,6 +7,7 @@
  * License version 3 or later. See the LICENSE file for the full text.
  */
 import type { OfflineRegion } from '../types';
+import type { StyleSpecification } from 'maplibre-gl';
 
 export type BBox = [number, number, number, number]; // minLon, minLat, maxLon, maxLat
 
@@ -16,9 +17,25 @@ export interface PrefetchProgress {
   bytes: number;
 }
 
+const SATELLITE_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      attribution: '© Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    },
+  },
+  layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
+};
+
 export const MAP_STYLES = {
   light: 'https://tiles.openfreemap.org/styles/positron',
   dark: 'https://tiles.openfreemap.org/styles/dark',
+  satellite: SATELLITE_STYLE,
 };
 
 const TILE_CACHE = 'kvali-tiles-v1';

@@ -92,6 +92,8 @@ interface AppContextType {
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
+  satelliteMode: boolean;
+  setSatelliteMode: (enabled: boolean) => void;
   units: UnitSystem;
   setUnits: (units: UnitSystem) => void;
   voiceMode: VoiceMode;
@@ -491,6 +493,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = localStorage.getItem('kvali_airplane_mode');
       return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [satelliteMode, setSatelliteModeState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('kvali_satellite_mode') === 'true';
     } catch {
       return false;
     }
@@ -1160,6 +1169,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setLanguage = (lang: Language) => setLanguageState(lang);
   const setTheme = (thm: ThemeMode) => setThemeState(thm);
+  const setSatelliteMode = useCallback((enabled: boolean) => {
+    setSatelliteModeState(enabled);
+    try {
+      localStorage.setItem('kvali_satellite_mode', String(enabled));
+    } catch {}
+  }, []);
   const setUnits = (u: UnitSystem) => setUnitsState(u);
   const setVoiceMode = (mode: VoiceMode) => {
     setVoiceModeState(mode);
@@ -1652,6 +1667,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLayers(DEFAULT_LAYERS);
     setUnitsState('metric');
     setThemeState('dark');
+    setSatelliteModeState(false);
     setLanguageState('en');
     setVoiceModeState('chime');
     setAirplaneOfflineModeState(false);
@@ -1675,6 +1691,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         theme,
         setTheme,
         toggleTheme,
+        satelliteMode,
+        setSatelliteMode,
         units,
         setUnits,
         voiceMode,

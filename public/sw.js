@@ -17,6 +17,9 @@ const ASSET_CACHE = `kvali-assets-${VERSION}`;
 const MAP_HOSTS = [
   'tiles.openfreemap.org',
   'fonts.openfreemap.org',
+  'server.arcgisonline.com',
+  'services.arcgisonline.com',
+  'ibasemaps-api.arcgis.com',
 ];
 
 self.addEventListener('install', () => {

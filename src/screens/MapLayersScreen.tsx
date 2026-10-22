@@ -17,6 +17,7 @@ import {
   Bookmark,
   Footprints,
   Box,
+  Satellite,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
@@ -28,6 +29,8 @@ export const MapLayersScreen: React.FC = () => {
     t,
     theme,
     setTheme,
+    satelliteMode,
+    setSatelliteMode,
     navigateTo,
     layers,
     toggleLayer,
@@ -54,10 +57,11 @@ export const MapLayersScreen: React.FC = () => {
         <div>
           <span className={sectionLabel}>{t('mapStyleLabel')}</span>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
             {/* Standard Light */}
             <button
               onClick={() => {
+                setSatelliteMode(false);
                 setTheme('light');
                 showToast(t('mapStyleLight'), 'info');
               }}
@@ -79,6 +83,7 @@ export const MapLayersScreen: React.FC = () => {
             {/* Dark Night */}
             <button
               onClick={() => {
+                setSatelliteMode(false);
                 setTheme('dark');
                 showToast(t('mapStyleDark'), 'info');
               }}
@@ -96,7 +101,31 @@ export const MapLayersScreen: React.FC = () => {
               </div>
               <span className="text-[13px] font-semibold block leading-tight">{t('mapStyleNight')}</span>
             </button>
+
+            {/* Satellite imagery */}
+            <button
+              onClick={() => {
+                setSatelliteMode(true);
+                showToast(t('mapStyleSatelliteActive'), 'info');
+              }}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                satelliteMode
+                  ? 'bg-[#1C1C1C] border-[#2F6FEB] text-white shadow-md ring-1 ring-[#2F6FEB]'
+                  : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Satellite size={17} className={satelliteMode ? 'text-[#2F6FEB]' : 'text-neutral-400'} />
+                {satelliteMode && (
+                  <span className="text-[10px] font-mono text-[#2F6FEB] font-bold">{t('active')}</span>
+                )}
+              </div>
+              <span className="text-[13px] font-semibold block leading-tight">{t('mapStyleSatellite')}</span>
+            </button>
           </div>
+          {satelliteMode && (
+            <p className="text-[11px] text-neutral-500 mt-2 leading-relaxed">{t('satelliteOnlineNotice')}</p>
+          )}
         </div>
 
         {/* 3D Terrain (unavailable) */}
