@@ -27,10 +27,11 @@ That runs the pure-module suites:
 | `test:track` | recording jitter filter and honest totals |
 | `test:route-cache` | saved-route validation and cache keys |
 | `test:offline-cache` | cached POI collections, expiry and corruption |
+| `test:offline-routing` | validated local graph routes and exclusions |
 | `test:speech` | voice/language matching, including Georgian |
 | `test:speed` | speed/limit display, tolerance and limit scope |
 
-That is sixteen suites and just over a hundred checks. Each suite exits
+That is eighteen suites and 119 checks. Each suite exits
 non-zero on the first failure, so `test:units` stops at the broken module.
 
 The CI workflow runs `bun run test:units` on every push and pull request.
@@ -66,7 +67,8 @@ Use `vite preview --host 127.0.0.1`. The plain `bun run preview` may bind only
 
 - Native Android UI, permissions and the WebView bridge.
 - Background location, because it needs a physical device.
-- Offline routing and native MBTiles, because those are not implemented yet.
+- Production offline routing data and native MBTiles, because the tested graph
+  engine has no packaged Georgia road graph yet.
 - Voice quality, which depends on the installed TTS engine and language pack.
 - Flaky upstream services. Overpass 429/502 responses are logged as warnings,
   not failures, because the app handles them by showing cached or empty data.
