@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict';
 
-const { isOfflineRoutingGraph, routeOffline } = await import('../src/lib/offlineRouting.ts');
+const { buildOfflineRoutingGraph, isOfflineRoutingGraph, routeOffline } = await import('../src/lib/offlineRouting.ts');
 
 const preferences = { avoidTolls: false, avoidHighways: false, avoidUnpaved: false };
 const graph = {
@@ -71,6 +71,26 @@ check('rejects points too far from the graph', () => {
 
 check('rejects malformed graph data', () => {
   assert.equal(isOfflineRoutingGraph({ ...graph, version: 2 }), false);
+});
+
+check('builds a routable graph from real OSM road elements', () => {
+  const built = buildOfflineRoutingGraph([
+    { type: 'node', id: 1, lat: 42.2679, lon: 42.6946 },
+    { type: 'node', id: 2, lat: 42.2689, lon: 42.6946 },
+    { type: 'node', id: 3, lat: 42.2699, lon: 42.6946 },
+    {
+      type: 'way',
+      id: 10,
+      nodes: [1, 2, 3],
+      tags: { highway: 'residential', name: 'Test Road' },
+    },
+  ]);
+  assert.ok(built);
+  assert.equal(built.modes[0], 'car');
+  assert.equal(isOfflineRoutingGraph(built), true);
+  const route = routeOffline(built, built.nodes['1'], built.nodes['3'], 'car', preferences);
+  assert.ok(route);
+  assert.equal(route.steps[0].name, 'Test Road');
 });
 
 console.log(`\n${passed} checks passed`);

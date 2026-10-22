@@ -309,6 +309,13 @@ try {
   );
   check('light theme restores and is stored', lightTheme);
 
+  await clickText(page, 'button', 'Storage Management');
+  await page.waitForFunction(() => document.body.innerText.includes('Nearby offline routing'), {
+    timeout: 10000,
+  });
+  check('offline routing preparation screen opens', true);
+  await page.click('[aria-label="Back"]');
+
   // Map layer screen and layer toggles.
   await clickText(page, 'nav button', 'Map');
   await page.waitForSelector('[aria-label="Map layers"]', { timeout: 10000 });
