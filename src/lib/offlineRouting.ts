@@ -189,29 +189,35 @@ export function buildOfflineRoutingGraph(elements: unknown): OfflineRoutingGraph
       edges[fromId].push(edge);
     };
     const points = way.nodes.map((id) => nodes.get(id)).filter((node): node is OsmNodeElement => !!node);
+    const oneway = tags.oneway === 'yes' || tags.oneway === '1';
+    const reversed = tags.oneway === '-1';
     for (let index = 0; index < points.length - 1; index += 1) {
       const from = points[index];
       const to = points[index + 1];
-      addSegment(from, to);
-      if (tags.oneway !== 'yes' && tags.oneway !== '1') addSegment(to, from);
-      if (tags.oneway === '-1') {
-        const reverse = edges[String(from.id)].pop();
-        const forward = edges[String(to.id)].pop();
-        if (reverse) edges[String(to.id)].push(reverse);
-        if (forward) edges[String(from.id)].push(forward);
+      if (oneway) {
+        addSegment(from, to);
+      } else if (reversed) {
+        addSegment(to, from);
+      } else {
+        addSegment(from, to);
+        addSegment(to, from);
       }
     }
   }
 
-  const usedNodeIds = Object.keys(edges).filter((id) => edges[id].length > 0);
-  if (usedNodeIds.length === 0 || usedNodeIds.length > MAX_BUILT_GRAPH_NODES) return null;
-  const used = new Set(usedNodeIds);
+  const used = new Set<string>();
+  for (const [id, list] of Object.entries(edges)) {
+    if (list.length === 0) continue;
+    used.add(id);
+    for (const edge of list) used.add(edge.to);
+  }
+  if (used.size === 0 || used.size > MAX_BUILT_GRAPH_NODES) return null;
   for (const id of Object.keys(graphNodes)) {
     if (!used.has(id)) {
       delete graphNodes[id];
       delete edges[id];
     } else {
-      edges[id] = edges[id].filter((edge) => used.has(edge.to));
+      edges[id] = (edges[id] || []).filter((edge) => used.has(edge.to));
     }
   }
   const graph: OfflineRoutingGraph = { version: 1, modes: ['car'], nodes: graphNodes, edges };

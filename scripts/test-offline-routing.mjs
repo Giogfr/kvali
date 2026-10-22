@@ -93,4 +93,32 @@ check('builds a routable graph from real OSM road elements', () => {
   assert.equal(route.steps[0].name, 'Test Road');
 });
 
+const onewayElements = (value) => [
+  { type: 'node', id: 1, lat: 42.2679, lon: 42.6946 },
+  { type: 'node', id: 2, lat: 42.2689, lon: 42.6946 },
+  { type: 'node', id: 3, lat: 42.2699, lon: 42.6946 },
+  {
+    type: 'way',
+    id: 20,
+    nodes: [1, 2, 3],
+    tags: { highway: 'residential', name: 'One Way', oneway: value },
+  },
+];
+
+check('one-way roads only route with the way direction', () => {
+  const built = buildOfflineRoutingGraph(onewayElements('yes'));
+  assert.ok(built);
+  assert.ok(isOfflineRoutingGraph(built));
+  assert.ok(routeOffline(built, built.nodes['1'], built.nodes['3'], 'car', preferences));
+  assert.equal(routeOffline(built, built.nodes['3'], built.nodes['1'], 'car', preferences), null);
+});
+
+check('reversed one-way roads only route against the way direction', () => {
+  const built = buildOfflineRoutingGraph(onewayElements('-1'));
+  assert.ok(built);
+  assert.ok(isOfflineRoutingGraph(built));
+  assert.ok(routeOffline(built, built.nodes['3'], built.nodes['1'], 'car', preferences));
+  assert.equal(routeOffline(built, built.nodes['1'], built.nodes['3'], 'car', preferences), null);
+});
+
 console.log(`\n${passed} checks passed`);
