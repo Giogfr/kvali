@@ -58,6 +58,12 @@ python scripts/build-georgia-routing-graph.py \
 A successful build prints the node, edge, way, and geometry point counts. Do not
 publish a package whose counts are zero or implausibly small.
 
+The current published package for the October 2026 Geofabrik extract is
+38,914,398 bytes compressed (77.4 MB decoded), with 411,520 junctions, 996,569
+edges, and 9,743 road names. It calculates Tbilisi to Batumi as 364.47 km in
+about 0.2 s and keeps peak memory near 500 MB while parsing on a desktop
+browser; the app loads it lazily, only when an offline car route needs it.
+
 `.github/workflows/routing-data.yml` performs the same build on GitHub-hosted
 Linux, publishes the two files to a `routing-data-*` release, and deploys them to
 GitHub Pages so the browser download is not blocked by cross-origin rules. The

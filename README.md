@@ -22,11 +22,11 @@
 
 Kvali is an open-source navigation app for Georgia. It is a React + TypeScript app that runs in the browser and on Android through Capacitor. Maps are OpenStreetMap vector tiles rendered with MapLibre GL; search and reverse geocoding come from Nominatim, routes from OSRM, and nearby points of interest from Overpass.
 
-> **Status: public beta (1.0.0-beta.1).** Kvali does real routing, GPS guidance, Georgian voice and offline maps, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
+> **Status: public beta (1.0.0-beta.3).** Kvali does real routing, GPS guidance, Georgian voice, offline maps and nationwide offline car routing, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
 
 ## Download & install
 
-- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.2](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.2), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
+- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.3](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.3), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
 - **Web / PWA:** run `bun run build` and serve `dist/`, or deploy it anywhere static. In Chrome or Edge, use **Install app** in the address bar to add it as a standalone app with offline support.
 
 ## Table of contents
@@ -85,6 +85,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 ### Offline & device
 
 - Offline map areas that cache real vector tiles (zooms 9–14, both map styles, sprites and fonts) in device storage through a service worker, so the map keeps rendering without a connection.
+- A 39 MB nationwide Georgia road package (411,520 junctions, 996,569 road edges) that builds new car routes with turn instructions anywhere in the country without a connection. The app verifies its SHA-256 before installing and uses a compact binary format, so it does not need a server.
 - Routes you have calculated once are saved on the device (to roughly 110 m) and work again offline; nearby POIs and alert data are cached for a week.
 - Installable as a PWA with its own icon, and offline-first: the app shell loads from the cache with no network.
 - Screen wake lock while guidance or track recording is active.
@@ -226,13 +227,14 @@ Persisted to `localStorage`: theme, language, units, voice mode, travel mode, ro
 
 ## Offline behaviour
 
-The app is offline-first. The shell, the downloaded map tiles, and any route you have already calculated are served from the device cache, so the map keeps drawing and a known route keeps guiding without a connection — even if you still have a little internet.
+The app is offline-first. The shell, the downloaded map tiles, and any route you have already calculated are served from the device cache, so the map keeps drawing and a known route keeps guiding without a connection — even if you still have a little internet. If you install the Georgia roads package from **Offline Maps**, new car routes also work anywhere in the country without a connection.
 
 What still needs a connection:
 
 - Search and reverse geocoding (Nominatim).
 - Point-of-interest and alert lookups (Overpass).
-- A **new** route you have never calculated before (there is no on-device routing graph yet).
+- A **new** car route when the nationwide package is not installed, and any new bike or walking route.
+- The one-time 39 MB nationwide package download itself.
 
 Voice guidance uses the device speech synthesiser, so the available voices and languages depend on the platform.
 
@@ -316,7 +318,7 @@ Tagged builds attach the signed release APK, so you can download and sideload it
 - On the phone, allow installs from your browser, then open the downloaded APK.
 - Grant location permission on first launch and choose precise location where offered.
 
-Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.2` (`versionCode` 4).
+Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.3` (`versionCode` 5).
 
 ## How to test
 
@@ -330,7 +332,7 @@ The quickest loop is the web build, but native location, the screen wake lock, a
 4. Open a result's directions button, pick a route alternative, then **Start navigation**. Without a GPS fix the banner stays on the first instruction; with a fix the banner, remaining distance, and ETA update as you move.
 5. Switch **Settings → Distance units** to imperial and confirm speed, distance, and speed-limit values change to mph/mi.
 6. In **Settings → Voice guidance**, pick *Spoken*, *Chime*, or *Muted* and confirm guidance speaks, chimes, or stays silent.
-7. **Offline Maps**: download an area and watch real tiles cache. Go offline (DevTools → Network → Offline) and confirm the map still renders; search and routing will stop.
+7. **Offline Maps**: download an area and watch real tiles cache. Go offline (DevTools → Network → Offline) and confirm the map still renders; search stops, while a new car route still works if the Georgia roads package is installed.
 8. **Road alerts**: add a report and confirm a marker appears on the map.
 
 To exercise location screens without moving, use your browser's sensor override (Chrome DevTools → Sensors → Location) and set a custom position.
@@ -341,7 +343,7 @@ To exercise location screens without moving, use your browser's sensor override 
 2. Grant location permission — choose "While using the app" and allow precise location if asked.
 3. Move a short distance and confirm the blue dot follows you and the guidance banner advances.
 4. Start navigation and leave the screen on: the display should stay awake while guidance is active.
-5. Airplane-mode test: download an offline area first, switch to airplane mode, and confirm the downloaded tiles still draw.
+5. Airplane-mode test: download an offline area and the Georgia roads package first, switch to airplane mode, then confirm the downloaded tiles still draw and a new Tbilisi-to-Batumi car route is calculated on the device.
 
 ### Checking a build
 

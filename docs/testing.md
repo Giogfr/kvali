@@ -75,14 +75,17 @@ bun scripts/test-nationwide-graph.mjs path/to/georgia-routing-graph-v3.kvr.gz
 
 The script decompresses the package, validates every offset and edge, and
 calculates a Tbilisi-to-Batumi route. It needs the real published artifact, so
-it is not part of `test:units`.
+it is not part of `test:units`. The published package has also been downloaded
+through the app's own installer in headless Chrome: the SHA-256 check, IndexedDB
+install, page reload, and a 364.47 km Tbilisi-to-Batumi route all passed.
 
 ## What the suites do not cover
 
 - Native Android UI, permissions and the WebView bridge.
 - Background location, because it needs a physical device.
-- The published Georgia routing package as loaded by the app, until it is
-  tested on a device in airplane mode.
+- The published Georgia routing package on a physical device in airplane mode.
+  Its download, checksum, install, persistence and routing are covered in a
+  headless browser, but not yet through the Android WebView and storage layer.
 - Native MBTiles.
 - Voice quality, which depends on the installed TTS engine and language pack.
 - Flaky upstream services. Overpass 429/502 responses are logged as warnings,
