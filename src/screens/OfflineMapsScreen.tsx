@@ -28,6 +28,12 @@ import { OfflineRegion } from '../types';
 import { TRANSLATIONS } from '../lib/translations';
 import { getCurrentLocation } from '../lib/location';
 import { clearSavedRoutes, savedRouteCount } from '../lib/routeCache';
+import { fetchOfflineRoadData } from '../lib/services';
+import {
+  buildOfflineRoutingGraph,
+  loadOfflineRoutingGraph,
+  saveOfflineRoutingGraph,
+} from '../lib/offlineRouting';
 import {
   MAP_STYLES,
   clearTileCache,
@@ -54,6 +60,7 @@ export const OfflineMapsScreen: React.FC = () => {
     effectiveCenter,
     geolocationStatus,
     voiceMode,
+    isOnline,
   } = useApp();
 
   const { showToast } = useToast();
@@ -62,6 +69,10 @@ export const OfflineMapsScreen: React.FC = () => {
   const [storageSupported, setStorageSupported] = useState(true);
   const [savedRoutes, setSavedRoutes] = useState(() => savedRouteCount());
   const [isAddingArea, setIsAddingArea] = useState(false);
+  const [isPreparingRouting, setIsPreparingRouting] = useState(false);
+  const [routingGraphInstalled, setRoutingGraphInstalled] = useState(
+    () => loadOfflineRoutingGraph() !== null
+  );
   const controllersRef = useRef<Record<string, AbortController>>({});
   const recoveredDownloadsRef = useRef(false);
 
@@ -207,6 +218,22 @@ export const OfflineMapsScreen: React.FC = () => {
     showToast(t('savedRoutesCleared'), 'info');
   };
 
+  const handlePrepareRouting = async () => {
+    if (isPreparingRouting || airplaneOfflineMode || !isOnline) return;
+    setIsPreparingRouting(true);
+    try {
+      const elements = await fetchOfflineRoadData(effectiveCenter.latitude, effectiveCenter.longitude);
+      const graph = buildOfflineRoutingGraph(elements);
+      if (!graph || !saveOfflineRoutingGraph(graph)) throw new Error('Offline routing data could not be stored');
+      setRoutingGraphInstalled(true);
+      showToast(t('offlineRoutingReady'), 'success');
+    } catch (error) {
+      if ((error as Error)?.name !== 'AbortError') showToast(t('offlineRoutingFailed'), 'warn');
+    } finally {
+      setIsPreparingRouting(false);
+    }
+  };
+
   const handleAddArea = async () => {
     if (isAddingArea) return;
     setIsAddingArea(true);
@@ -311,6 +338,28 @@ export const OfflineMapsScreen: React.FC = () => {
               {t('clear')}
             </button>
           )}
+        </div>
+
+        {/* Nearby real road graph for new routes without a connection */}
+        <div className={`p-3.5 ${cardClass}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-[13px] font-semibold block text-neutral-800 dark:text-neutral-200 leading-tight">
+                {t('offlineRoutingTitle')}
+              </span>
+              <span className={`text-[11px] ${mutedText} leading-tight block mt-0.5`}>
+                {routingGraphInstalled ? t('offlineRoutingInstalled') : t('offlineRoutingDesc')}
+              </span>
+            </div>
+            <button
+              onClick={handlePrepareRouting}
+              disabled={isPreparingRouting || airplaneOfflineMode || !isOnline}
+              className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#2F6FEB] text-white text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isPreparingRouting ? t('offlineRoutingPreparing') : routingGraphInstalled ? t('offlineRoutingRefresh') : t('offlineRoutingPrepare')}
+            </button>
+          </div>
+          <p className={`text-[10px] ${mutedText} mt-2 leading-relaxed`}>{t('offlineRoutingScope')}</p>
         </div>
 
         <div className={`p-3.5 ${cardClass}`}>
