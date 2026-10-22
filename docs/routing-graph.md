@@ -2,9 +2,14 @@
 
 ## Goal
 
-Routing and turn-by-turn guidance should keep working without a network
-connection. Today every route comes from OSRM or Valhalla over HTTPS. The app
-caches recent routes, but it cannot calculate a new route offline.
+Routing should keep working without a network connection. Kvali ships two
+offline paths now:
+
+- saved routes from previous online calculations, and
+- a nationwide Georgia car graph the user installs once from Offline Maps.
+
+The installed graph can calculate new car routes anywhere in Georgia while
+offline. Walking and cycling still require a connection or a cached route.
 
 ## Data source
 
@@ -12,115 +17,81 @@ Georgia is a small extract, so a country-sized graph is practical:
 
 - Source: Geofabrik, `https://download.geofabrik.de/europe/georgia-latest.osm.pbf`
 - License: ODbL, attribution to OpenStreetMap contributors.
-- Approximate download: 45 MB at the time of writing. Check the server's
+- Approximate download: 100 MB at the time of writing. Check the server's
   `.md5` file before building.
 
 The PBF is build input only. It is not committed to this repository.
 
 ## Engine
 
-The repository contains a small, versioned graph contract and a pure Dijkstra
-route engine in `src/lib/offlineRouting.ts`. It validates graph data, snaps
-only within a bounded distance, honours the avoid preferences encoded on
-edges, and produces the same route model used by the navigation screens. The
-old browser graph remains useful for tests and short-lived development data,
-but it is not the nationwide format.
+`src/lib/offlineRouting.ts` contains the small browser graph used for nearby
+development data and tests. It is not the nationwide format.
 
-The nationwide build input is converted with
-`scripts/build-georgia-routing-graph.py`. The builder reads every drivable
-road from the Georgia PBF, preserves one-way restrictions, speed limits, tolls,
-unpaved-road flags, road names, and coordinates, then writes a compact v2
-adjacency graph. Coordinates are stored as integer microdegrees and edges use
-integer tuples so gzip compression and Android storage are practical. The
-builder also writes a SHA-256 sidecar; an app install must verify that digest
-before treating the package as available.
+`src/lib/offlinePackedRouting.ts` reads the nationwide package and routes over
+it. The reader validates the header, array lengths, offset tables, edge targets,
+and name indexes before exposing the graph. Snapping is limited to 5 km, so a
+point in the sea or another country does not silently attach to a Georgian road.
 
-The PBF is never committed. Install the parser once with
-`python -m pip install osmium`, download the current Geofabrik extract, and
-run:
+The package is a binary KVRG v3 document:
+
+- integer microdegree coordinates and typed numeric arrays, so a phone does not
+  allocate millions of JavaScript objects;
+- degree-two road nodes are contracted into chains, and each chain keeps its
+  polyline so the route follows the real road shape;
+- per-edge travel time, toll/highway/unpaved flags, and road-name indexes;
+- a SHA-256 sidecar that the app must verify before installing.
+
+`scripts/build-georgia-routing-graph.py` builds it. The builder reads every
+drivable road from the PBF, preserves one-way restrictions, speed limits,
+tolls, unpaved-road flags, road names, and coordinates, contracts the chains,
+and writes `georgia-routing-graph-v3.kvr.gz` plus the checksum sidecar.
+
+Install the parser once with `python -m pip install osmium`, download the
+current Geofabrik extract, and run:
 
 ```sh
 python scripts/build-georgia-routing-graph.py \
   --pbf georgia-latest.osm.pbf \
-  --output artifacts/georgia-routing-graph-v2.json.gz
+  --output artifacts/georgia-routing-graph-v3.kvr.gz
 ```
 
-The generated artifact is the source of truth for nationwide coverage. A
-successful build must report non-zero country-wide node, edge, and way counts;
-the app must not silently substitute the nearby browser graph when this
-package is missing.
+A successful build prints the node, edge, way, and geometry point counts. Do not
+publish a package whose counts are zero or implausibly small.
 
 `.github/workflows/routing-data.yml` performs the same build on GitHub-hosted
-Linux and publishes the two files as a release. Run it manually with a tag
-such as `routing-data-2026-10-22`; the app's default installer reads the latest
-release and verifies the sidecar before storing the package.
+Linux and publishes the two files to a `routing-data-*` release. The default tag
+is `routing-data-latest`. The app's installer reads:
 
-Valhalla is the best fit because one graph serves car, bicycle and pedestrian
-costing, and its guidance output already matches what the app consumes.
-
-- Valhalla: MIT license.
-- `valhalla-mobile`: MIT wrapper used by several mobile apps. It still needs an
-  Android native module, packaged as a Capacitor plugin, and ABI-specific
-  binaries. That work is not done.
-
-## Build outline
-
-The official Docker image keeps the toolchain reproducible:
-
-```sh
-# 1. Download and verify the extract
-curl -O https://download.geofabrik.de/asia/georgia-latest.osm.pbf
-curl -O https://download.geofabrik.de/asia/georgia-latest.osm.pbf.md5
-md5sum -c georgia-latest.osm.pbf.md5
-
-# 2. Build a config and the tiles (inside the Valhalla image)
-valhalla_build_config \
-  --mjolnir-tile-dir /data/valhalla \
-  --mjolnir-timezone /data/timezones \
-  --mjolnir-admin /data/admin \
-  > /data/valhalla.json
-
-valhalla_build_tiles -c /data/valhalla.json /data/georgia-latest.osm.pbf
-
-# 3. Package the tile directory for the device
-tar -czf georgia-valhalla.tar.gz -C /data valhalla
+```
+https://github.com/Giogfr/kvali/releases/download/routing-data-latest/georgia-routing-graph-v3.kvr.gz
 ```
 
-The timezone and admin databases are separate downloads. Without them,
-Valhalla still routes, but time-dependent and border features are unavailable.
+and verifies the `.sha256` sidecar before storing the package in IndexedDB.
+The compressed bytes are stored, so a later app start decompresses and parses
+the graph again instead of downloading it a second time.
 
-## Size and storage
+## Verification
 
-The tile size depends on the Valhalla version and the tile hierarchy. Measure
-the result before publishing a release; do not promise a number that has not
-been measured. A country-sized graph is normally hundreds of megabytes.
+`bun run test:offline-packed` checks the binary reader, validation, routing,
+and avoid flags with a synthetic package. A real package must also pass:
 
-Two delivery options:
+```sh
+bun scripts/test-nationwide-graph.mjs path/to/georgia-routing-graph-v3.kvr.gz
+```
 
-1. Bundle the graph in the APK. Simple, but increases the download for every
-   user, including people who never leave Tbilisi.
-2. Download on first use into the app's private files directory, verify a
-   SHA-256 checksum, and show real progress. Kvali already has an offline
-   manager screen, so this fits the existing UI.
+That test decompresses the artifact, validates it, and calculates a
+Tbilisi-to-Batumi route. A release is not nationwide-complete until this passes
+on the published asset and the same flow is exercised on an Android device in
+airplane mode.
 
-Option 2 is preferred. The app must show an honest error if the download is
-interrupted, and must not mark the graph as installed until the checksum
-matches.
+## Remaining work
 
-## Integration steps
-
-1. Build and publish the graph artifact with a checksum.
-2. Add a Capacitor plugin that starts Valhalla with the tile path and exposes
-   `route(request)` over the existing route model.
-3. Route through the local engine first when the graph is installed, and fall
-   back to the online services only when it is missing or fails.
-4. Keep the existing online routing code; offline routing is an addition, not a
-   replacement.
-5. Test on a physical device in airplane mode, including a cold start with no
-   network.
-
-The graph engine is tested but no production Georgia graph is shipped yet. The
-next native integration step is to package a verified Valhalla graph and load
-it through a Capacitor plugin. Until that package is installed, the app keeps
-using saved real routes offline and says when a new offline route cannot be
-calculated.
+- The graph covers car routing only.
+- Instructions are still per road-chain ("Continue on …"), not full turn
+  guidance with junction maneuvers, lane data, or exit numbers.
+- The nationwide visual map package is separate from the routing package; users
+  still need downloaded tile areas for the map itself while offline.
+- A native Valhalla or OSRM build could replace the in-app Dijkstra graph later.
+  Valhalla is MIT licensed and one graph serves car, bicycle and pedestrian
+  costing, but it needs a Capacitor plugin and ABI-specific binaries. That work
+  is not done.
