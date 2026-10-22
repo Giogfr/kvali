@@ -161,6 +161,25 @@ check('entries with bad points or modes are ignored', () => {
   assert.equal(savedRouteCount(), 1);
 });
 
+check('entries with malformed route coordinates are ignored', () => {
+  reset();
+  store.set(
+    'kvali_saved_routes_v1',
+    JSON.stringify([
+      {
+        key: 'bad-coordinates',
+        savedAt: Date.now(),
+        origin: kutaisi,
+        destination: tbilisi,
+        waypoints: [],
+        mode: 'car',
+        routes: [{ ...route, coordinates: [[42.69, 42.26], ['bad', 41.71]] }],
+      },
+    ])
+  );
+  assert.equal(savedRouteCount(), 0);
+});
+
 check('clearing removes every cached route', () => {
   reset();
   saveRoute(kutaisi, tbilisi, [], 'car', [route]);

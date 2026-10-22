@@ -48,6 +48,15 @@ function isPoint(value: unknown): value is LatLng {
   return Number.isFinite(point.latitude) && Number.isFinite(point.longitude);
 }
 
+function isCoordinate(value: unknown): value is [number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    Number.isFinite(value[0]) &&
+    Number.isFinite(value[1])
+  );
+}
+
 function isSavedRoute(value: unknown): value is SavedRoute {
   if (!value || typeof value !== 'object') return false;
   const entry = value as SavedRoute;
@@ -66,6 +75,7 @@ function isSavedRoute(value: unknown): value is SavedRoute {
         !!route &&
         Array.isArray(route.coordinates) &&
         route.coordinates.length > 1 &&
+        route.coordinates.every(isCoordinate) &&
         Number.isFinite(route.distanceKm) &&
         Number.isFinite(route.durationMinutes) &&
         route.isRealService !== false
