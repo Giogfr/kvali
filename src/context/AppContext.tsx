@@ -49,7 +49,7 @@ import { calculateDistanceKm } from '../lib/geo';
 import { shouldAppendTrackPoint, summariseTrack } from '../lib/trackRecording';
 import { isOverspeeding, limitInScope } from '../lib/speed';
 import { loadSavedRoute, saveRoute } from '../lib/routeCache';
-import { readCache, writeCache } from '../lib/offlineCache';
+import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
 
 interface ActiveNavState {
   isActive: boolean;
@@ -716,7 +716,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!layers.pointsOfInterest) return;
 
     const cached = readCache<Place[]>(`poi:${poiAnchor}`, 7 * 24 * 60 * 60 * 1000);
-    if (cached) setNearbyPois(cached);
+    const cachedAreas = readCachedValues<Place>('poi:', 7 * 24 * 60 * 60 * 1000);
+    const cachedPlaces = [...(cached || []), ...cachedAreas];
+    if (cachedPlaces.length > 0) {
+      const unique = Array.from(
+        new Map(cachedPlaces.map((place) => [place.id, place])).values()
+      );
+      setNearbyPois(unique);
+    }
 
     // Offline (or offline mode): keep whatever was downloaded with the area.
     if (airplaneOfflineMode || !isOnline) return;
@@ -749,7 +756,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setNearbyPois(mapped);
             writeCache(`poi:${poiAnchor}`, mapped);
             setPoisUnavailable(false);
-          } else if (!cached) {
+          } else if (cachedPlaces.length === 0) {
             setPoisUnavailable(true);
           }
         })
@@ -758,7 +765,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // Keep the last known POIs on screen instead of blanking the map.
           if (attempt < 2) {
             retryTimer = window.setTimeout(() => load(attempt + 1), 4000 * (attempt + 1));
-          } else if (!cached) {
+          } else if (cachedPlaces.length === 0) {
             setPoisUnavailable(true);
           }
         });

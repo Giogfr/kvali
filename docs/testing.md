@@ -26,6 +26,7 @@ That runs the pure-module suites:
 | `test:location` | GPS unit conversion, null handling, bad fixes |
 | `test:track` | recording jitter filter and honest totals |
 | `test:route-cache` | saved-route validation and cache keys |
+| `test:offline-cache` | cached POI collections, expiry and corruption |
 | `test:speech` | voice/language matching, including Georgian |
 | `test:speed` | speed/limit display, tolerance and limit scope |
 

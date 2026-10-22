@@ -60,6 +60,30 @@ export function readCache<T>(key: string, maxAgeMs: number): T | null {
   }
 }
 
+export function readCachedValues<T>(keyPrefix: string, maxAgeMs: number): T[] {
+  if (!storageAvailable()) return [];
+  const values: T[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(PREFIX + keyPrefix)) continue;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw) as CacheRecord<T>;
+        if (!parsed || typeof parsed.savedAt !== 'number') continue;
+        if (Date.now() - parsed.savedAt > maxAgeMs) continue;
+        if (Array.isArray(parsed.data)) values.push(...parsed.data);
+      } catch {
+        // One damaged cache entry must not hide healthy offline data.
+      }
+    }
+  } catch {
+    return values;
+  }
+  return values;
+}
+
 export function writeCache<T>(key: string, data: T): void {
   if (!storageAvailable()) return;
   try {
