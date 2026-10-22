@@ -46,4 +46,10 @@ check('every weekday follows the same window', () => {
   }
 });
 
+check('uses Georgia time even when the device timezone differs', () => {
+  assert.equal(isSchoolZoneActive(new Date('2026-01-05T03:59:00Z')), false);
+  assert.equal(isSchoolZoneActive(new Date('2026-01-05T04:00:00Z')), true);
+  assert.equal(isSchoolZoneActive(new Date('2026-01-05T12:00:00Z')), false);
+});
+
 console.log(`\n${passed} checks passed`);
