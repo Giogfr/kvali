@@ -28,7 +28,7 @@ const LOGO_MARK = `
         fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" />
   <circle cx="13.5" cy="34.5" r="3.1" fill="#FFFFFF" />
   <circle cx="34.5" cy="14.5" r="6" fill="none" stroke="#FFFFFF" stroke-width="3.6" />
-  <circle cx="34.5" cy="14.5" r="2.6" fill="#2563EB" />`;
+  <circle cx="34.5" cy="14.5" r="2.6" fill="#0D0D0D" />`;
 
 function iconSvg(kind, size) {
   if (kind === 'fg') {
