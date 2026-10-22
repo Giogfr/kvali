@@ -87,6 +87,30 @@ check('a saved route can be loaded again', () => {
   assert.equal(loaded?.[0].distanceKm, 221.4);
 });
 
+check('a saved route survives normal gps drift at departure', () => {
+  reset();
+  saveRoute(kutaisi, tbilisi, [], 'car', [route]);
+  const loaded = loadSavedRoute(
+    { latitude: kutaisi.latitude + 0.0012, longitude: kutaisi.longitude + 0.0008 },
+    { latitude: tbilisi.latitude + 0.0007, longitude: tbilisi.longitude - 0.0004 },
+    [],
+    'car'
+  );
+  assert.equal(loaded?.[0].id, 'osrm-route-0');
+});
+
+check('a saved route is not reused for a different destination', () => {
+  reset();
+  saveRoute(kutaisi, tbilisi, [], 'car', [route]);
+  const loaded = loadSavedRoute(
+    kutaisi,
+    { latitude: tbilisi.latitude + 0.01, longitude: tbilisi.longitude },
+    [],
+    'car'
+  );
+  assert.equal(loaded, null);
+});
+
 check('saving the same key replaces instead of duplicating', () => {
   reset();
   saveRoute(kutaisi, tbilisi, [], 'car', [route]);

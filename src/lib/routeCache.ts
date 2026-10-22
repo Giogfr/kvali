@@ -14,6 +14,7 @@
 
 import type { RealRouteResult } from './services';
 import type { RoutePreferences } from '../types';
+import { calculateDistanceKm } from './geo';
 
 export type TravelModeKey = 'car' | 'walking' | 'cycling';
 
@@ -34,6 +35,8 @@ export interface SavedRoute {
 
 const STORAGE_KEY = 'kvali_saved_routes_v1';
 const MAX_ENTRIES = 10;
+const ORIGIN_TOLERANCE_KM = 0.25;
+const DESTINATION_TOLERANCE_KM = 0.15;
 // ~110 metres at Georgian latitudes: close enough that the saved route still
 // starts on the same street, while surviving normal GPS drift.
 const COORD_PRECISION = 3;
@@ -136,7 +139,27 @@ export function loadSavedRoute(
   preferences?: RoutePreferences
 ): RealRouteResult[] | null {
   const key = routeCacheKey(origin, destination, waypoints, mode, preferences);
-  const entry = readAll().find((item) => item.key === key);
+  const exact = readAll().find((item) => item.key === key);
+  if (exact) return exact.routes;
+
+  // GPS fixes move between route planning and departure. Reuse a saved route
+  // only when its mode, exclusions, destination, and stops still match.
+  const preference = preferenceKey(preferences);
+  const entry = readAll().find((item) => {
+    const [, savedPreference] = item.key.split('|');
+    if (item.mode !== mode || savedPreference !== preference) return false;
+    if (item.waypoints.length !== waypoints.length) return false;
+    if (calculateDistanceKm(item.origin.latitude, item.origin.longitude, origin.latitude, origin.longitude) > ORIGIN_TOLERANCE_KM) {
+      return false;
+    }
+    if (calculateDistanceKm(item.destination.latitude, item.destination.longitude, destination.latitude, destination.longitude) > DESTINATION_TOLERANCE_KM) {
+      return false;
+    }
+    return item.waypoints.every((saved, index) => {
+      const requested = waypoints[index];
+      return !!requested && calculateDistanceKm(saved.latitude, saved.longitude, requested.latitude, requested.longitude) <= DESTINATION_TOLERANCE_KM;
+    });
+  });
   return entry ? entry.routes : null;
 }
 
