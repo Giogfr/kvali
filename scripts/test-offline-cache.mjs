@@ -35,6 +35,15 @@ check('reads one cached collection', () => {
   assert.deepEqual(readCache('poi:42.27,42.69', 1000), [{ id: 'one' }]);
 });
 
+check('stores and reads cached search results by query', () => {
+  store.clear();
+  writeCache('search:supermarket', [{ name: 'Market', latitude: 42.2 }]);
+  assert.deepEqual(readCache('search:supermarket', 1000), [
+    { name: 'Market', latitude: 42.2 },
+  ]);
+  assert.equal(readCache('search:pharmacy', 1000), null);
+});
+
 check('collects cached collections under one prefix', () => {
   store.clear();
   writeCache('poi:one', [{ id: 'one' }, { id: 'shared' }]);

@@ -32,6 +32,7 @@ import { HeaderBar } from '../components/common/HeaderBar';
 import { calculateDistanceKm, formatDistance } from '../lib/geo';
 import { searchNominatim, type GeocodeResult } from '../lib/services';
 import { Place, PlaceCategory } from '../types';
+import { readCache, writeCache } from '../lib/offlineCache';
 
 export const SearchScreen: React.FC = () => {
   const {
@@ -49,6 +50,7 @@ export const SearchScreen: React.FC = () => {
     navigateTo,
     effectiveCenter,
     setRouteDestination,
+    airplaneOfflineMode,
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -103,10 +105,19 @@ export const SearchScreen: React.FC = () => {
 
   useEffect(() => {
     const q = query.trim();
+    const cacheKey = `search:${q.toLowerCase()}`;
     if (q.length < 3) {
       setRemoteResults([]);
       setIsSearching(false);
       setSearchFailed(false);
+      return;
+    }
+
+    const cached = readCache<GeocodeResult[]>(cacheKey, 30 * 24 * 60 * 60 * 1000);
+    if (cached) setRemoteResults(cached);
+    if (airplaneOfflineMode || !navigator.onLine) {
+      setIsSearching(false);
+      setSearchFailed(!cached);
       return;
     }
 
@@ -117,6 +128,7 @@ export const SearchScreen: React.FC = () => {
       try {
         const results = await searchNominatim(q, centerRef.current, controller.signal);
         setRemoteResults(results);
+        if (results.length > 0) writeCache(cacheKey, results);
       } catch {
         if (!controller.signal.aborted) {
           setRemoteResults([]);
@@ -131,7 +143,7 @@ export const SearchScreen: React.FC = () => {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [airplaneOfflineMode, query]);
 
   const handleSelectPlace = (place: Place) => {
     addRecentSearch(place.name);
