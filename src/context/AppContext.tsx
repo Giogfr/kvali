@@ -409,14 +409,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Route Planning State
-  const [routeOrigin, setRouteOrigin] = useState<{ name: string; latitude: number; longitude: number } | null>(null);
-  const [routeDestination, setRouteDestination] = useState<Place | TemporaryPin | null>(null);
+  const [routeOrigin, setRouteOriginState] = useState<{ name: string; latitude: number; longitude: number } | null>(null);
+  const [routeDestination, setRouteDestinationState] = useState<Place | TemporaryPin | null>(null);
   const [intermediateStops, setIntermediateStops] = useState<(Place | TemporaryPin)[]>([]);
   const [routeAlternatives, setRouteAlternatives] = useState<RouteAlternative[]>([]);
   const [selectedRouteAlternative, setSelectedRouteAlternative] = useState<RouteAlternative | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeFromCache, setRouteFromCache] = useState(false);
+  const routeRequestIdRef = useRef(0);
 
   // Road Alerts
   const [roadAlerts, setRoadAlerts] = useState<RoadAlert[]>(() => {
@@ -650,7 +651,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loc = await getCurrentLocation();
       applyLocation(loc);
       setManualLocation(null);
-      setRouteOrigin({
+      setRouteOriginState({
         name: 'My Location (GPS)',
         latitude: loc.latitude,
         longitude: loc.longitude,
@@ -890,6 +891,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Real OSRM route calculation. If no real origin is known we refuse to
   // calculate instead of inventing a start point from the default map centre.
   const calculateRoutes = useCallback(async (originOverride?: { latitude: number; longitude: number }) => {
+    const requestId = ++routeRequestIdRef.current;
     if (!routeDestination) return;
 
     const origin =
@@ -952,6 +954,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         routePreferences
       );
 
+      if (requestId !== routeRequestIdRef.current) return;
+
       if (osrmRoutes.length > 0) {
         setRouteAlternatives(osrmRoutes);
         setSelectedRouteAlternative(osrmRoutes[0]);
@@ -967,6 +971,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         language === 'ka' ? 'ამ მოგზაურობისთვის მარშრუტი ვერ მოიძებნა.' : 'No route found for this trip.'
       );
     } catch (err) {
+      if (requestId !== routeRequestIdRef.current) return;
       console.warn('Route request failed:', err);
       if (cached) {
         setRouteAlternatives(cached);
@@ -984,7 +989,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         );
       }
     } finally {
-      setIsCalculatingRoute(false);
+      if (requestId === routeRequestIdRef.current) setIsCalculatingRoute(false);
     }
   }, [
     routeOrigin,
@@ -996,7 +1001,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     language,
     airplaneOfflineMode,
     isOnline,
+    routePreferences,
   ]);
+
+  const setRouteOrigin = useCallback(
+    (origin: { name: string; latitude: number; longitude: number } | null) => {
+      routeRequestIdRef.current += 1;
+      setRouteOriginState(origin);
+      setRouteAlternatives([]);
+      setSelectedRouteAlternative(null);
+      setRouteError(null);
+      setRouteFromCache(false);
+    },
+    []
+  );
+
+  const setRouteDestination = useCallback(
+    (destination: Place | TemporaryPin | null) => {
+      routeRequestIdRef.current += 1;
+      setRouteDestinationState(destination);
+      setRouteAlternatives([]);
+      setSelectedRouteAlternative(null);
+      setRouteError(null);
+      setRouteFromCache(false);
+    },
+    []
+  );
 
   // Recalculate route whenever destination, origin, mode, preferences or stops change
   useEffect(() => {
