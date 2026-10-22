@@ -11,3 +11,5 @@ coverage/
 android/keystore.properties
 android/*.jks
 android/*.keystore
+artifacts/
+scripts/__pycache__/

@@ -19,12 +19,36 @@ The PBF is build input only. It is not committed to this repository.
 
 ## Engine
 
-The repository now contains a small, versioned graph contract and a pure
-Dijkstra route engine in `src/lib/offlineRouting.ts`. It validates graph data,
-snaps only within a bounded distance, honours the avoid preferences encoded on
+The repository contains a small, versioned graph contract and a pure Dijkstra
+route engine in `src/lib/offlineRouting.ts`. It validates graph data, snaps
+only within a bounded distance, honours the avoid preferences encoded on
 edges, and produces the same route model used by the navigation screens. The
-engine is intentionally not given sample Georgian roads: shipping invented
-roads would make offline navigation look functional while being unsafe.
+old browser graph remains useful for tests and short-lived development data,
+but it is not the nationwide format.
+
+The nationwide build input is converted with
+`scripts/build-georgia-routing-graph.py`. The builder reads every drivable
+road from the Georgia PBF, preserves one-way restrictions, speed limits, tolls,
+unpaved-road flags, road names, and coordinates, then writes a compact v2
+adjacency graph. Coordinates are stored as integer microdegrees and edges use
+integer tuples so gzip compression and Android storage are practical. The
+builder also writes a SHA-256 sidecar; an app install must verify that digest
+before treating the package as available.
+
+The PBF is never committed. Install the parser once with
+`python -m pip install osmium`, download the current Geofabrik extract, and
+run:
+
+```sh
+python scripts/build-georgia-routing-graph.py \
+  --pbf georgia-latest.osm.pbf \
+  --output artifacts/georgia-routing-graph-v2.json.gz
+```
+
+The generated artifact is the source of truth for nationwide coverage. A
+successful build must report non-zero country-wide node, edge, and way counts;
+the app must not silently substitute the nearby browser graph when this
+package is missing.
 
 Valhalla is the best fit because one graph serves car, bicycle and pedestrian
 costing, and its guidance output already matches what the app consumes.
