@@ -17,8 +17,11 @@ function check(name, fn) {
   console.log(`PASS  ${name}`);
 }
 
-// 2026-01-05 is a Monday.
-const monday = (hour, minute = 0) => new Date(2026, 0, 5, hour, minute);
+// 2026-01-05 is a Monday. Build each instant from Georgia wall-clock time
+// (UTC+4 all year) so the checks do not depend on the runner's timezone.
+const tbilisi = (day, hour, minute = 0) =>
+  new Date(Date.UTC(2026, 0, day, hour - 4, minute));
+const monday = (hour, minute = 0) => tbilisi(5, hour, minute);
 
 check('school zones are active on weekday mornings', () => {
   assert.equal(isSchoolZoneActive(monday(7, 59)), false);
@@ -33,15 +36,15 @@ check('school zones close at 16:00', () => {
 });
 
 check('weekends never show school-zone alerts', () => {
-  const saturday = new Date(2026, 0, 10, 12, 0);
-  const sunday = new Date(2026, 0, 11, 12, 0);
+  const saturday = tbilisi(10, 12, 0);
+  const sunday = tbilisi(11, 12, 0);
   assert.equal(isSchoolZoneActive(saturday), false);
   assert.equal(isSchoolZoneActive(sunday), false);
 });
 
 check('every weekday follows the same window', () => {
   for (let day = 5; day <= 9; day += 1) {
-    const date = new Date(2026, 0, day, 9, 0);
+    const date = tbilisi(day, 9, 0);
     assert.equal(isSchoolZoneActive(date), true, date.toDateString());
   }
 });
