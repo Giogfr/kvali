@@ -34,6 +34,7 @@ import {
   formatBytes,
   getStorageEstimate,
   prefetchRegion,
+  recoverInterruptedRegions,
 } from '../lib/offline';
 
 export const OfflineMapsScreen: React.FC = () => {
@@ -89,8 +90,8 @@ export const OfflineMapsScreen: React.FC = () => {
   useEffect(() => {
     if (recoveredDownloadsRef.current) return;
     recoveredDownloadsRef.current = true;
-    offlineRegions
-      .filter((region) => region.status === 'downloading')
+    recoverInterruptedRegions(offlineRegions)
+      .filter((region, index) => region.status !== offlineRegions[index].status)
       .forEach((region) => patchRegion(region.id, { status: 'paused' }));
   }, [offlineRegions, patchRegion]);
 

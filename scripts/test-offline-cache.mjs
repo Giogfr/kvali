@@ -21,6 +21,7 @@ globalThis.localStorage = {
 };
 
 const { readCache, readCachedValues, writeCache } = await import('../src/lib/offlineCache.ts');
+const { recoverInterruptedRegions } = await import('../src/lib/offline.ts');
 
 let passed = 0;
 function check(name, fn) {
@@ -70,6 +71,17 @@ check('ignores malformed collections without losing valid ones', () => {
   store.set('kvali_offline_cache_poi:bad', '{broken');
   writeCache('poi:good', [{ id: 'good' }]);
   assert.deepEqual(readCachedValues('poi:', 1000), [{ id: 'good' }]);
+});
+
+check('recovers interrupted region downloads as paused', () => {
+  const regions = [
+    { id: 'active', status: 'downloading' },
+    { id: 'done', status: 'downloaded' },
+  ];
+  const recovered = recoverInterruptedRegions(regions);
+  assert.equal(recovered[0].status, 'paused');
+  assert.equal(recovered[1].status, 'downloaded');
+  assert.equal(regions[0].status, 'downloading');
 });
 
 console.log(`\n${passed} checks passed`);

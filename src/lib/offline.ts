@@ -340,3 +340,10 @@ export function formatBytes(bytes: number): string {
 export function isRegionDownloaded(region: OfflineRegion): boolean {
   return region.status === 'downloaded';
 }
+
+/** Turn persisted in-flight downloads into resumable work after a restart. */
+export function recoverInterruptedRegions(regions: OfflineRegion[]): OfflineRegion[] {
+  return regions.map((region) =>
+    region.status === 'downloading' ? { ...region, status: 'paused' } : region
+  );
+}
