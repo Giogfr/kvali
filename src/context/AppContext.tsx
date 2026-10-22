@@ -783,7 +783,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Real mapped enforcement and hazards from OpenStreetMap, refreshed per area.
   useEffect(() => {
     const cached = readCache<RoadAlert[]>(`alerts:${poiAnchor}`, 7 * 24 * 60 * 60 * 1000);
-    if (cached) setMappedAlerts(cached);
+    const cachedAreas = readCachedValues<RoadAlert>('alerts:', 7 * 24 * 60 * 60 * 1000);
+    const cachedAlerts = [...(cached || []), ...cachedAreas];
+    const unique = Array.from(
+      new Map(cachedAlerts.map((alert) => [alert.id, alert])).values()
+    );
+    setMappedAlerts(unique);
 
     if (airplaneOfflineMode || !isOnline) return;
 
@@ -813,7 +818,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch((err) => {
         if (err?.name === 'AbortError') return;
-        if (!cached) setMappedAlerts([]);
+        if (cachedAlerts.length === 0) setMappedAlerts([]);
       });
 
     return () => controller.abort();
