@@ -170,6 +170,20 @@ try {
         document.body.innerText.includes('needs an internet connection')
     )
   );
+  await page.click('[aria-label="Back"]');
+  await page.waitForSelector('.maplibregl-canvas', { timeout: 30000 });
+  await page.waitForFunction(
+    () => !!window.__kvaliMap?.getStyle()?.sources?.['kvali-satellite-imagery'],
+    { timeout: 30000 }
+  );
+  check(
+    'satellite raster overlay mounts on the map',
+    await page.evaluate(() => !!window.__kvaliMap?.getStyle()?.sources?.['kvali-satellite-imagery'])
+  );
+  await page.click('[aria-label="Map layers"]');
+  await page.waitForFunction(() => document.body.innerText.includes('Positron Light'), {
+    timeout: 10000,
+  });
   await clickText(page, 'button', 'Positron Light');
   await page.waitForFunction(
     () =>
@@ -186,6 +200,20 @@ try {
     )
   );
   await page.click('[aria-label="Back"]');
+  await page.waitForFunction(
+    () =>
+      localStorage.getItem('kvali_satellite_mode') === 'false' &&
+      !window.__kvaliMap?.getStyle()?.sources?.['kvali-satellite-imagery'],
+    { timeout: 30000 }
+  );
+  check(
+    'satellite raster overlay unmounts cleanly',
+    await page.evaluate(
+      () =>
+        localStorage.getItem('kvali_satellite_mode') === 'false' &&
+        !window.__kvaliMap?.getStyle()?.sources?.['kvali-satellite-imagery']
+    )
+  );
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.maplibregl-canvas', { timeout: 30000 });
   await page.waitForFunction(() => !!window.__kvaliMap, { timeout: 30000 });
