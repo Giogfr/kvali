@@ -33,6 +33,15 @@ function check(name, ok, detail = '') {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function clickText(page, selector, text) {
+  await page.waitForFunction(
+    (sel, needle) =>
+      [...document.querySelectorAll(sel)].some((node) =>
+        (node.textContent || '').includes(needle)
+      ),
+    { timeout: 10000 },
+    selector,
+    text
+  );
   const clicked = await page.evaluate(
     (sel, needle) => {
       const element = [...document.querySelectorAll(sel)].find((node) =>
@@ -90,11 +99,14 @@ const browser = await puppeteer.launch({
   ],
 });
 
+let currentPage = null;
+
 try {
   const origin = new URL(BASE).origin;
   await browser.defaultBrowserContext().overridePermissions(origin, ['geolocation']);
 
   const page = await browser.newPage();
+  currentPage = page;
   await page.setViewport({ width: 412, height: 900, isMobile: true, hasTouch: true });
   await page.setGeolocation({ latitude: 42.2679, longitude: 42.6946, accuracy: 8 });
 
@@ -225,6 +237,7 @@ try {
 
   // Map layer screen and layer toggles.
   await clickText(page, 'nav button', 'Map');
+  await page.waitForSelector('[aria-label="Map layers"]', { timeout: 10000 });
   await page.click('[aria-label="Map layers"]');
   await page.waitForFunction(() => document.body.innerText.includes('Positron Light'), {
     timeout: 10000,
@@ -607,7 +620,11 @@ try {
   }
   check('no unhandled page errors', fatalErrors.length === 0, fatalErrors.slice(0, 5).join(' | '));
 } catch (error) {
-  check('smoke run completed', false, error instanceof Error ? error.message : String(error));
+  const context = await currentPage
+    .evaluate(() => ({ href: location.href, text: document.body.innerText.slice(0, 500) }))
+    .catch(() => null);
+  const detail = error instanceof Error ? error.message : String(error);
+  check('smoke run completed', false, context ? `${detail} — ${JSON.stringify(context)}` : detail);
 } finally {
   await browser.close();
 }
