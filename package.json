@@ -29,6 +29,7 @@
     "test:offline-cache": "bun scripts/test-offline-cache.mjs",
     "test:offline-routing": "bun scripts/test-offline-routing.mjs",
     "test:offline-packed": "bun scripts/test-offline-packed.mjs",
+    "test:nationwide-graph": "bun scripts/test-nationwide-graph.mjs",
     "build:routing-graph": "python scripts/build-georgia-routing-graph.py",
     "test:speech": "bun scripts/test-speech.mjs",
     "test:speed": "bun scripts/test-speed.mjs",
