@@ -13,7 +13,7 @@
  * pulling in a rasteriser. Run from the repo root: bun run icons
  */
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import puppeteer from 'puppeteer-core';
 
@@ -22,43 +22,19 @@ const CHROME =
 
 const ROOT = process.cwd();
 
-// The mark: a route that curves from a start dot to a destination ring.
-const GRADIENT = `
-  <defs>
-    <linearGradient id="bg" x1="40" y1="24" x2="472" y2="488" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4C8DFF" />
-      <stop offset="1" stop-color="#2563EB" />
-    </linearGradient>
-  </defs>`;
-
-const MARK = `
-  <path d="M170 356 C170 286 226 282 258 248 C290 214 346 210 346 156"
-        fill="none" stroke="#FFFFFF" stroke-width="30"
-        stroke-linecap="round" stroke-linejoin="round" />
-  <circle cx="170" cy="356" r="32" fill="#FFFFFF" />
-  <circle cx="346" cy="156" r="44" fill="none" stroke="#FFFFFF" stroke-width="28" />`;
-
-function graphic(scale, dx = 0, dy = 0) {
-  return `<g transform="translate(256 256) scale(${scale}) translate(${-256 + dx} ${-256 + dy})">${MARK}</g>`;
-}
+const LOGO = await readFile(`${ROOT}/public/logo.svg`, 'utf8');
+const LOGO_MARK = `
+  <path d="M13.5 34.5C15 27 15.5 21.5 24 18.5C29.5 16.6 31.5 16.5 34 14.5"
+        fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="13.5" cy="34.5" r="3.1" fill="#FFFFFF" />
+  <circle cx="34.5" cy="14.5" r="6" fill="none" stroke="#FFFFFF" stroke-width="3.6" />
+  <circle cx="34.5" cy="14.5" r="2.6" fill="#2563EB" />`;
 
 function iconSvg(kind, size) {
-  const shape =
-    kind === 'round'
-      ? '<rect width="512" height="512" fill="url(#bg)"/><circle cx="256" cy="256" r="256" fill="url(#bg)"/>'
-      : '<rect width="512" height="512" rx="116" fill="url(#bg)"/>';
-
-  let body;
   if (kind === 'fg') {
-    body = graphic(0.82);
-  } else if (kind === 'maskable' || kind === 'square' || kind === 'round') {
-    body = graphic(kind === 'maskable' ? 0.66 : 0.8);
-  } else {
-    body = graphic(0.86);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 48 48"><g transform="translate(5 5) scale(.79)">${LOGO_MARK}</g></svg>`;
   }
-
-  const background = kind === 'fg' ? '' : shape;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512">${GRADIENT}${background}${body}</svg>`;
+  return LOGO.replace(/<svg[^>]*>/, `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 48 48">`);
 }
 
 const targets = [];
