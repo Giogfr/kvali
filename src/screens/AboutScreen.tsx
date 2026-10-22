@@ -7,6 +7,7 @@
  * License version 3 or later. See the LICENSE file for the full text.
  */
 import React from 'react';
+import { version as appVersion } from '../../package.json';
 import { Github, MapPin, ShieldCheck, Compass, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
@@ -40,7 +41,7 @@ export const AboutScreen: React.FC = () => {
               "{t('appTagline')}"
             </p>
             <span className="inline-block mt-2 px-2.5 py-0.5 rounded text-[10px] font-mono bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700">
-              {t('aboutVersion')}
+              {t('aboutVersion')} {appVersion}
             </span>
           </div>
 

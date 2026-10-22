@@ -319,7 +319,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // About
     aboutTitle: 'About Kvali',
-    aboutVersion: 'Prototype Version 0.9.4-alpha',
+    aboutVersion: 'Version',
     aboutDesc: 'Kvali (კვალი — "track/trace") is an open-source navigation app for Georgia, built on OpenStreetMap data.',
     mapDataAttribution: 'Map data © OpenStreetMap contributors. Vector tiles by OpenFreeMap, rendering with MapLibre GL JS, search and geocoding by Nominatim, routing by OSRM, places by the Overpass API.',
     knownLimitations: 'Routing, search and nearby places need a network connection. Road alerts are reports you add yourself and stay on this device. Voice quality depends on the device speech engine.',
@@ -639,7 +639,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // About
     aboutTitle: 'კვალის შესახებ',
-    aboutVersion: 'ვერსია 0.9.4-alpha',
+    aboutVersion: 'ვერსია',
     aboutDesc: 'კვალი არის ღია კოდის სანავიგაციო აპლიკაცია საქართველოსთვის, შექმნილი OpenStreetMap-ის მონაცემებზე.',
     mapDataAttribution: 'რუკის მონაცემები © OpenStreetMap contributors. ვექტორული ტაილები OpenFreeMap, რენდერი MapLibre GL JS, ძიება Nominatim, მარშრუტიზაცია OSRM, ობიექტები Overpass API.',
     knownLimitations: 'მარშრუტიზაციას, ძიებასა და ახლომდებარე ობიექტებს სჭირდება კავშირი. საგზაო შეტყობინებები თქვენ მიერ დამატებულია და რჩება ამ მოწყობილობაზე. ხმის ხარისხი დამოკიდებულია მოწყობილობის სინთეზატორზე.',
