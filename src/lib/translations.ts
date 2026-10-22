@@ -81,6 +81,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     cat_groceries: 'Groceries',
     cat_attractions: 'Attractions',
     cat_hiking: 'Hiking & Trails',
+    cat_place: 'Place',
+    cat_poi: 'Point of interest',
+    locationsFound: '{count} locations found',
 
     // Route Planning
     routePlanningTitle: 'Route Planning',
@@ -441,6 +444,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     cat_groceries: 'სასურსათო',
     cat_attractions: 'ღირსშესანიშნაობა',
     cat_hiking: 'სალაშქრო ბილიკები',
+    cat_place: 'ადგილი',
+    cat_poi: 'ღირსშესანიშნაობა',
+    locationsFound: 'მოიძებნა: {count} ადგილი',
 
     // Route Planning
     routePlanningTitle: 'მარშრუტის დაგეგმვა',

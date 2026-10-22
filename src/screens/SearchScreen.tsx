@@ -34,6 +34,10 @@ import { searchNominatim, type GeocodeResult } from '../lib/services';
 import { Place, PlaceCategory } from '../types';
 import { readCache, writeCache } from '../lib/offlineCache';
 
+function categoryTranslationKey(category: PlaceCategory): string {
+  return `cat_${category}`;
+}
+
 export const SearchScreen: React.FC = () => {
   const {
     t,
@@ -264,7 +268,7 @@ export const SearchScreen: React.FC = () => {
             {filteredPlaces.length > 0 && (
               <div>
                 <div className="flex items-center justify-between py-1 text-[11px] text-neutral-500 font-medium">
-                  <span>{filteredPlaces.length} locations found</span>
+                  <span>{t('locationsFound').replace('{count}', String(filteredPlaces.length))}</span>
                 </div>
                 <div className="divide-y divide-neutral-200 dark:divide-neutral-800/40 stagger">
                   {filteredPlaces.map((place) => {
@@ -292,7 +296,7 @@ export const SearchScreen: React.FC = () => {
                             {language === 'ka' ? place.descriptionKa : place.description}
                           </p>
                           <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
-                            <span className="capitalize">{place.category}</span>
+                            <span>{t(categoryTranslationKey(place.category))}</span>
                             <span>·</span>
                             <span className="tabular-nums font-mono text-[#2F6FEB]">
                               ~{distStr}
