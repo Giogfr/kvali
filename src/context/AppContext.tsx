@@ -54,6 +54,10 @@ import { readCache, readCachedValues, writeCache } from '../lib/offlineCache';
 import { loadOfflineRoutingGraph, routeOffline } from '../lib/offlineRouting';
 import { hasInstalledNationwideGraph, loadInstalledNationwideGraph } from '../lib/nationwideRouting';
 import { hasInstalledBasemap, loadInstalledBasemap } from '../lib/offlineBasemap';
+import {
+  downloadOfflineSearchIndex,
+  hasInstalledOfflineSearchIndex,
+} from '../lib/offlineSearch';
 import { routePackedOffline, type PackedRoutingGraph } from '../lib/offlinePackedRouting';
 
 type RouteSource = 'online' | 'cached' | 'offline-graph' | 'offline-national' | null;
@@ -360,6 +364,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const blob = await loadInstalledBasemap();
       setBasemapInstalled(blob !== null);
       setBasemapReady(blob !== null);
+      if (blob && !(await hasInstalledOfflineSearchIndex()) && navigator.onLine) {
+        void downloadOfflineSearchIndex().catch(() => {});
+      }
     })();
   }, []);
 

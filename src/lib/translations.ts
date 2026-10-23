@@ -84,6 +84,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     cat_place: 'Place',
     cat_poi: 'Point of interest',
     locationsFound: '{count} locations found',
+    offlineResults: 'Offline map',
 
     // Route Planning
     routePlanningTitle: 'Route Planning',
@@ -193,7 +194,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     savedRoutesCleared: 'Saved routes cleared',
     cacheCleared: 'Cached map data cleared',
     storageUnavailable: 'Storage details are not available on this device.',
-    offlineStorageNotice: 'Downloaded areas store real map tiles on this device. Search still needs a network connection; nearby new routes work offline after local road data is prepared.',
+    offlineStorageNotice: 'Downloaded areas store real map tiles on this device. The Georgia offline map also includes offline place search; nearby new routes work offline after local road data is prepared.',
     offlineRoutingTitle: 'Nearby offline routing',
     offlineRoutingDesc: 'Download real OpenStreetMap roads around your current area for new car routes without a connection.',
     offlineRoutingInstalled: 'Local car-road data is installed on this device.',
@@ -212,7 +213,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     nationwideRoutingReady: 'Georgia-wide offline navigation is ready',
     nationwideRoutingFailed: 'The nationwide road package could not be installed. Check your connection and try again.',
     basemapTitle: 'Georgia offline map',
-    basemapDesc: 'Download the 96 MB map of Georgia for streets and labels across the whole country without a connection.',
+    basemapDesc: 'Download the 96 MB map and search index for streets, labels and offline places across Georgia.',
     basemapInstalled: 'The Georgia offline map is installed on this device.',
     basemapInstall: 'Download Georgia map',
     basemapInstalling: 'Downloading…',
@@ -480,6 +481,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     cat_place: 'ადგილი',
     cat_poi: 'ღირსშესანიშნაობა',
     locationsFound: 'მოიძებნა: {count} ადგილი',
+    offlineResults: 'ოფლაინ რუკა',
 
     // Route Planning
     routePlanningTitle: 'მარშრუტის დაგეგმვა',
@@ -589,7 +591,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     savedRoutesCleared: 'შენახული მარშრუტები გასუფთავდა',
     cacheCleared: 'რუკის ქეში გასუფთავებულია',
     storageUnavailable: 'მეხსიერების მონაცემები მიუწვდომელია ამ მოწყობილობაზე.',
-    offlineStorageNotice: 'ჩამოტვირთული არეალები ნამდვილ რუკის ტაილებს ინახავს მოწყობილობაზე. ძიებას კვლავ სჭირდება კავშირი; ახლომდებარე ახალი მარშრუტები ოფლაინ იმუშავებს ადგილობრივი გზების მომზადების შემდეგ.',
+    offlineStorageNotice: 'ჩამოტვირთული არეალები ნამდვილ რუკის ტაილებს ინახავს მოწყობილობაზე. საქართველოს ოფლაინ რუკა ასევე მოიცავს ოფლაინ ძიებას; ახლომდებარე ახალი მარშრუტები ოფლაინ იმუშავებს ადგილობრივი გზების მომზადების შემდეგ.',
     offlineRoutingTitle: 'ახლომდებარე ოფლაინ მარშრუტიზაცია',
     offlineRoutingDesc: 'ჩამოტვირთეთ OpenStreetMap-ის ნამდვილი გზები მიმდინარე არეალიდან, რომ ახალი საავტომობილო მარშრუტები კავშირის გარეშე ააგოთ.',
     offlineRoutingInstalled: 'ადგილობრივი საავტომობილო გზების მონაცემები მოწყობილობაზე დაყენებულია.',
@@ -608,7 +610,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     nationwideRoutingReady: 'საქართველოს ოფლაინ ნავიგაცია მზადაა',
     nationwideRoutingFailed: 'ეროვნული გზების პაკეტის დაყენება ვერ მოხერხდა. შეამოწმეთ კავშირი და სცადეთ თავიდან.',
     basemapTitle: 'საქართველოს ოფლაინ რუკა',
-    basemapDesc: 'ჩამოტვირთეთ საქართველოს 96 მბ რუკა, რათა ქუჩები და სახელები მთელ ქვეყანაში კავშირის გარეშე გამოჩნდეს.',
+    basemapDesc: 'ჩამოტვირთეთ საქართველოს 96 მბ რუკა და საძიებო ინდექსი ქუჩების, სახელებისა და ადგილების ოფლაინ მოსაძებნად.',
     basemapInstalled: 'საქართველოს ოფლაინ რუკა ამ მოწყობილობაზე დაინსტალირებულია.',
     basemapInstall: 'რუკის ჩამოტვირთვა',
     basemapInstalling: 'ჩამოტვირთვა…',

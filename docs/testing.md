@@ -30,12 +30,13 @@ That runs the pure-module suites:
 | `test:offline-routing` | validated local graph routes and exclusions |
 | `test:offline-packed` | binary country graph reader, validation and route flags |
 | `test:offline-basemap` | PMTiles style layers, sources and cached asset URLs |
+| `test:offline-search` | offline index ranking, kinds, addresses, Georgian names |
 | `test:speech` | voice/language matching, including Georgian |
 | `test:speed` | speed/limit display, tolerance and limit scope |
 
-That is twenty suites; the numeric suites report 127 checks, and the
-packed-package and basemap suites report pass or fail. Each suite exits non-zero
-on the first failure, so `test:units` stops at the broken module.
+That is twenty-one suites; the numeric suites report 127 checks, and the
+packed-package, basemap and search suites report pass or fail. Each suite exits
+non-zero on the first failure, so `test:units` stops at the broken module.
 
 The CI workflow runs `bun run test:units` on every push and pull request.
 
@@ -80,6 +81,21 @@ in IndexedDB across a reload, and rendered after the browser was switched fully
 offline (roads, water, buildings, and labels visible). Georgia's PMTiles file
 and routing package are both hosted on GitHub Pages with CORS enabled.
 
+## Offline search test
+
+```sh
+bun run test:offline-search
+```
+
+The suite uses a small synthetic index to check exact and prefix ranking,
+streets versus addresses, distance bias, kind searches, airport preference, and
+Georgian local names. It does not need a browser or the published artifact.
+
+The published index is built from the current Georgia extract and is installed
+by the same Offline Maps action as the basemap. A real-index smoke check can be
+run with the generated artifact and `searchOfflineIndex`; the resulting index is
+about 2.5 MiB compressed and contains named places, POIs, streets, and addresses.
+
 ## Nationwide graph test
 
 An installed or downloaded routing package can be validated outside the app:
@@ -101,9 +117,9 @@ install, page reload, and a 364.47 km Tbilisi-to-Batumi route all passed.
 - The published Georgia routing package on a physical device in airplane mode.
   Its download, checksum, install, persistence and routing are covered in a
   headless browser, but not yet through the Android WebView and storage layer.
-- The 96 MiB offline basemap on a physical device. Desktop Chrome covers
-  download, IndexedDB persistence, and a fully offline reload, but Android
-  WebView Blob storage and memory use are not verified.
+- The 96 MiB offline basemap and 2.5 MiB search index on a physical device.
+  Desktop Chrome covers download, IndexedDB persistence, and a fully offline
+  reload, but Android WebView Blob storage and memory use are not verified.
 - Voice quality, which depends on the installed TTS engine and language pack.
 - Flaky upstream services. Overpass 429/502 responses are logged as warnings,
   not failures, because the app handles them by showing cached or empty data.

@@ -1,0 +1,77 @@
+name: Build offline search index
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Kvali
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install OSM parser
+        run: python -m pip install --disable-pip-version-check osmium
+
+      - name: Download current Georgia extract
+        run: curl --fail --location --retry 4 --retry-delay 5 --output georgia-latest.osm.pbf https://download.geofabrik.de/europe/georgia-latest.osm.pbf
+
+      - name: Build offline search index
+        run: |
+          mkdir -p artifacts
+          python scripts/build-georgia-search-index.py \
+            --pbf georgia-latest.osm.pbf \
+            --output artifacts/georgia-search-v1.json.gz
+          test -s artifacts/georgia-search-v1.json.gz
+          test -s artifacts/georgia-search-v1.json.gz.sha256
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site
+          cp artifacts/georgia-search-v1.json.gz* _site/
+          for file in \
+            georgia-basemap-z13.pmtiles \
+            georgia-basemap-z13.pmtiles.sha256 \
+            georgia-routing-graph-v3.kvr.gz \
+            georgia-routing-graph-v3.kvr.gz.sha256; do
+            curl --fail --location --retry 4 --retry-delay 5 \
+              -o "_site/$file" \
+              "https://giogfr.github.io/kvali/$file" || true
+          done
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>Kvali offline data</title>
+          <p>Offline routing, basemap and search packages for the Kvali Android app.</p>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy search index to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -9,7 +9,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB"></a>
   <a href="https://github.com/Giogfr/kvali/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Giogfr/kvali/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.4-2F6FEB">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0--beta.5-2F6FEB">
   <br />
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
@@ -22,11 +22,11 @@
 
 Kvali is an open-source navigation app for Georgia. It is a React + TypeScript app that runs in the browser and on Android through Capacitor. Maps are OpenStreetMap vector tiles rendered with MapLibre GL; search and reverse geocoding come from Nominatim, routes from OSRM, and nearby points of interest from Overpass.
 
-> **Status: public beta (1.0.0-beta.4).** Kvali does real routing, GPS guidance, Georgian voice, a downloadable whole-country visual map, and nationwide offline car routing, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
+> **Status: public beta (1.0.0-beta.5).** Kvali does real routing, GPS guidance, Georgian voice, a downloadable whole-country visual map, offline place search, and nationwide offline car routing, and is exercised by an end-to-end browser test suite on every change. It has **not** been field-tested on the road yet, so treat it as a co-driver, not the driver. Please read [How to test](#how-to-test) and [Offline behaviour](#offline-behaviour) before relying on it.
 
 ## Download & install
 
-- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.4](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.4), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
+- **Android:** grab the signed APK from the current beta, [v1.0.0-beta.5](https://github.com/Giogfr/kvali/releases/tag/v1.0.0-beta.5), allow installs from your browser or file manager, then open it. On first launch, grant location and pick *While using the app*.
 - **Web / PWA:** run `bun run build` and serve `dist/`, or deploy it anywhere static. In Chrome or Edge, use **Install app** in the address bar to add it as a standalone app with offline support.
 
 ## Table of contents
@@ -65,6 +65,7 @@ Kvali is an open-source navigation app for Georgia. It is a React + TypeScript a
 ### Search & discovery
 
 - Place search over OpenStreetMap Nominatim with a 3-character debounce and cancellable requests.
+- Offline place, street and address search from a 2.5 MB Georgia index downloaded with the offline map; results still work in airplane mode.
 - Category shortcuts (fuel, parking, food, hotels, hospitals, ATMs, EV charging, viewpoints, pharmacies, groceries, attractions, hiking).
 - Nearby points of interest loaded from OpenStreetMap (Overpass) around the current area.
 - Reverse geocoding when you long-press the map.
@@ -160,6 +161,7 @@ bun run preview
 | `bun run test:units` | Pure-module unit checks (navigation, geo, addresses, time, alerts, routing preferences, GPX, translations). |
 | `bun run test:smoke` | End-to-end browser checks (map, routing, preferences); needs the dev server on :3000. |
 | `bun run test:offline-basemap` | Checks the Protomaps style, sources and cached glyph/sprite URLs. |
+| `bun run test:offline-search` | Checks offline ranking, places, streets, addresses, kinds and Georgian names. |
 | `bun run test:offline` | Same idea with the network switched off; needs `bun run preview` on :4173. |
 | `bun run icons` | Regenerate the PWA and Android launcher icons from the built-in SVG. |
 
@@ -175,7 +177,7 @@ src/
 │  └─ map/       # MapView (MapLibre), FallbackMap (SVG), PinCallout
 ├─ context/      # AppContext (app state), ToastContext
 ├─ lib/          # geo.ts, navigation.ts, services.ts, location.ts, offline.ts,
-│                # routeCache.ts, offlineCache.ts, offlineBasemap.ts, nationwideRouting.ts,
+│                # routeCache.ts, offlineCache.ts, offlineBasemap.ts, offlineSearch.ts, nationwideRouting.ts,
 │                # speech.ts, wakeLock.ts, translations.ts
 ├─ screens/      # One component per screen (lazy-loaded)
 ├─ types/        # Shared TypeScript types
@@ -230,14 +232,14 @@ Persisted to `localStorage`: theme, language, units, voice mode, travel mode, ro
 
 ## Offline behaviour
 
-The app is offline-first. The shell and any route you have already calculated are served from the device, so a known route keeps guiding without a connection — even if you still have a little internet. Install the 96 MB Georgia map from **Offline Maps** to draw the whole country's streets, buildings, water, and labels offline; install the Georgia roads package to create new car routes anywhere in the country. Both packages are checksum-verified and can be removed from the same screen.
+The app is offline-first. The shell and any route you have already calculated are served from the device, so a known route keeps guiding without a connection, even if you still have a little internet. Install the 96 MB Georgia map from **Offline Maps** to draw the whole country's streets, buildings, water, and labels offline; the same download includes a 2.5 MB offline place, street and address index. Install the Georgia roads package to create new car routes anywhere in the country. All packages are checksum-verified and can be removed from the same screen.
 
 What still needs a connection:
 
-- Search and reverse geocoding (Nominatim).
+- Online Nominatim search for queries outside the downloaded index, and all reverse geocoding.
 - Point-of-interest and alert lookups (Overpass).
 - A **new** car route when the nationwide package is not installed, and any new bike or walking route.
-- The one-time 96 MB basemap and 39 MB road-package downloads.
+- The one-time 96 MB basemap, 2.5 MB search index and 39 MB road-package downloads.
 - Map detail above zoom 13, which is overzoomed from the z13 basemap.
 
 Voice guidance uses the device speech synthesiser, so the available voices and languages depend on the platform.
@@ -326,7 +328,7 @@ Tagged builds attach the signed release APK, so you can download and sideload it
 - On the phone, allow installs from your browser, then open the downloaded APK.
 - Grant location permission on first launch and choose precise location where offered.
 
-Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.4` (`versionCode` 6).
+Release tags use `MAJOR.MINOR.PATCH[-beta.N]`; the current beta is `1.0.0-beta.5` (`versionCode` 7).
 
 ## How to test
 
@@ -336,11 +338,11 @@ The quickest loop is the web build, but native location, the screen wake lock, a
 
 1. `bun install`, then `bun run dev` and open http://localhost:3000.
 2. Allow the location prompt on the map screen. Without it the app falls back to a Kutaisi city centre and shows a "waiting for GPS" badge.
-3. Tap the search bar and type a town (for example `Batumi` or `Gori`). Results come from Nominatim.
+3. Tap the search bar and type a town (for example `Batumi` or `Gori`). Results come from Nominatim, plus the downloaded offline index when available.
 4. Open a result's directions button, pick a route alternative, then **Start navigation**. Without a GPS fix the banner stays on the first instruction; with a fix the banner, remaining distance, and ETA update as you move.
 5. Switch **Settings → Distance units** to imperial and confirm speed, distance, and speed-limit values change to mph/mi.
 6. In **Settings → Voice guidance**, pick *Spoken*, *Chime*, or *Muted* and confirm guidance speaks, chimes, or stays silent.
-7. **Offline Maps**: download the 96 MB Georgia map and the Georgia roads package. Go offline (DevTools → Network → Offline), reload, and confirm the whole-country basemap still draws with labels; search stops, while a new car route still works.
+7. **Offline Maps**: download the 96 MB Georgia map (which includes the search index) and the Georgia roads package. Go offline (DevTools → Network → Offline), reload, and confirm the whole-country basemap still draws with labels; offline place search still returns results, and a new car route still works.
 8. **Road alerts**: add a report and confirm a marker appears on the map.
 
 To exercise location screens without moving, use your browser's sensor override (Chrome DevTools → Sensors → Location) and set a custom position.

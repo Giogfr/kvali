@@ -60,10 +60,23 @@ jobs:
           sha256sum artifacts/georgia-basemap-z13.pmtiles | \
             sed 's#  artifacts/#  #' > artifacts/georgia-basemap-z13.pmtiles.sha256
 
+      - name: Download Georgia OpenStreetMap extract
+        run: curl --fail --location --retry 4 --retry-delay 5 --output georgia-latest.osm.pbf https://download.geofabrik.de/europe/georgia-latest.osm.pbf
+
+      - name: Build offline search index
+        run: |
+          python -m pip install --disable-pip-version-check osmium
+          python scripts/build-georgia-search-index.py \
+            --pbf georgia-latest.osm.pbf \
+            --output artifacts/georgia-search-v1.json.gz
+          test -s artifacts/georgia-search-v1.json.gz
+          test -s artifacts/georgia-search-v1.json.gz.sha256
+
       - name: Assemble Pages site
         run: |
           mkdir -p _site
           cp artifacts/georgia-basemap-z13.pmtiles* _site/
+          cp artifacts/georgia-search-v1.json.gz* _site/
           curl --fail --location --retry 4 --retry-delay 5 \
             -o _site/georgia-routing-graph-v3.kvr.gz \
             https://giogfr.github.io/kvali/georgia-routing-graph-v3.kvr.gz || true
@@ -74,7 +87,7 @@ jobs:
           <!doctype html>
           <meta charset="utf-8">
           <title>Kvali offline data</title>
-          <p>Offline routing and basemap packages for the Kvali Android app.</p>
+          <p>Offline routing, basemap and search packages for the Kvali Android app.</p>
           HTML
 
       - name: Upload Pages artifact

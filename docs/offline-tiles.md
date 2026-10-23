@@ -22,6 +22,30 @@ The published file is about 96 MiB (100,891,800 bytes). It contains streets,
 water, land use, buildings, boundaries, and labels down to zoom 13; zooms above
 13 are overzoomed from the z13 tiles.
 
+## Offline search
+
+The basemap download also installs `georgia-search-v1.json.gz` (about 2.5 MiB)
+from GitHub Pages. It is built from the current Geofabrik Georgia extract by
+`scripts/build-georgia-search-index.py` and contains named places, POIs,
+streets, and address points:
+
+- `.github/workflows/search-data.yml` builds the index on demand and preserves
+  the existing basemap and routing files on Pages.
+- `.github/workflows/offline-map.yml` rebuilds the index whenever the whole
+  offline package is rebuilt.
+- `src/lib/offlineSearch.ts` verifies the SHA-256 sidecar, stores the compressed
+  index in `kvali_offline_search_v1`, decompresses it on first use, and ranks
+  results by exact/prefix/token match, feature importance, and distance from
+  the current map centre.
+- `SearchScreen` loads the index with the screen and shows an **Offline map**
+  result group when the device is offline, while Nominatim is loading, or when
+  Nominatim returns nothing. The downloaded index results are real map points
+  and can be opened or used as a route destination.
+
+The index includes only features that are mapped in OpenStreetMap. It does not
+contain every possible address, does not transliterate every name, and does not
+provide offline reverse geocoding.
+
 ## Install and storage
 
 The Offline Maps screen shows the download size, real progress, and a Remove
@@ -29,8 +53,10 @@ action. Removal is blocked while offline-only mode is active so the user cannot
 delete the only working basemap without a connection. Nationwide routing has the
 same install/remove flow.
 
-The basemap is stored in `kvali_offline_basemap_v1`; the routing package uses
-`kvali_nationwide_routing_v3`. Both are separate from route and tile caches.
+The basemap is stored in `kvali_offline_basemap_v1`; the search index uses
+`kvali_offline_search_v1`; the routing package uses
+`kvali_nationwide_routing_v3`. All are separate from route and tile caches.
+Removing the Georgia offline map also removes its search index.
 
 ## Licensing
 
@@ -51,5 +77,5 @@ only map renderer.
   but not yet on a physical device.
 - GitHub Pages currently serves the 96 MiB file, but that per-file limit is not
   a documented guarantee. The workflow fails if the file reaches 100 MiB.
-- Offline search and a nationwide offline POI index are not part of this
-  basemap; search still needs a connection unless the data is already cached.
+- Offline index matching is exact/prefix/token based rather than fuzzy; a badly
+  misspelled name may still need an online search.

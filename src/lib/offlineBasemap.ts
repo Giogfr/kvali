@@ -21,6 +21,7 @@ import {
   basemapAssetUrls,
   buildBasemapStyle,
 } from './offlineBasemapStyle';
+import { downloadOfflineSearchIndex, removeOfflineSearchIndex } from './offlineSearch';
 
 export const DEFAULT_BASEMAP_URL =
   'https://giogfr.github.io/kvali/georgia-basemap-z13.pmtiles';
@@ -156,6 +157,7 @@ export async function downloadBasemap(
   signal?: AbortSignal,
   url = DEFAULT_BASEMAP_URL
 ): Promise<Blob> {
+  await downloadOfflineSearchIndex(signal);
   const checksumResponse = await fetch(`${url}.sha256`, { signal });
   if (!checksumResponse.ok) throw new Error('Offline basemap checksum is not published');
   const expected = parseSha256(await checksumResponse.text());
@@ -208,6 +210,7 @@ export async function downloadBasemap(
 }
 
 export async function removeBasemap(): Promise<void> {
+  await removeOfflineSearchIndex();
   if (typeof indexedDB === 'undefined') return;
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {

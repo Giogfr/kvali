@@ -26,11 +26,17 @@ import {
   ChevronRight,
   Navigation,
   Globe,
+  MapPin,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HeaderBar } from '../components/common/HeaderBar';
 import { calculateDistanceKm, formatDistance } from '../lib/geo';
 import { searchNominatim, type GeocodeResult } from '../lib/services';
+import {
+  loadInstalledOfflineSearchIndex,
+  searchOfflineIndex,
+  type OfflineSearchIndex,
+} from '../lib/offlineSearch';
 import { Place, PlaceCategory } from '../types';
 import { readCache, writeCache } from '../lib/offlineCache';
 
@@ -102,6 +108,29 @@ export const SearchScreen: React.FC = () => {
   const [remoteResults, setRemoteResults] = useState<GeocodeResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
+  const [offlineIndex, setOfflineIndex] = useState<OfflineSearchIndex | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadInstalledOfflineSearchIndex().then((index) => {
+      if (active) setOfflineIndex(index);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const offlineResults = useMemo(
+    () =>
+      offlineIndex
+        ? searchOfflineIndex(offlineIndex, query, effectiveCenter, language, 10)
+        : [],
+    [offlineIndex, query, effectiveCenter, language]
+  );
+  const offlineOnly =
+    airplaneOfflineMode || (typeof navigator !== 'undefined' && !navigator.onLine);
+  const showOfflineResults =
+    offlineResults.length > 0 && (offlineOnly || isSearching || remoteResults.length === 0);
 
   // Keep the latest center in a ref so GPS fixes don't re-trigger the search.
   const centerRef = useRef(effectiveCenter);
@@ -191,9 +220,59 @@ export const SearchScreen: React.FC = () => {
     navigateTo('route-planning');
   };
 
+  const renderResultRow = (result: GeocodeResult) => {
+    const distKm = calculateDistanceKm(
+      effectiveCenter.latitude,
+      effectiveCenter.longitude,
+      result.latitude,
+      result.longitude
+    );
+    const distStr = formatDistance(distKm, units);
+
+    return (
+      <div
+        key={result.id}
+        onClick={() => handleSelectResult(result)}
+        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800/30 cursor-pointer transition-colors group"
+      >
+        <div className="min-w-0 flex-1 pr-2">
+          <span className="text-[13px] font-semibold truncate block">{result.name}</span>
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
+            {result.displayName}
+          </p>
+          <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
+            {result.category && (
+              <>
+                <span className="capitalize">{result.category.replace(/_/g, ' ')}</span>
+                <span>{'\u00b7'}</span>
+              </>
+            )}
+            <span className="tabular-nums font-mono text-[#2F6FEB]">~{distStr}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={(e) => handleDirectionsResult(e, result)}
+            className="p-2 rounded-lg bg-[#2F6FEB]/10 hover:bg-[#2F6FEB]/20 text-[#2F6FEB] transition-colors"
+            title={t('directions')}
+            aria-label={t('directions')}
+          >
+            <Navigation size={15} />
+          </button>
+          <ChevronRight size={16} className="text-neutral-500 group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+    );
+  };
+
   const hasQuery = query.trim().length > 0 || selectedCategory !== null;
   const nothingFound =
-    filteredPlaces.length === 0 && remoteResults.length === 0 && !isSearching && query.trim().length >= 3;
+    filteredPlaces.length === 0 &&
+    remoteResults.length === 0 &&
+    offlineResults.length === 0 &&
+    !isSearching &&
+    query.trim().length >= 3;
 
   return (
     <div
@@ -322,6 +401,21 @@ export const SearchScreen: React.FC = () => {
               </div>
             )}
 
+            {/* Downloaded offline index results */}
+            {showOfflineResults && (
+              <div>
+                <div className="flex items-center justify-between py-1 text-[11px] text-neutral-500 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin size={13} />
+                    <span>{t('offlineResults')}</span>
+                  </div>
+                </div>
+                <div className="divide-y divide-neutral-200 dark:divide-neutral-800/40 stagger">
+                  {offlineResults.map(renderResultRow)}
+                </div>
+              </div>
+            )}
+
             {/* OpenStreetMap results */}
             {query.trim().length >= 3 && (
               <div>
@@ -333,7 +427,7 @@ export const SearchScreen: React.FC = () => {
                   {isSearching && <span className="text-[10px]">{t('searching')}</span>}
                 </div>
 
-                {searchFailed && !isSearching && (
+                {searchFailed && !isSearching && offlineResults.length === 0 && (
                   <div className="text-[12px] text-neutral-500 py-2">{t('searchUnavailable')}</div>
                 )}
 
@@ -349,53 +443,7 @@ export const SearchScreen: React.FC = () => {
                 )}
 
                 <div className="divide-y divide-neutral-200 dark:divide-neutral-800/40 stagger">
-                  {remoteResults.map((result) => {
-                    const distKm = calculateDistanceKm(
-                      effectiveCenter.latitude,
-                      effectiveCenter.longitude,
-                      result.latitude,
-                      result.longitude
-                    );
-                    const distStr = formatDistance(distKm, units);
-
-                    return (
-                      <div
-                        key={result.id}
-                        onClick={() => handleSelectResult(result)}
-                        className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800/30 cursor-pointer transition-colors group"
-                      >
-                        <div className="min-w-0 flex-1 pr-2">
-                          <span className="text-[13px] font-semibold truncate block">
-                            {result.name}
-                          </span>
-                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
-                            {result.displayName}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-neutral-500">
-                            {result.category && (
-                              <>
-                                <span className="capitalize">{result.category.replace(/_/g, ' ')}</span>
-                                <span>·</span>
-                              </>
-                            )}
-                            <span className="tabular-nums font-mono text-[#2F6FEB]">~{distStr}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={(e) => handleDirectionsResult(e, result)}
-                            className="p-2 rounded-lg bg-[#2F6FEB]/10 hover:bg-[#2F6FEB]/20 text-[#2F6FEB] transition-colors"
-                            title={t('directions')}
-                            aria-label={t('directions')}
-                          >
-                            <Navigation size={15} />
-                          </button>
-                          <ChevronRight size={16} className="text-neutral-500 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {remoteResults.map(renderResultRow)}
                 </div>
               </div>
             )}
